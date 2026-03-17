@@ -222,12 +222,12 @@ npm run db:init
 
 **Recalculer manuellement les features utilisateurs (SQL pur) :**
 ```bash
-docker exec -i ecommerce_postgres psql -U postgres -d postgres < src/sql/009_ml_upsert.sql
+docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/009_ml_upsert.sql
 ```
 
 **Vérifier les statistiques d'un utilisateur :**
 ```bash
-docker exec -i ecommerce_postgres psql -U postgres -d postgres -c "SELECT * FROM v_user_behavior_features WHERE user_id = 1;"
+docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM v_user_behavior_features WHERE user_id = 1;"
 ```
 
 ---
@@ -245,8 +245,8 @@ Ne casse pas tout le schéma global ! Suis toujours cet ordre absolu si tu dois 
 3. Puis, réinjecte manuellement les tables mises à jour dans Docker (seulement si tu as DROP la table avant !):
    *(Dans PowerShell depuis backend/infra/docker)*
    ```powershell
-   Get-Content "..\..\src\sql\001_tables.sql" | docker exec -i ecommerce_postgres psql -U postgres -d postgres
-   Get-Content "..\..\src\sql\002_constraints.sql" | docker exec -i ecommerce_postgres psql -U postgres -d postgres
+   Get-Content "..\..\src\sql\001_tables.sql" | docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db
+   Get-Content "..\..\src\sql\002_constraints.sql" | docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db
    ```
 *(Idem pour 003_indexes, 004_triggers ou 005_views selon tes besoins d'optimisation).*
 
@@ -286,7 +286,7 @@ Quelques commandes backend pour vérifier rapidement la santé de la Data depuis
 
 **Voir combien d'enregistrements/lignes réelles existent par table :**
 ```bash
-docker exec -i ecommerce_postgres psql -U postgres -d postgres -c "SELECT relname AS table_name, n_live_tup AS row_count FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
+docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT relname AS table_name, n_live_tup AS row_count FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
 ```
 
 **Rentrer dans la base (Terminal interactif Postgres) :**
