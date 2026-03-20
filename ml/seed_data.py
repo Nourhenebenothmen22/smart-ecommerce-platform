@@ -161,7 +161,7 @@ TOPICS_POOL = [
     "customer service", "unboxing", "instructions", "warranty"
 ]
 
-INTERACTION_TYPES = ["view", "click", "cart_add", "wishlist_add", "purchase", "share", "search"]
+INTERACTION_TYPES = ["view", "click", "add_to_cart", "add_to_wishlist", "purchase", "share", "search"]
 
 ORDER_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled", "refunded"]
 PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"]
@@ -579,6 +579,7 @@ def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_ca
         tags = random_tags(cat, sub, brand)
         is_active = random_bool(0.9)
 
+        product_date = random_past_datetime(min_days_ago=30, max_days_ago=730)
         cursor.execute("""
             INSERT INTO products
             (
@@ -590,7 +591,7 @@ def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_ca
             (
                 %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s,
-                %s, %s, %s::jsonb, %s::jsonb, %s, NOW(), NOW()
+                %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s
             )
             RETURNING id
         """, (
@@ -609,6 +610,8 @@ def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_ca
             json.dumps(images),
             json.dumps(tags),
             is_active,
+            product_date,
+            product_date + timedelta(days=random.randint(0, 10))
         ))
         product_ids.append(cursor.fetchone()[0])
 
@@ -919,7 +922,7 @@ def seed_product_embeddings(cursor, conn, product_ids, n_embeddings):
 def seed_audit_logs(cursor, conn, user_ids, product_ids, n_logs):
     if not user_ids or not product_ids: return
 
-    actions = ["create", "update", "delete", "login", "checkout", "review_posted", "wishlist_add", "cart_add"]
+    actions = ["create", "update", "delete", "login", "checkout", "review_posted", "add_to_wishlist", "add_to_cart"]
     entity_types = ["product", "order", "review", "payment", "user", "wishlist", "cart_item"]
 
     for _ in tqdm(range(n_logs), desc="Securing Audi Trails"):
