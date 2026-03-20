@@ -13,7 +13,7 @@ Ton conteneur PostgreSQL (`ecommerce_postgres`) est monté avec un **Volume Dock
 
 **🔥 Ce que ça signifie pour toi au quotidien pendant 2 mois :**
 - **Non ! Tu n'as pas besoin de recréer les tables ou de réinsérer les données virtuellement à chaque fois que tu allumes ton PC.**
-- Les 3000 produits et les milliers de logs générés sont inscrits "en dur" sur ton disque dur.
+- Les **5000 produits** et les **milliers d'interactions** générés sont inscrits "en dur" sur ton disque dur.
 - Quand tu fermes ou rallumes ton environnement Docker, ta base ressuscite exactement dans l'état où tu l'as laissée.
 
 **L'unique commande à lancer quand tu allumes ton PC si Docker n'est pas démarré :**
@@ -227,8 +227,13 @@ docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/
 
 **Vérifier les statistiques d'un utilisateur :**
 ```bash
-docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM v_user_behavior_features WHERE user_id = 1;"
+docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM v_user_behavior_features LIMIT 5;"
 ```
+
+**Gérer les données ML via NPM (Recommandé) :**
+- `npm run ml:seed:reset` : Vide la base et génère 5000 produits/1500 users avec timestamps réalistes.
+- `npm run db:7-ml-views` : Met à jour la vue analytique SQL.
+- `npm run db:9-ml-upsert` : Recalcule et persiste les features dans `user_features`.
 
 ---
 
@@ -261,22 +266,27 @@ Si par exemple tu décides de virer `audit_logs` ou `payments` le mois prochain 
 
 ---
 
-## 🗃️ Générateur de Données ML (Seeding)
+La plateforme possède un générateur de données synthétiques Python professionnel situé dans `/ml/seed_data.py`, capable de simuler **18 mois d'activité historique** avec des timestamps réalistes.
 
-La plateforme possède un générateur de données synthétiques Python professionnel situé dans `/ml/seed_data.py`. 
+### Volumes actuels (Configurables dans `seed_data.py`)
+- **Produits** : 5 000
+- **Utilisateurs** : 1 500
+- **Interactions** : ~26 000 (Vues, Clics, Paniers, etc.)
+- **Commandes** : ~4 000 (avec historique chronologique par user)
+- **NLP/IA** : ~75 000 reviews analysées et 3 000 embeddings vectoriels.
 
-### J'ai besoin de PLUS de données pour entraîner mon IA (Mode APPEND)
-*Ajoute 3000 produits de plus et de nouveaux utilisateurs, SANS effacer ta base existante et ton historique :*
+### J'ai besoin de PLUS de données (Mode APPEND)
+*Ajoute de nouveaux produits et utilisateurs SANS effacer l'existant :*
 ```bash
-# Dans le dossier /ml
-python seed_data.py --mode append
+# Depuis le dossier backend
+npm run ml:seed:append
 ```
 
-### J'ai cassé mon backend ou modifié mon schéma SQL (Mode RESET)
-*⚠️ Vide toutes les tables, réinitialise les compteurs d'ID à 1, et repeuple intégralement avec des données neuves (idéal après avoir changé la structure `001_tables.sql`) :*
+### J'ai cassé mon backend ou modifié mon schéma (Mode RESET)
+*⚠️ Reconstruit une base propre avec 18 mois d'historique réaliste :*
 ```bash
-# Dans le dossier /ml
-python seed_data.py --mode reset
+# Depuis le dossier backend
+npm run ml:seed:reset
 ```
 
 ---
