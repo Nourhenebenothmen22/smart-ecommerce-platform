@@ -25,13 +25,13 @@ DB_CONFIG = {
 }
 
 # Settings for Generation
-NB_PRODUCTS = 3000
-NB_USERS = 400
-NB_AUDIT_LOGS = 1200
-NB_EMBEDDINGS = 1200
-NB_RECOMMENDATION_USERS = 250
-NB_ORDER_USERS = 280
-NB_INTERACTION_USERS = 320
+NB_PRODUCTS = 5000
+NB_USERS = 1500
+NB_AUDIT_LOGS = 5000
+NB_EMBEDDINGS = 3000
+NB_RECOMMENDATION_USERS = 1000
+NB_ORDER_USERS = 1200
+NB_INTERACTION_USERS = 1400
 
 RANDOM_SEED = 42
 
@@ -696,53 +696,60 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
     conn.commit()
 
 
-def seed_wishlists_and_carts(cursor, conn, user_ids, product_ids):
+def seed_wishlists_and_carts(cursor, conn, user_ids, product_ids, user_signup_dates):
     if not user_ids or not product_ids: return
 
     for user_id in tqdm(user_ids, desc="Filling Carts & Wishlists"):
+        signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
+
         wishlist_sample = random.sample(product_ids, k=min(random.randint(1, 10), len(product_ids)))
         for pid in wishlist_sample:
+            action_date = random_datetime_after(signup_dt)
             cursor.execute("""
                 INSERT INTO wishlists (user_id, product_id, created_at)
-                VALUES (%s, %s, NOW())
+                VALUES (%s, %s, %s)
                 ON CONFLICT (user_id, product_id) DO NOTHING
-            """, (user_id, pid))
+            """, (user_id, pid, action_date))
 
         cart_sample = random.sample(product_ids, k=min(random.randint(1, 5), len(product_ids)))
         for pid in cart_sample:
+            action_date = random_datetime_after(signup_dt)
             cursor.execute("""
                 INSERT INTO cart_items (user_id, product_id, quantity, created_at, updated_at)
-                VALUES (%s, %s, %s, NOW(), NOW())
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (user_id, product_id)
                 DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity,
-                              updated_at = NOW()
-            """, (user_id, pid, random.randint(1, 4)))
+                              updated_at = EXCLUDED.updated_at
+            """, (user_id, pid, random.randint(1, 4), action_date, action_date + timedelta(minutes=random.randint(1, 120))))
 
     conn.commit()
 
 
-def seed_user_interactions(cursor, conn, user_ids, product_ids):
+def seed_user_interactions(cursor, conn, user_ids, product_ids, user_signup_dates):
     if not user_ids or not product_ids: return
 
     for user_id in tqdm(user_ids, desc="Logging Interactions"):
+        signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
         sampled_products = random.sample(product_ids, k=min(random.randint(8, 30), len(product_ids)))
         for pid in sampled_products:
             interaction_type = random.choice(INTERACTION_TYPES)
             interaction_value = Decimal(str(round(random.uniform(1, 5), 2)))
+            interaction_date = random_datetime_after(signup_dt)
             cursor.execute("""
                 INSERT INTO user_interactions
                 (user_id, product_id, interaction_type, interaction_value, created_at)
-                VALUES (%s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 user_id,
                 pid,
                 interaction_type,
-                interaction_value
+                interaction_value,
+                interaction_date
             ))
     conn.commit()
 
 
-def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup):
+def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup, user_signup_dates):
     if not user_ids or not product_lookup: return
     
     # Extract map: pid: (final_price, title)
@@ -751,20 +758,26 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup):
 
     for user_id in tqdm(user_ids, desc="Fabricating Transactions"):
         nb_orders = random.randint(1, 6)
+        signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
 
-        for _ in range(nb_orders):
+        # Generate sorted order dates for realistic chronological ordering
+        order_dates = sorted([random_datetime_after(signup_dt) for _ in range(nb_orders)])
+
+        for order_date in order_dates:
             status = random.choice(ORDER_STATUSES)
 
             cursor.execute("""
                 INSERT INTO orders
                 (user_id, status, total_amount, payment_status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, NOW(), NOW())
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
             """, (
                 user_id,
                 status,
                 Decimal("0.00"),
-                "pending"
+                "pending",
+                order_date,
+                order_date + timedelta(minutes=random.randint(1, 120))
             ))
             order_id = cursor.fetchone()[0]
 
@@ -794,71 +807,80 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup):
             if status == "cancelled":
                 payment_status = random.choice(["failed", "refunded", "pending"])
 
+            updated_at = order_date + timedelta(hours=random.randint(1, 72))
             cursor.execute("""
                 UPDATE orders
                 SET total_amount = %s,
                     payment_status = %s,
-                    updated_at = NOW()
+                    updated_at = %s
                 WHERE id = %s
             """, (
                 total_amount,
                 payment_status,
+                updated_at,
                 order_id
             ))
 
-            paid_at = fake.date_time_this_year() if payment_status in ["paid", "refunded"] else None
+            paid_at = random_datetime_after(order_date, updated_at) if payment_status in ["paid", "refunded"] else None
             
             payment_table_status = "completed" if payment_status == "paid" else payment_status
 
             cursor.execute("""
                 INSERT INTO payments
                 (order_id, payment_method, amount, status, transaction_ref, paid_at, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (
                 order_id,
                 random.choice(PAYMENT_METHODS),
                 total_amount,
                 payment_table_status,
                 str(uuid.uuid4()),
-                paid_at
+                paid_at,
+                order_date
             ))
 
+            voice_date = order_date + timedelta(hours=random.randint(0, 24))
+            confirmed_at = voice_date + timedelta(minutes=random.randint(5, 120)) if random_bool() else None
             cursor.execute("""
                 INSERT INTO voice_confirmations
                 (order_id, phone_number, call_status, transcript, confirmed, confirmed_at, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (
                 order_id,
                 fake.phone_number()[:30],
                 random.choice(["pending", "completed", "failed", "ignored"]),
                 fake.sentence(nb_words=12),
                 random_bool(0.65),
-                fake.date_time_this_year() if random_bool() else None
+                confirmed_at,
+                voice_date
             ))
 
     conn.commit()
 
 
-def seed_recommendations(cursor, conn, user_ids, product_ids):
+def seed_recommendations(cursor, conn, user_ids, product_ids, user_signup_dates):
     if len(product_ids) < 5 or not user_ids: return
 
     for user_id in tqdm(user_ids, desc="AI Recommendations"):
+        signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
         source_products = random.sample(product_ids, k=min(5, len(product_ids)))
         for source_pid in source_products:
             rec_candidates = [p for p in product_ids if p != source_pid]
             recs = random.sample(rec_candidates, k=min(3, len(rec_candidates)))
 
             for rec_pid in recs:
+                rec_date = random_datetime_after(signup_dt)
                 cursor.execute("""
                     INSERT INTO recommendations
                     (user_id, source_product_id, recommended_product_id, score, created_at)
-                    VALUES (%s, %s, %s, %s, NOW())
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (user_id, source_product_id, recommended_product_id) DO NOTHING
                 """, (
                     user_id,
                     source_pid,
                     rec_pid,
-                    Decimal(str(round(random.uniform(0.50, 0.99), 4)))
+                    Decimal(str(round(random.uniform(0.50, 0.99), 4))),
+                    rec_date
                 ))
     conn.commit()
 
@@ -908,16 +930,18 @@ def seed_audit_logs(cursor, conn, user_ids, product_ids, n_logs):
             "source": random.choice(["web", "ios_app", "android_app", "admin_dashboard"])
         }
 
+        log_date = random_past_datetime(min_days_ago=0, max_days_ago=540)
         cursor.execute("""
             INSERT INTO audit_logs
             (user_id, action, entity_type, entity_id, metadata, created_at)
-            VALUES (%s, %s, %s, %s, %s::jsonb, NOW())
+            VALUES (%s, %s, %s, %s, %s::jsonb, %s)
         """, (
             random.choice(user_ids),
             random.choice(actions),
             random.choice(entity_types),
             random.choice(product_ids),
-            json.dumps(metadata)
+            json.dumps(metadata),
+            log_date
         ))
     conn.commit()
 
@@ -946,23 +970,26 @@ def main():
 
         category_ids, subcategory_ids, subcategory_to_category = get_or_create_categories_and_subcategories(cursor, conn)
 
-        user_ids = seed_users(cursor, conn, NB_USERS)
+        user_ids, user_signup_dates = seed_users(cursor, conn, NB_USERS)
         product_ids = seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_category, NB_PRODUCTS)
 
         all_user_ids = get_existing_ids(cursor, "users")
         all_product_ids = get_existing_ids(cursor, "products")
         product_lookup = get_product_lookup(cursor)
 
-        seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category)
+        # Get ALL signup dates (including pre-existing users from previous runs)
+        all_signup_dates = get_user_signup_dates(cursor)
+
+        seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category, all_signup_dates)
         
         interaction_users = random.sample(all_user_ids, k=min(NB_INTERACTION_USERS, len(all_user_ids)))
         order_users = random.sample(all_user_ids, k=min(NB_ORDER_USERS, len(all_user_ids)))
         recom_users = random.sample(all_user_ids, k=min(NB_RECOMMENDATION_USERS, len(all_user_ids)))
 
-        seed_wishlists_and_carts(cursor, conn, interaction_users, all_product_ids)
-        seed_user_interactions(cursor, conn, interaction_users, all_product_ids)
-        seed_orders_payments_voice(cursor, conn, order_users, product_lookup)
-        seed_recommendations(cursor, conn, recom_users, all_product_ids)
+        seed_wishlists_and_carts(cursor, conn, interaction_users, all_product_ids, all_signup_dates)
+        seed_user_interactions(cursor, conn, interaction_users, all_product_ids, all_signup_dates)
+        seed_orders_payments_voice(cursor, conn, order_users, product_lookup, all_signup_dates)
+        seed_recommendations(cursor, conn, recom_users, all_product_ids, all_signup_dates)
         seed_product_embeddings(cursor, conn, all_product_ids, NB_EMBEDDINGS)
         seed_audit_logs(cursor, conn, all_user_ids, all_product_ids, NB_AUDIT_LOGS)
 
