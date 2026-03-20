@@ -2,6 +2,7 @@ import random
 import uuid
 import json
 import argparse
+from datetime import datetime, timedelta
 from decimal import Decimal
 from urllib.parse import quote
 import sys
@@ -212,6 +213,29 @@ def random_tags(category: str, subcategory: str, brand: str):
         random.choice(["top-rated", "best-seller", "editor-choice", "daily-use", "gift-idea"]),
     ]
     return list(dict.fromkeys(pool))
+
+
+def random_past_datetime(min_days_ago=0, max_days_ago=365):
+    """Generate a random datetime between min_days_ago and max_days_ago in the past."""
+    days_ago = random.uniform(min_days_ago, max_days_ago)
+    return datetime.now() - timedelta(days=days_ago)
+
+
+def random_datetime_after(start_dt, end_dt=None):
+    """Generate a random datetime between start_dt and end_dt (default: now)."""
+    if end_dt is None:
+        end_dt = datetime.now()
+    if start_dt >= end_dt:
+        return end_dt
+    delta = (end_dt - start_dt).total_seconds()
+    random_seconds = random.uniform(0, delta)
+    return start_dt + timedelta(seconds=random_seconds)
+
+
+def get_user_signup_dates(cursor):
+    """Fetch all user signup dates from the database."""
+    cursor.execute("SELECT id, created_at FROM users")
+    return {uid: created_at for uid, created_at in cursor.fetchall()}
 
 
 def build_product_image_url(category: str, subcategory: str, title: str, slug: str, view_label: str, width=900, height=900):
@@ -491,17 +515,21 @@ def update_all_product_ratings(cursor, conn):
 # =========================================================
 def seed_users(cursor, conn, n_users):
     user_ids = []
+    user_signup_dates = {}
 
     for _ in tqdm(range(n_users), desc="Pouring Users"):
         first_name = fake.first_name()
         last_name = fake.last_name()
         email = f"{uuid.uuid4().hex[:8]}_{fake.unique.email()}"
 
+        # Spread signups over 18 months for realistic recency variance
+        signup_date = random_past_datetime(min_days_ago=1, max_days_ago=540)
+
         cursor.execute("""
             INSERT INTO users
             (first_name, last_name, email, password_hash, phone, address_line,
              city, postal_code, country, role, is_active, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             first_name,
@@ -515,11 +543,15 @@ def seed_users(cursor, conn, n_users):
             fake.country()[:100],
             random.choice(["customer", "customer", "customer", "customer", "admin", "manager"]),
             random_bool(0.95),
+            signup_date,
+            signup_date + timedelta(hours=random.randint(0, 48)),
         ))
-        user_ids.append(cursor.fetchone()[0])
+        uid = cursor.fetchone()[0]
+        user_ids.append(uid)
+        user_signup_dates[uid] = signup_date
 
     conn.commit()
-    return user_ids
+    return user_ids, user_signup_dates
 
 
 def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_category, n_products):
@@ -584,7 +616,7 @@ def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_ca
     return product_ids
 
 
-def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category):
+def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category, user_signup_dates):
     if not product_ids or not all_user_ids:
         return
 
@@ -615,11 +647,13 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
             text, rating = generate_review(sentiment, category, subcategory)
             user_id = random.choice(all_user_ids)
             verified_purchase = random_bool(0.7)
+            signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
+            review_date = random_datetime_after(signup_dt)
 
             cursor.execute("""
                 INSERT INTO reviews
                 (product_id, user_id, rating, review_text, verified_purchase, created_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (user_id, product_id) DO NOTHING
                 RETURNING id
             """, (
@@ -627,7 +661,8 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
                 user_id,
                 rating,
                 text,
-                verified_purchase
+                verified_purchase,
+                review_date
             ))
             
             res = cursor.fetchone()
@@ -647,14 +682,15 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
             cursor.execute("""
                 INSERT INTO review_analysis
                 (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, created_at)
-                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, NOW())
+                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
             """, (
                 review_id,
                 sentiment,
                 round(random.uniform(s_min, s_max), 4),
                 json.dumps(keywords),
                 json.dumps(topics),
-                "ecom-nlp-bert-v2"
+                "ecom-nlp-bert-v2",
+                review_date
             ))
             
     conn.commit()
