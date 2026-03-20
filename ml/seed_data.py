@@ -400,6 +400,9 @@ def clear_tables(cursor, conn):
     print("[RESET MODE] Wiping out existing Data... Please wait.")
     
     tables_to_truncate = [
+        # ML tables first (they depend on users)
+        "user_segments", "user_features", "ml_models", "user_sessions",
+        # Core tables
         "audit_logs", "voice_confirmations", "wishlists",
         "product_embeddings", "review_analysis", "recommendations",
         "user_interactions", "payments", "order_items", "orders",
@@ -468,7 +471,8 @@ def get_existing_ids(cursor, table_name):
         "reviews", "orders", "payments", "wishlists",
         "cart_items", "recommendations", "product_embeddings",
         "audit_logs", "voice_confirmations", "review_analysis",
-        "user_interactions", "order_items"
+        "user_interactions", "order_items",
+        "user_features", "user_segments", "ml_models", "user_sessions"
     }
     if table_name not in allowed_tables:
         raise ValueError(f"Unauthorized table query: {table_name}")
@@ -949,6 +953,257 @@ def seed_audit_logs(cursor, conn, user_ids, product_ids, n_logs):
     conn.commit()
 
 
+def seed_user_sessions(cursor, conn, user_ids, user_signup_dates):
+    """Populate user_sessions table with realistic browsing sessions."""
+    if not user_ids:
+        return
+
+    try:
+        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'user_sessions'")
+        if not cursor.fetchone():
+            print("\n⚠️  Table 'user_sessions' not found. Skipping session seeding.")
+            conn.rollback()
+            return
+
+        device_types = ["mobile", "desktop", "tablet"]
+        source_channels = ["direct", "organic", "social", "ads"]
+
+        for user_id in tqdm(user_ids, desc="Generating User Sessions"):
+            signup_dt = user_signup_dates.get(user_id, datetime.now() - timedelta(days=180))
+            nb_sessions = random.randint(3, 25)
+
+            session_starts = sorted([random_datetime_after(signup_dt) for _ in range(nb_sessions)])
+
+            for start_dt in session_starts:
+                duration_minutes = random.choices(
+                    [random.randint(1, 5), random.randint(5, 30), random.randint(30, 120)],
+                    weights=[0.3, 0.5, 0.2]
+                )[0]
+                end_dt = start_dt + timedelta(minutes=duration_minutes)
+
+                # Some sessions are still active (no end time)
+                has_ended = random.random() < 0.92
+
+                cursor.execute("""
+                    INSERT INTO user_sessions
+                    (user_id, session_started_at, session_ended_at, device_type, source_channel)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    start_dt,
+                    end_dt if has_ended else None,
+                    random.choice(device_types),
+                    random.choice(source_channels)
+                ))
+
+        conn.commit()
+    except psycopg2.Error as e:
+        print(f"\n⚠️  Error seeding user_sessions: {e}")
+        conn.rollback()
+
+
+def seed_user_features(cursor, conn):
+    """Populate user_features by running the analytical upsert query."""
+    try:
+        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'user_features'")
+        if not cursor.fetchone():
+            print("\n⚠️  Table 'user_features' not found. Skipping feature computation.")
+            conn.rollback()
+            return
+
+        print("Computing User Features (ML Upsert)...")
+
+        upsert_sql = """
+        INSERT INTO user_features (
+            user_id, total_orders, total_spent, avg_order_value, total_items_bought,
+            views_count, clicks_count, cart_add_count, wishlist_add_count,
+            purchase_interaction_count, search_count, share_count,
+            reviews_count, avg_rating_given, wishlist_count, cart_count,
+            days_since_last_order, days_since_last_interaction, days_since_signup,
+            purchase_to_view_ratio, cart_to_click_ratio, review_to_purchase_ratio,
+            computed_at
+        )
+        SELECT
+            user_id, total_orders, total_spent, avg_order_value, total_items_bought,
+            views_count, clicks_count, cart_add_count, wishlist_add_count,
+            purchase_interaction_count, search_count, share_count,
+            reviews_count, avg_rating_given, wishlist_count, cart_count,
+            EXTRACT(DAY FROM (NOW() - last_order_at))::INTEGER AS days_since_last_order,
+            EXTRACT(DAY FROM (NOW() - last_interaction_at))::INTEGER AS days_since_last_interaction,
+            EXTRACT(DAY FROM (NOW() - user_created_at))::INTEGER AS days_since_signup,
+            COALESCE(total_orders::NUMERIC / NULLIF(views_count, 0), 0) AS purchase_to_view_ratio,
+            COALESCE(cart_add_count::NUMERIC / NULLIF(clicks_count, 0), 0) AS cart_to_click_ratio,
+            COALESCE(reviews_count::NUMERIC / NULLIF(total_orders, 0), 0) AS review_to_purchase_ratio,
+            NOW() AS computed_at
+        FROM v_user_behavior_features
+        ON CONFLICT (user_id) DO UPDATE SET
+            total_orders = EXCLUDED.total_orders,
+            total_spent = EXCLUDED.total_spent,
+            avg_order_value = EXCLUDED.avg_order_value,
+            total_items_bought = EXCLUDED.total_items_bought,
+            views_count = EXCLUDED.views_count,
+            clicks_count = EXCLUDED.clicks_count,
+            cart_add_count = EXCLUDED.cart_add_count,
+            wishlist_add_count = EXCLUDED.wishlist_add_count,
+            purchase_interaction_count = EXCLUDED.purchase_interaction_count,
+            search_count = EXCLUDED.search_count,
+            share_count = EXCLUDED.share_count,
+            reviews_count = EXCLUDED.reviews_count,
+            avg_rating_given = EXCLUDED.avg_rating_given,
+            wishlist_count = EXCLUDED.wishlist_count,
+            cart_count = EXCLUDED.cart_count,
+            days_since_last_order = EXCLUDED.days_since_last_order,
+            days_since_last_interaction = EXCLUDED.days_since_last_interaction,
+            days_since_signup = EXCLUDED.days_since_signup,
+            purchase_to_view_ratio = EXCLUDED.purchase_to_view_ratio,
+            cart_to_click_ratio = EXCLUDED.cart_to_click_ratio,
+            review_to_purchase_ratio = EXCLUDED.review_to_purchase_ratio,
+            computed_at = EXCLUDED.computed_at;
+        """
+
+        cursor.execute(upsert_sql)
+        conn.commit()
+
+        cursor.execute("SELECT COUNT(*) FROM user_features")
+        count = cursor.fetchone()[0]
+        print(f"  ✓ {count} user feature rows computed.")
+
+    except psycopg2.Error as e:
+        print(f"\n⚠️  Error computing user features: {e}")
+        conn.rollback()
+
+
+def seed_ml_models(cursor, conn):
+    """Register initial ML model metadata entries."""
+    try:
+        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'ml_models'")
+        if not cursor.fetchone():
+            print("\n⚠️  Table 'ml_models' not found. Skipping ML model registration.")
+            conn.rollback()
+            return
+
+        print("Registering ML Models...")
+
+        models = [
+            {
+                "model_name": "user-segmentation-kmeans",
+                "model_version": "v1.0.0",
+                "model_type": "segmentation",
+                "algorithm": "K-Means",
+                "metrics": json.dumps({"silhouette_score": 0.42, "inertia": 15230.5, "n_clusters": 5}),
+                "parameters": json.dumps({"n_clusters": 5, "max_iter": 300, "random_state": 42, "init": "k-means++"}),
+                "artifact_path": "models/segmentation/kmeans_v1.0.0.joblib"
+            },
+            {
+                "model_name": "user-segmentation-kmeans",
+                "model_version": "v1.1.0",
+                "model_type": "segmentation",
+                "algorithm": "K-Means",
+                "metrics": json.dumps({"silhouette_score": 0.48, "inertia": 12800.3, "n_clusters": 4}),
+                "parameters": json.dumps({"n_clusters": 4, "max_iter": 500, "random_state": 42, "init": "k-means++"}),
+                "artifact_path": "models/segmentation/kmeans_v1.1.0.joblib"
+            },
+            {
+                "model_name": "purchase-prediction-xgb",
+                "model_version": "v1.0.0",
+                "model_type": "classification",
+                "algorithm": "XGBoost",
+                "metrics": json.dumps({"accuracy": 0.87, "f1_score": 0.83, "auc_roc": 0.91}),
+                "parameters": json.dumps({"n_estimators": 200, "max_depth": 6, "learning_rate": 0.1}),
+                "artifact_path": "models/prediction/xgb_purchase_v1.0.0.joblib"
+            },
+            {
+                "model_name": "rfm-segmentation",
+                "model_version": "v1.0.0",
+                "model_type": "segmentation",
+                "algorithm": "RFM",
+                "metrics": json.dumps({"n_segments": 5, "coverage": 1.0}),
+                "parameters": json.dumps({"recency_bins": 5, "frequency_bins": 5, "monetary_bins": 5}),
+                "artifact_path": None
+            },
+        ]
+
+        for model in models:
+            cursor.execute("""
+                INSERT INTO ml_models
+                (model_name, model_version, model_type, algorithm, metrics, parameters, artifact_path, created_at)
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
+                ON CONFLICT (model_name, model_version) DO NOTHING
+            """, (
+                model["model_name"],
+                model["model_version"],
+                model["model_type"],
+                model["algorithm"],
+                model["metrics"],
+                model["parameters"],
+                model["artifact_path"],
+                random_past_datetime(min_days_ago=1, max_days_ago=90)
+            ))
+
+        conn.commit()
+        print(f"  ✓ {len(models)} ML model(s) registered.")
+
+    except psycopg2.Error as e:
+        print(f"\n⚠️  Error registering ML models: {e}")
+        conn.rollback()
+
+
+def seed_user_segments(cursor, conn, user_ids):
+    """Create simulated user segment assignments."""
+    if not user_ids:
+        return
+
+    try:
+        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'user_segments'")
+        if not cursor.fetchone():
+            print("\n⚠️  Table 'user_segments' not found. Skipping segment seeding.")
+            conn.rollback()
+            return
+
+        SEGMENTS = [
+            (0, "VIP / Power Buyers"),
+            (1, "Regular Engaged"),
+            (2, "Bargain Seekers"),
+            (3, "Newcomers"),
+            (4, "Churn Risk"),
+        ]
+
+        # Realistic segment distribution (not uniform)
+        segment_weights = [0.10, 0.30, 0.25, 0.20, 0.15]
+
+        model_name = "user-segmentation-kmeans"
+        model_version = "v1.1.0"
+
+        for user_id in tqdm(user_ids, desc="Assigning User Segments"):
+            seg_id, seg_label = random.choices(SEGMENTS, weights=segment_weights, k=1)[0]
+            confidence = round(random.uniform(0.55, 0.98), 4)
+
+            cursor.execute("""
+                INSERT INTO user_segments
+                (user_id, segment_id, segment_label, model_name, model_version, confidence, computed_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (user_id, model_name, model_version) DO UPDATE SET
+                    segment_id = EXCLUDED.segment_id,
+                    segment_label = EXCLUDED.segment_label,
+                    confidence = EXCLUDED.confidence,
+                    computed_at = NOW()
+            """, (
+                user_id,
+                seg_id,
+                seg_label,
+                model_name,
+                model_version,
+                confidence
+            ))
+
+        conn.commit()
+        print(f"  ✓ {len(user_ids)} user segment(s) assigned.")
+
+    except psycopg2.Error as e:
+        print(f"\n⚠️  Error seeding user segments: {e}")
+        conn.rollback()
+
+
 # =========================================================
 # MAIN
 # =========================================================
@@ -997,6 +1252,12 @@ def main():
         seed_audit_logs(cursor, conn, all_user_ids, all_product_ids, NB_AUDIT_LOGS)
 
         update_all_product_ratings(cursor, conn)
+
+        # ── ML Pipeline Tables ──────────────────────────────────
+        seed_user_sessions(cursor, conn, all_user_ids, all_signup_dates)
+        seed_user_features(cursor, conn)
+        seed_ml_models(cursor, conn)
+        seed_user_segments(cursor, conn, all_user_ids)
 
         print(f"Total Users inserted this session: {len(user_ids)}")
         print(f"Total Products inserted this session: {len(product_ids)}")
