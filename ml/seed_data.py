@@ -623,7 +623,7 @@ def seed_products(cursor, conn, category_ids, subcategory_ids, subcategory_to_ca
     return product_ids
 
 
-def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category, user_signup_dates):
+def seed_reviews(cursor, conn, product_ids, all_user_ids, subcategory_to_category, user_signup_dates):
     if not product_ids or not all_user_ids:
         return
 
@@ -1054,7 +1054,7 @@ def main():
         # Get ALL signup dates (including pre-existing users from previous runs)
         all_signup_dates = get_user_signup_dates(cursor)
 
-        seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcategory_to_category, all_signup_dates)
+        seed_reviews(cursor, conn, product_ids, all_user_ids, subcategory_to_category, all_signup_dates)
         
         interaction_users = random.sample(all_user_ids, k=min(NB_INTERACTION_USERS, len(all_user_ids)))
         order_users = random.sample(all_user_ids, k=min(NB_ORDER_USERS, len(all_user_ids)))
