@@ -686,20 +686,21 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
             }
             s_min, s_max = score_range[sentiment]
 
-            cursor.execute("""
-                INSERT INTO review_analysis
-                (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, model_version, created_at)
-                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
-            """, (
-                review_id,
-                sentiment,
-                round(random.uniform(s_min, s_max), 4),
-                json.dumps(keywords),
-                json.dumps(topics),
-                "sentiment-analysis-bert",
-                "v1.0.0",
-                review_date
-            ))
+            # review_analysis seeding disabled to rely on manual model registration
+            # cursor.execute("""
+            #     INSERT INTO review_analysis
+            #     (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, model_version, created_at)
+            #     VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
+            # """, (
+            #     review_id,
+            #     sentiment,
+            #     round(random.uniform(s_min, s_max), 4),
+            #     json.dumps(keywords),
+            #     json.dumps(topics),
+            #     "sentiment-analysis-bert",
+            #     "v1.0.0",
+            #     review_date
+            # ))
             
     conn.commit()
 
@@ -1264,7 +1265,7 @@ def main():
         seed_user_interactions(cursor, conn, interaction_users, all_product_ids, all_signup_dates)
         seed_orders_payments_voice(cursor, conn, order_users, product_lookup, all_signup_dates)
         seed_recommendations(cursor, conn, recom_users, all_product_ids, all_signup_dates)
-        seed_product_embeddings(cursor, conn, all_product_ids, NB_EMBEDDINGS)
+        # seed_product_embeddings(cursor, conn, all_product_ids, NB_EMBEDDINGS) # Disabled: Requires manual ml_models registration
         seed_audit_logs(cursor, conn, all_user_ids, all_product_ids, NB_AUDIT_LOGS)
 
         update_all_product_ratings(cursor, conn)
@@ -1272,8 +1273,8 @@ def main():
         # ── ML Pipeline Tables ──────────────────────────────────
         seed_user_sessions(cursor, conn, all_user_ids, all_signup_dates)
         seed_user_features(cursor, conn)
-        seed_ml_models(cursor, conn)
-        seed_user_segments(cursor, conn, all_user_ids)
+        # seed_ml_models(cursor, conn) # Disabled
+        # seed_user_segments(cursor, conn, all_user_ids) # Disabled: Requires manual ml_models registration
 
         print(f"Total Users inserted this session: {len(user_ids)}")
         print(f"Total Products inserted this session: {len(product_ids)}")
