@@ -220,4 +220,9 @@ BEGIN
         ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'paid', 'failed', 'refunded'));
     END IF;
 
+    -- Interactions
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_interaction_type') THEN
+        ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search'));
+    END IF;
+
 END $$;

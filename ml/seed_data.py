@@ -818,12 +818,10 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup, user_sign
             updated_at = order_date + timedelta(hours=random.randint(1, 72))
             cursor.execute("""
                 UPDATE orders
-                SET total_amount = %s,
-                    payment_status = %s,
+                SET payment_status = %s,
                     updated_at = %s
                 WHERE id = %s
             """, (
-                total_amount,
                 payment_status,
                 updated_at,
                 order_id

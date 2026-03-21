@@ -11,8 +11,8 @@ export class MLService {
   async recalculateUserFeatures(): Promise<void> {
     const client = await pool.connect();
     try {
-      // Path to the upsert SQL file relative to the project root (backend folder)
-      const sqlPath = path.resolve(process.cwd(), "src/sql/009_ml_upsert.sql");
+      // Path to the upsert SQL file moved to ml/data
+      const sqlPath = path.resolve(process.cwd(), "..", "ml", "data", "upsert_user_features.sql");
       const sql = await fs.readFile(sqlPath, "utf-8");
 
       await client.query("BEGIN");
