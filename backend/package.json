@@ -6,7 +6,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:init": "npm run db:1-tables && npm run db:2-constraints && npm run db:3-indexes && npm run db:4-triggers && npm run db:5-views && npm run db:6-ml-schema && npm run db:7-ml-views && npm run db:8-ml-indexes && npm run db:9-ml-upsert",
+    "db:init": "npm run db:1-tables && npm run db:2-constraints && npm run db:3-indexes && npm run db:4-triggers && npm run db:5-views && npm run db:6-ml-schema && npm run db:7-ml-views && npm run db:8-ml-indexes",
     "db:1-tables": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/001_tables.sql",
     "db:2-constraints": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/002_constraints.sql",
     "db:3-indexes": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/003_indexes.sql",
@@ -15,7 +15,7 @@
     "db:6-ml-schema": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/006_ml_schema.sql",
     "db:7-ml-views": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/007_ml_views.sql",
     "db:8-ml-indexes": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/008_ml_indexes.sql",
-    "db:9-ml-upsert": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/009_ml_upsert.sql",
+    "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/upsert_user_features.sql",
     "ml:seed:append": "cd ../ml && python seed_data.py --mode append",
     "ml:seed:reset": "cd ../ml && python seed_data.py --mode reset"
   },

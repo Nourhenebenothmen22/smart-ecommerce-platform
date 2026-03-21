@@ -30,8 +30,8 @@ CREATE TABLE IF NOT EXISTS products (
     slug VARCHAR(280) NOT NULL,
     description TEXT NOT NULL,
     brand VARCHAR(120) NOT NULL,
-    category_id INTEGER,
-    subcategory_id INTEGER,
+    category_id INTEGER NOT NULL,
+    subcategory_id INTEGER NOT NULL,
     price NUMERIC(10,2) NOT NULL,
     discount_percent INTEGER NOT NULL DEFAULT 0,
     final_price NUMERIC(10,2) GENERATED ALWAYS AS (price * (1 - discount_percent / 100.0)) STORED,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS cart_items (
 
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER,
+    user_id INTEGER NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'pending',
     total_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     payment_status VARCHAR(30) NOT NULL DEFAULT 'pending',

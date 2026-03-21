@@ -1,7 +1,8 @@
 -- ==========================================
 -- TRIGGERS & FUNCTIONS
 -- ==========================================
--- Fonction générique indispensable pour rafraîchir la date mise à jour :
+
+-- 1. Genereic Updated At
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -10,8 +11,51 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Attachement des triggers pour auto-gérer le updated_at
 CREATE TRIGGER trg_products_updated BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 CREATE TRIGGER trg_cart_updated BEFORE UPDATE ON cart_items FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+-- 2. Maintain Order Total Amount
+CREATE OR REPLACE FUNCTION maintain_order_total()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        UPDATE orders 
+        SET total_amount = (SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = NEW.order_id)
+        WHERE id = NEW.order_id;
+    END IF;
+    IF (TG_OP = 'DELETE') THEN
+        UPDATE orders 
+        SET total_amount = (SELECT COALESCE(SUM(subtotal), 0) FROM order_items WHERE order_id = OLD.order_id)
+        WHERE id = OLD.order_id;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_maintain_order_total AFTER INSERT OR UPDATE OR DELETE ON order_items FOR EACH ROW EXECUTE FUNCTION maintain_order_total();
+
+-- 3. Maintain Product Review Stats
+CREATE OR REPLACE FUNCTION maintain_product_review_stats()
+RETURNS TRIGGER AS $$
+DECLARE
+    target_product_id INTEGER;
+BEGIN
+    IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
+        target_product_id := NEW.product_id;
+    ELSE
+        target_product_id := OLD.product_id;
+    END IF;
+
+    UPDATE products
+    SET 
+        rating_avg = (SELECT COALESCE(AVG(rating), 0) FROM reviews WHERE product_id = target_product_id),
+        review_count = (SELECT COUNT(*) FROM reviews WHERE product_id = target_product_id)
+    WHERE id = target_product_id;
+
+    RETURN NULL;   
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_maintain_product_review_stats AFTER INSERT OR UPDATE OR DELETE ON reviews FOR EACH ROW EXECUTE FUNCTION maintain_product_review_stats();
