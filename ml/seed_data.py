@@ -688,15 +688,16 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
 
             cursor.execute("""
                 INSERT INTO review_analysis
-                (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, created_at)
-                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
+                (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, model_version, created_at)
+                VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
             """, (
                 review_id,
                 sentiment,
                 round(random.uniform(s_min, s_max), 4),
                 json.dumps(keywords),
                 json.dumps(topics),
-                "ecom-nlp-bert-v2",
+                "sentiment-analysis-bert",
+                "v1.0.0",
                 review_date
             ))
             
@@ -907,12 +908,13 @@ def seed_product_embeddings(cursor, conn, product_ids, n_embeddings):
             vector = [round(random.uniform(-1, 1), 6) for _ in range(VECTOR_DIM)]
             cursor.execute("""
                 INSERT INTO product_embeddings
-                (product_id, model_name, embedding_vector, created_at)
-                VALUES (%s, %s, %s::vector, NOW())
-                ON CONFLICT (product_id, model_name) DO NOTHING
+                (product_id, model_name, model_version, embedding_vector, created_at)
+                VALUES (%s, %s, %s, %s::vector, NOW())
+                ON CONFLICT (product_id, model_name, model_version) DO NOTHING
             """, (
                 pid,
-                "openai-ada-002-emulated", # Realistic AI Model
+                "text-embedding-ada-002",
+                "v2.0.0",
                 json.dumps(vector) 
             ))
         conn.commit()
@@ -1118,6 +1120,24 @@ def seed_ml_models(cursor, conn):
                 "metrics": json.dumps({"n_segments": 5, "coverage": 1.0}),
                 "parameters": json.dumps({"recency_bins": 5, "frequency_bins": 5, "monetary_bins": 5}),
                 "artifact_path": None
+            },
+            {
+                "model_name": "sentiment-analysis-bert",
+                "model_version": "v1.0.0",
+                "model_type": "nlp",
+                "algorithm": "BERT-Base",
+                "metrics": json.dumps({"f1_score": 0.89, "accuracy": 0.91}),
+                "parameters": json.dumps({"max_seq_len": 128, "batch_size": 32}),
+                "artifact_path": "models/nlp/bert_sentiment_v1.0.0.pt"
+            },
+            {
+                "model_name": "text-embedding-ada-002",
+                "model_version": "v2.0.0",
+                "model_type": "embedding",
+                "algorithm": "Transformer",
+                "metrics": json.dumps({"dimension": 1536}),
+                "parameters": json.dumps({"provider": "openai"}),
+                "artifact_path": "remote://openai/text-embedding-ada-002"
             },
         ]
 

@@ -20,7 +20,6 @@ BEGIN
     END IF;
 
     -- Products -> Subcategories (and Category matching)
-    -- This ensures a product's subcategory must belong to its category.
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_prod_subcategory_category') THEN
         ALTER TABLE products ADD CONSTRAINT fk_prod_subcategory_category FOREIGN KEY (subcategory_id, category_id) REFERENCES subcategories(id, category_id) ON DELETE RESTRICT;
     END IF;
@@ -78,7 +77,18 @@ BEGIN
         ALTER TABLE recommendations ADD CONSTRAINT fk_rec_rec_product FOREIGN KEY (recommended_product_id) REFERENCES products(id) ON DELETE CASCADE;
     END IF;
 
-    -- ML Tables
+    -- ML Traceability (Composite FKs to ml_models)
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_revanal_ml_model') THEN
+        ALTER TABLE review_analysis ADD CONSTRAINT fk_revanal_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_prodembed_ml_model') THEN
+        ALTER TABLE product_embeddings ADD CONSTRAINT fk_prodembed_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_usegs_ml_model') THEN
+        ALTER TABLE user_segments ADD CONSTRAINT fk_usegs_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
+    END IF;
+
+    -- Other ML FKs
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_revanal_review') THEN
         ALTER TABLE review_analysis ADD CONSTRAINT fk_revanal_review FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE;
     END IF;
@@ -137,9 +147,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_revanal_review') THEN
         ALTER TABLE review_analysis ADD CONSTRAINT uq_revanal_review UNIQUE (review_id);
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_prodembed_product_model') THEN
-        ALTER TABLE product_embeddings ADD CONSTRAINT uq_prodembed_product_model UNIQUE (product_id, model_name);
+    
+    -- Updated to include version
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_prodembed_product_model_v') THEN
+        ALTER TABLE product_embeddings ADD CONSTRAINT uq_prodembed_product_model_v UNIQUE (product_id, model_name, model_version);
     END IF;
+    
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_wishlst_user_product') THEN
         ALTER TABLE wishlists ADD CONSTRAINT uq_wishlst_user_product UNIQUE (user_id, product_id);
     END IF;

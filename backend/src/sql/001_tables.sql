@@ -138,7 +138,8 @@ CREATE TABLE IF NOT EXISTS review_analysis (
     sentiment_score NUMERIC(6,4),
     keywords JSONB NOT NULL DEFAULT '[]'::jsonb,
     topics JSONB NOT NULL DEFAULT '[]'::jsonb,
-    model_name VARCHAR(120),
+    model_name VARCHAR(120) NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -146,6 +147,7 @@ CREATE TABLE IF NOT EXISTS product_embeddings (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL,
     model_name VARCHAR(120) NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
     embedding_vector vector(1536) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

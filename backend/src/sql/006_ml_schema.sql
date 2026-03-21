@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS user_segments (
     segment_id INTEGER NOT NULL, -- Numeric ID from clustering (e.g., 0, 1, 2)
     segment_label VARCHAR(100),  -- Readable name (e.g., 'VIP', 'Churn Risk', 'Newcomer')
     model_name VARCHAR(120) NOT NULL,
-    model_version VARCHAR(50),
+    model_version VARCHAR(50) NOT NULL,
     confidence NUMERIC(6,4), -- Accuracy/probability score for the cluster assignment
     computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
