@@ -16,7 +16,7 @@ SELECT
     o.status,
     o.payment_status,
     o.total_amount,
-    COUNT(oi.id) AS total_items
+    COALESCE(SUM(oi.quantity), 0) AS total_items
 FROM orders o
 LEFT JOIN order_items oi ON oi.order_id = o.id
 GROUP BY o.id, o.user_id, o.status, o.payment_status, o.total_amount;
