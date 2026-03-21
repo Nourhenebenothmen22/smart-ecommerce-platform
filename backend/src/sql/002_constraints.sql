@@ -198,31 +198,25 @@ BEGIN
         ALTER TABLE reviews ADD CONSTRAINT chk_review_rating CHECK (rating BETWEEN 1 AND 5);
     END IF;
 
-    -- Orders
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_order_status') THEN
-        ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'));
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_order_total') THEN
-        ALTER TABLE orders ADD CONSTRAINT chk_order_total CHECK (total_amount >= 0);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_order_payment_status') THEN
-        -- Aligned vocabulary: paid, failed, refunded (pending is default)
-        ALTER TABLE orders ADD CONSTRAINT chk_order_payment_status CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'));
-    END IF;
+    -- Orders Statuses
+    ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_status;
+    ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'));
+
+    -- Orders Payment Status
+    ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_payment_status;
+    ALTER TABLE orders ADD CONSTRAINT chk_order_payment_status CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'));
 
     -- Order Items
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_orderitem_quantity') THEN
         ALTER TABLE order_items ADD CONSTRAINT chk_orderitem_quantity CHECK (quantity > 0);
     END IF;
 
-    -- Payments
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_payment_status') THEN
-        ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'paid', 'failed', 'refunded'));
-    END IF;
+    -- Payments Status
+    ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payment_status;
+    ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'paid', 'failed', 'refunded'));
 
-    -- Interactions
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_interaction_type') THEN
-        ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search'));
-    END IF;
+    -- Interaction Types
+    ALTER TABLE user_interactions DROP CONSTRAINT IF EXISTS chk_interaction_type;
+    ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search'));
 
 END $$;
