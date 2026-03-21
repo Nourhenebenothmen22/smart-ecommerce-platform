@@ -675,32 +675,6 @@ def seed_reviews_and_analysis(cursor, conn, product_ids, all_user_ids, subcatego
             res = cursor.fetchone()
             if not res:
                 continue # Duplicate ignored
-            review_id = res[0]
-
-            keywords = fake.words(nb=random.randint(3, 8))
-            topics = generate_topics(category, subcategory)
-            score_range = {
-                "positive": (0.6, 1.0),
-                "neutral": (-0.2, 0.2),
-                "negative": (-1.0, -0.6)
-            }
-            s_min, s_max = score_range[sentiment]
-
-            # review_analysis seeding disabled to rely on manual model registration
-            # cursor.execute("""
-            #     INSERT INTO review_analysis
-            #     (review_id, sentiment_label, sentiment_score, keywords, topics, model_name, model_version, created_at)
-            #     VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
-            # """, (
-            #     review_id,
-            #     sentiment,
-            #     round(random.uniform(s_min, s_max), 4),
-            #     json.dumps(keywords),
-            #     json.dumps(topics),
-            #     "sentiment-analysis-bert",
-            #     "v1.0.0",
-            #     review_date
-            # ))
             
     conn.commit()
 
@@ -890,36 +864,6 @@ def seed_recommendations(cursor, conn, user_ids, product_ids, user_signup_dates)
     conn.commit()
 
 
-def seed_product_embeddings(cursor, conn, product_ids, n_embeddings):
-    # Vector length strict: 1536 as defined in DB schema (vector(1536))
-    VECTOR_DIM = 1536
-    chosen_products = random.sample(product_ids, k=min(n_embeddings, len(product_ids)))
-
-    try:
-        # Check if pgvector table exists before attempting inserts to prevent crashes
-        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'product_embeddings'")
-        if not cursor.fetchone():
-            print("\n⚠️ Table 'product_embeddings' manquante (pgvector non installé). Embeddings ignorés.")
-            conn.rollback()
-            return
-            
-        for pid in tqdm(chosen_products, desc="Generative AI Embeddings"):
-            vector = [round(random.uniform(-1, 1), 6) for _ in range(VECTOR_DIM)]
-            cursor.execute("""
-                INSERT INTO product_embeddings
-                (product_id, model_name, model_version, embedding_vector, created_at)
-                VALUES (%s, %s, %s, %s::vector, NOW())
-                ON CONFLICT (product_id, model_name, model_version) DO NOTHING
-            """, (
-                pid,
-                "text-embedding-ada-002",
-                "v2.0.0",
-                json.dumps(vector) 
-            ))
-        conn.commit()
-    except psycopg2.Error as e:
-        print(f"\n⚠️ Erreur lors de l'insertion des embeddings : {e}")
-        conn.rollback()
 
 
 def seed_audit_logs(cursor, conn, user_ids, product_ids, n_logs):
@@ -1072,153 +1016,8 @@ def seed_user_features(cursor, conn):
         conn.rollback()
 
 
-def seed_ml_models(cursor, conn):
-    """Register initial ML model metadata entries."""
-    try:
-        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'ml_models'")
-        if not cursor.fetchone():
-            print("\n⚠️  Table 'ml_models' not found. Skipping ML model registration.")
-            conn.rollback()
-            return
-
-        print("Registering ML Models...")
-
-        models = [
-            {
-                "model_name": "user-segmentation-kmeans",
-                "model_version": "v1.0.0",
-                "model_type": "segmentation",
-                "algorithm": "K-Means",
-                "metrics": json.dumps({"silhouette_score": 0.42, "inertia": 15230.5, "n_clusters": 5}),
-                "parameters": json.dumps({"n_clusters": 5, "max_iter": 300, "random_state": 42, "init": "k-means++"}),
-                "artifact_path": "models/segmentation/kmeans_v1.0.0.joblib"
-            },
-            {
-                "model_name": "user-segmentation-kmeans",
-                "model_version": "v1.1.0",
-                "model_type": "segmentation",
-                "algorithm": "K-Means",
-                "metrics": json.dumps({"silhouette_score": 0.48, "inertia": 12800.3, "n_clusters": 4}),
-                "parameters": json.dumps({"n_clusters": 4, "max_iter": 500, "random_state": 42, "init": "k-means++"}),
-                "artifact_path": "models/segmentation/kmeans_v1.1.0.joblib"
-            },
-            {
-                "model_name": "purchase-prediction-xgb",
-                "model_version": "v1.0.0",
-                "model_type": "classification",
-                "algorithm": "XGBoost",
-                "metrics": json.dumps({"accuracy": 0.87, "f1_score": 0.83, "auc_roc": 0.91}),
-                "parameters": json.dumps({"n_estimators": 200, "max_depth": 6, "learning_rate": 0.1}),
-                "artifact_path": "models/prediction/xgb_purchase_v1.0.0.joblib"
-            },
-            {
-                "model_name": "rfm-segmentation",
-                "model_version": "v1.0.0",
-                "model_type": "segmentation",
-                "algorithm": "RFM",
-                "metrics": json.dumps({"n_segments": 5, "coverage": 1.0}),
-                "parameters": json.dumps({"recency_bins": 5, "frequency_bins": 5, "monetary_bins": 5}),
-                "artifact_path": None
-            },
-            {
-                "model_name": "sentiment-analysis-bert",
-                "model_version": "v1.0.0",
-                "model_type": "nlp",
-                "algorithm": "BERT-Base",
-                "metrics": json.dumps({"f1_score": 0.89, "accuracy": 0.91}),
-                "parameters": json.dumps({"max_seq_len": 128, "batch_size": 32}),
-                "artifact_path": "models/nlp/bert_sentiment_v1.0.0.pt"
-            },
-            {
-                "model_name": "text-embedding-ada-002",
-                "model_version": "v2.0.0",
-                "model_type": "embedding",
-                "algorithm": "Transformer",
-                "metrics": json.dumps({"dimension": 1536}),
-                "parameters": json.dumps({"provider": "openai"}),
-                "artifact_path": "remote://openai/text-embedding-ada-002"
-            },
-        ]
-
-        for model in models:
-            cursor.execute("""
-                INSERT INTO ml_models
-                (model_name, model_version, model_type, algorithm, metrics, parameters, artifact_path, created_at)
-                VALUES (%s, %s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
-                ON CONFLICT (model_name, model_version) DO NOTHING
-            """, (
-                model["model_name"],
-                model["model_version"],
-                model["model_type"],
-                model["algorithm"],
-                model["metrics"],
-                model["parameters"],
-                model["artifact_path"],
-                random_past_datetime(min_days_ago=1, max_days_ago=90)
-            ))
-
-        conn.commit()
-        print(f"  ✓ {len(models)} ML model(s) registered.")
-
-    except psycopg2.Error as e:
-        print(f"\n⚠️  Error registering ML models: {e}")
-        conn.rollback()
 
 
-def seed_user_segments(cursor, conn, user_ids):
-    """Create simulated user segment assignments."""
-    if not user_ids:
-        return
-
-    try:
-        cursor.execute("SELECT 1 FROM information_schema.tables WHERE table_name = 'user_segments'")
-        if not cursor.fetchone():
-            print("\n⚠️  Table 'user_segments' not found. Skipping segment seeding.")
-            conn.rollback()
-            return
-
-        SEGMENTS = [
-            (0, "VIP / Power Buyers"),
-            (1, "Regular Engaged"),
-            (2, "Bargain Seekers"),
-            (3, "Newcomers"),
-            (4, "Churn Risk"),
-        ]
-
-        # Realistic segment distribution (not uniform)
-        segment_weights = [0.10, 0.30, 0.25, 0.20, 0.15]
-
-        model_name = "user-segmentation-kmeans"
-        model_version = "v1.1.0"
-
-        for user_id in tqdm(user_ids, desc="Assigning User Segments"):
-            seg_id, seg_label = random.choices(SEGMENTS, weights=segment_weights, k=1)[0]
-            confidence = round(random.uniform(0.55, 0.98), 4)
-
-            cursor.execute("""
-                INSERT INTO user_segments
-                (user_id, segment_id, segment_label, model_name, model_version, confidence, computed_at)
-                VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                ON CONFLICT (user_id, model_name, model_version) DO UPDATE SET
-                    segment_id = EXCLUDED.segment_id,
-                    segment_label = EXCLUDED.segment_label,
-                    confidence = EXCLUDED.confidence,
-                    computed_at = NOW()
-            """, (
-                user_id,
-                seg_id,
-                seg_label,
-                model_name,
-                model_version,
-                confidence
-            ))
-
-        conn.commit()
-        print(f"  ✓ {len(user_ids)} user segment(s) assigned.")
-
-    except psycopg2.Error as e:
-        print(f"\n⚠️  Error seeding user segments: {e}")
-        conn.rollback()
 
 
 # =========================================================
@@ -1265,7 +1064,6 @@ def main():
         seed_user_interactions(cursor, conn, interaction_users, all_product_ids, all_signup_dates)
         seed_orders_payments_voice(cursor, conn, order_users, product_lookup, all_signup_dates)
         seed_recommendations(cursor, conn, recom_users, all_product_ids, all_signup_dates)
-        # seed_product_embeddings(cursor, conn, all_product_ids, NB_EMBEDDINGS) # Disabled: Requires manual ml_models registration
         seed_audit_logs(cursor, conn, all_user_ids, all_product_ids, NB_AUDIT_LOGS)
 
         update_all_product_ratings(cursor, conn)
@@ -1273,8 +1071,6 @@ def main():
         # ── ML Pipeline Tables ──────────────────────────────────
         seed_user_sessions(cursor, conn, all_user_ids, all_signup_dates)
         seed_user_features(cursor, conn)
-        # seed_ml_models(cursor, conn) # Disabled
-        # seed_user_segments(cursor, conn, all_user_ids) # Disabled: Requires manual ml_models registration
 
         print(f"Total Users inserted this session: {len(user_ids)}")
         print(f"Total Products inserted this session: {len(product_ids)}")
