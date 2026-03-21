@@ -50,6 +50,7 @@ app.use(limiter);
 Routes
 */
 app.use("/api/health", healthRouter);
+app.use("/api/ml", mlRouter);
 
 /*
 404 Handler
