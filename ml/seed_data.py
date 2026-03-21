@@ -2,12 +2,13 @@ import argparse
 import random
 import psycopg2
 from seeder.config import DB_CONFIG, NB_USERS, NB_PRODUCTS, NB_INTERACTION_USERS, NB_ORDER_USERS, NB_RECOMMENDATION_USERS, NB_AUDIT_LOGS
-from seeder.helpers import get_existing_ids, get_product_lookup, get_user_signup_dates
+from seeder.helpers import get_user_signup_dates
 from seeder.core import (
     clear_tables, get_or_create_categories_and_subcategories, seed_users, 
     seed_products, seed_reviews, seed_wishlists_and_carts, seed_user_interactions, 
     seed_orders_payments_voice, seed_recommendations, seed_audit_logs, 
-    update_all_product_ratings, seed_user_sessions, seed_user_features
+    update_all_product_ratings, seed_user_sessions, seed_user_features,
+    get_existing_ids, get_product_lookup
 )
 
 def main():
