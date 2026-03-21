@@ -1,4 +1,5 @@
 faker
+bcrypt
 fastapi
 joblib
 jupyter
