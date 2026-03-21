@@ -193,8 +193,8 @@ BEGIN
         ALTER TABLE orders ADD CONSTRAINT chk_order_total CHECK (total_amount >= 0);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_order_payment_status') THEN
-        -- Aligned vocabulary: completed, failed, refunded (pending is default)
-        ALTER TABLE orders ADD CONSTRAINT chk_order_payment_status CHECK (payment_status IN ('pending', 'completed', 'failed', 'refunded'));
+        -- Aligned vocabulary: paid, failed, refunded (pending is default)
+        ALTER TABLE orders ADD CONSTRAINT chk_order_payment_status CHECK (payment_status IN ('pending', 'paid', 'failed', 'refunded'));
     END IF;
 
     -- Order Items
@@ -204,7 +204,7 @@ BEGIN
 
     -- Payments
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_payment_status') THEN
-        ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'completed', 'failed', 'refunded'));
+        ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'paid', 'failed', 'refunded'));
     END IF;
 
 END $$;

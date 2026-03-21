@@ -830,8 +830,6 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup, user_sign
 
             paid_at = random_datetime_after(order_date, updated_at) if payment_status in ["paid", "refunded"] else None
             
-            payment_table_status = "completed" if payment_status == "paid" else payment_status
-
             cursor.execute("""
                 INSERT INTO payments
                 (order_id, payment_method, amount, status, transaction_ref, paid_at, created_at)
@@ -840,7 +838,7 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup, user_sign
                 order_id,
                 random.choice(PAYMENT_METHODS),
                 total_amount,
-                payment_table_status,
+                payment_status,
                 str(uuid.uuid4()),
                 paid_at,
                 order_date
