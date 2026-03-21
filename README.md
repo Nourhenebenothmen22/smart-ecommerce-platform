@@ -18,26 +18,26 @@ Cette structure permet de passer d'une transaction client à un modèle de segme
 
 ```mermaid
 erDiagram
-    USERS ||--o{ ORDERS : "places (1:N)"
-    USERS ||--o{ REVIEWS : "writes (1:N)"
-    USERS ||--o{ USER_INTERACTIONS : "performs (1:N)"
-    USERS ||--o{ USER_SESSIONS : "starts (1:N)"
-    USERS ||--|| USER_FEATURES : "has (1:1)"
-    USERS ||--o{ USER_SEGMENTS : "belongs_to (1:N)"
+    USERS ||--o{ ORDERS : "places"
+    USERS ||--o{ REVIEWS : "writes"
+    USERS ||--o{ USER_INTERACTIONS : "performs"
+    USERS ||--o{ USER_SESSIONS : "starts"
+    USERS ||--|| USER_FEATURES : "has"
+    USERS ||--o{ USER_SEGMENTS : "belongs_to"
 
-    CATEGORIES ||--o{ SUBCATEGORIES : "contains (1:N)"
-    SUBCATEGORIES ||--o{ PRODUCTS : "groups (1:N)"
-    PRODUCTS ||--o{ ORDER_ITEMS : "in (1:N)"
-    ORDERS ||--o{ ORDER_ITEMS : "contains (1:N)"
+    CATEGORIES ||--o{ SUBCATEGORIES : "contains"
+    SUBCATEGORIES ||--o{ PRODUCTS : "groups"
+    PRODUCTS ||--o{ ORDER_ITEMS : "in"
+    ORDERS ||--o{ ORDER_ITEMS : "contains"
     
-    ORDERS ||--|| PAYMENTS : "has (1:1)"
-    ORDERS ||--o| VOICE_CONFIRMATIONS : "confirms (1:0..1)"
+    ORDERS ||--|| PAYMENTS : "has"
+    ORDERS ||--o| VOICE_CONFIRMATIONS : "confirms"
     
-    REVIEWS ||--|| REVIEW_ANALYSIS : "analyzed_by (1:1)"
-    PRODUCTS ||--o{ PRODUCT_EMBEDDINGS : "represented_by (1:N)"
+    REVIEWS ||--|| REVIEW_ANALYSIS : "analyzed"
+    PRODUCTS ||--o{ PRODUCT_EMBEDDINGS : "represented"
     
-    ML_MODELS ||--o{ USER_SEGMENTS : "generates (1:N)"
-    ML_MODELS ||--o{ REVIEW_ANALYSIS : "enriches (1:N)"
+    ML_MODELS ||--o{ USER_SEGMENTS : "segments"
+    ML_MODELS ||--o{ REVIEW_ANALYSIS : "enriches"
 ```
 
 ---
