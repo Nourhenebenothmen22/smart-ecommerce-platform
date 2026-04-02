@@ -1,0 +1,9 @@
+{
+  "venvPath": "ml",
+  "venv": ".venv",
+  "executionEnvironments": [
+    {
+      "root": "ml"
+    }
+  ]
+}
