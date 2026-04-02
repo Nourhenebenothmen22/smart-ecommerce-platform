@@ -1,7 +1,7 @@
 {
   "venvPath": "ml",
   "venv": ".venv",
-  "pythonVersion": "3.14",
+  "pythonVersion": "3.11",
   "pythonPlatform": "Windows",
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": false,
