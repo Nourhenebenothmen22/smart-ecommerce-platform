@@ -1,9 +1,11 @@
 {
   "venvPath": "ml",
   "venv": ".venv",
-  "executionEnvironments": [
-    {
-      "root": "ml"
-    }
-  ]
+  "pythonVersion": "3.14",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": false,
+  "reportMissingImports": true,
+  "include": ["ml", "backend"],
+  "exclude": ["ml/.venv"]
 }
