@@ -6,6 +6,8 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import debug from "debug";
 
+import type { ErrorRequestHandler } from "express";
+
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
 
@@ -36,7 +38,7 @@ HTTP Logger
 app.use(morgan("dev"));
 
 /*
-Rate Limiter
+Rate Limiter (applied only to non-health routes)
 */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -44,12 +46,14 @@ const limiter = rateLimit({
   message: "Too many requests from this IP",
 });
 
-app.use(limiter);
-
 /*
 Routes
 */
 app.use("/api/health", healthRouter);
+
+// Apply rate limiter to all routes except health
+app.use(limiter);
+
 app.use("/api/ml", mlRouter);
 
 /*
@@ -63,13 +67,15 @@ app.use((_req, res) => {
 });
 
 /*
-Global Error Handler
+Global Error Handler (Express 5 compatible)
 */
-app.use((err: any, _req: any, res: any, _next: any) => {
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   log(err);
 
   res.status(500).json({
     success: false,
     message: "Internal Server Error",
   });
-});
+};
+
+app.use(errorHandler);

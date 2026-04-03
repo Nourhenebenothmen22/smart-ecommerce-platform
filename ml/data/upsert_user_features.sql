@@ -49,7 +49,7 @@ SELECT
     EXTRACT(DAY FROM (NOW() - last_interaction_at))::INTEGER AS days_since_last_interaction,
     EXTRACT(DAY FROM (NOW() - user_created_at))::INTEGER AS days_since_signup,
     -- Ratio calculation (using NULLIF to prevent division by zero)
-    COALESCE(total_orders::NUMERIC / NULLIF(views_count, 0), 0) AS purchase_to_view_ratio,
+    COALESCE(purchase_interaction_count::NUMERIC / NULLIF(views_count, 0), 0) AS purchase_to_view_ratio,
     COALESCE(cart_add_count::NUMERIC / NULLIF(clicks_count, 0), 0) AS cart_to_click_ratio,
     COALESCE(reviews_count::NUMERIC / NULLIF(total_orders, 0), 0) AS review_to_purchase_ratio,
     NOW() AS computed_at
