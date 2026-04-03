@@ -1,23 +1,25 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "type": "module",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:init": "npm run db:1-tables && npm run db:2-constraints && npm run db:3-indexes && npm run db:4-triggers && npm run db:5-views && npm run db:6-ml-schema && npm run db:7-ml-views && npm run db:8-ml-indexes",
+    "db:init": "npm run db:1-tables && npm run db:2-constraints && npm run db:3-indexes && npm run db:4-triggers && npm run db:5-views && npm run db:6-ml-schema && npm run db:6b-ml-constraints && npm run db:7-ml-views && npm run db:8-ml-indexes",
     "db:1-tables": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/001_tables.sql",
     "db:2-constraints": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/002_constraints.sql",
     "db:3-indexes": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/003_indexes.sql",
     "db:4-triggers": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/004_triggers.sql",
     "db:5-views": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/005_views.sql",
     "db:6-ml-schema": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/006_ml_schema.sql",
+    "db:6b-ml-constraints": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/006b_ml_constraints.sql",
     "db:7-ml-views": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/007_ml_views.sql",
     "db:8-ml-indexes": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/008_ml_indexes.sql",
-    "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/upsert_user_features.sql",
-    "ml:seed:append": "cd ../ml && python seed_data.py --mode append",
-    "ml:seed:reset": "cd ../ml && python seed_data.py --mode reset"
+    "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/sql/upsert_user_features.sql",
+    "ml:seed:append": "cd ../ml && python -m scripts.seed --mode append",
+    "ml:seed:reset": "cd ../ml && python -m scripts.seed --mode reset"
   },
   "keywords": [],
   "author": "",
@@ -33,7 +35,7 @@
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
     "pg": "^8.20.0",
-    "zod": "^4.3.6"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

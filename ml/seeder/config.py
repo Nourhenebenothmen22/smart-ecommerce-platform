@@ -5,13 +5,9 @@ from faker import Faker
 # =========================================================
 # CONFIG
 # =========================================================
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5433,
-    "database": "ecommerce_ml_db",
-    "user": "postgres",
-    "password": "postgres",
-}
+from core.config import settings
+
+DB_CONFIG = settings.db_config_dict
 
 # Settings for Generation
 NB_PRODUCTS = 4000

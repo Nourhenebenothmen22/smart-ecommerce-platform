@@ -1,7 +1,10 @@
 import { pool } from "../db/pool.js";
 import fs from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class MLService {
   /**
@@ -11,8 +14,8 @@ export class MLService {
   async recalculateUserFeatures(): Promise<void> {
     const client = await pool.connect();
     try {
-      // Path to the upsert SQL file moved to ml/data
-      const sqlPath = path.resolve(process.cwd(), "..", "ml", "data", "upsert_user_features.sql");
+      // Path relative to this source file — works regardless of process.cwd()
+      const sqlPath = path.resolve(__dirname, "..", "..", "..", "ml", "data", "sql", "upsert_user_features.sql");
       const sql = await fs.readFile(sqlPath, "utf-8");
 
       await client.query("BEGIN");
@@ -62,7 +65,7 @@ export class MLService {
           segment.segment_label,
           segment.model_name,
           segment.model_version,
-          segment.confidence || null
+          segment.confidence ?? null
         ]);
       }
 
@@ -102,9 +105,9 @@ export class MLService {
       modelData.model_version,
       modelData.model_type,
       modelData.algorithm,
-      modelData.metrics || {},
-      modelData.parameters || {},
-      modelData.artifact_path || null
+      modelData.metrics ?? {},
+      modelData.parameters ?? {},
+      modelData.artifact_path ?? null
     ]);
   }
 }

@@ -52,9 +52,7 @@ CREATE TABLE IF NOT EXISTS user_features (
     cart_to_click_ratio NUMERIC(10,4) NOT NULL DEFAULT 0,
     review_to_purchase_ratio NUMERIC(10,4) NOT NULL DEFAULT 0,
     
-    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 3. Table for User Segments (ML outputs)
@@ -68,7 +66,6 @@ CREATE TABLE IF NOT EXISTS user_segments (
     confidence NUMERIC(6,4), -- Accuracy/probability score for the cluster assignment
     computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT unique_user_model_assignment UNIQUE(user_id, model_name, model_version)
 );
 
@@ -81,6 +78,5 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     session_started_at TIMESTAMPTZ NOT NULL,
     session_ended_at TIMESTAMPTZ,
     device_type VARCHAR(50), -- mobile, desktop, tablet
-    source_channel VARCHAR(50), -- direct, organic, social, ads
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    source_channel VARCHAR(50) -- direct, organic, social, ads
 );

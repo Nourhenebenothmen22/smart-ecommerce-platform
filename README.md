@@ -9,11 +9,19 @@ Bienvenue dans l'architecture Backend et Data de la plateforme e-commerce intell
 ### 1. Topologie des Dossiers
 - **`backend/src/sql/`** : Source de vérité du schéma (001-008). Idempotent et versionné.
 - **`backend/src/services/`** : Logique métier et pont vers les scripts ML (`ml.service.ts`).
-- **`ml/seed_data.py`** : Point d'entrée du générateur de données synthétiques.
-- **`ml/seeder/`** : Package modulaire (config, catalog, core) pour la génération massive de données.
-- **`ml/data/`** : Scripts SQL analytiques (ex: `upsert_user_features.sql`).
+- **`ml/scripts/seed.py`** : Point d'entrée du générateur de données synthétiques.
+- **`ml/seeder/`** : Logique de génération (catalog, config, core).
+- **`ml/core/`** : Configuration centralisée et accès DB partagé.
+- **`ml/data/sql/`** : Scripts SQL analytiques (ex: `upsert_user_features.sql`).
 
-### 2. Schéma Relationnel (ERD) & Cardinalités
+### 2. Architecture ML (Clean Structure)
+Le dossier `ml/` est organisé selon les standards de production :
+- `api/` : Endpoints d'inférence (Inférence Temps Réel).
+- `models/` : Entraînement et artifacts des modèles (Segmentation, Reco).
+- `notebooks/` : Recherche et Exploration (EDA).
+- `scripts/` : Automatisation et Jobs (Seeding).
+
+### 3. Schéma Relationnel (ERD) & Cardinalités
 Cette structure permet de passer d'une transaction client à un modèle de segmentation IA.
 
 ```mermaid
@@ -66,6 +74,18 @@ Le "Secret Sauce" est le **Feature Persistence Layer** :
 1. Les actions utilisateurs (clics, orders) sont capturées en temps réel.
 2. La vue `v_user_behavior_features` agrège ces comportements.
 3. `npm run ml:upsert-features` fige ces stats dans `user_features` pour l'entraînement des modèles.
+
+---
+
+## 📡 API Endpoints (ML Pipeline)
+
+L'API Express expose des points d'entrée spécifiques pour l'intégration avec les pipelines de Machine Learning :
+
+| Méthode | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/ml/recalculate-features` | Déclenche manuellement la recalculation des features utilisateurs. |
+| `POST` | `/api/ml/segments` | Permet au pipeline ML de pousser des résultats de segmentation en masse. |
+| `POST` | `/api/ml/models` | Enregistre les métadonnées et le chemin d'un nouveau modèle entraîné. |
 
 ---
 

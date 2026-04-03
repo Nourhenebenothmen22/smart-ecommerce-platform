@@ -1,0 +1,23 @@
+# ─── Dependencies ──────────────────────────────────────────
+node_modules/
+dist/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# ─── Environment & Secrets ──────────────────────────────────
+.env
+.env.local
+*.log
+
+# ─── IDE & System ───────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ─── Database ───────────────────────────────────────────────
+postgres_data/
+*.sqlite

@@ -10,3 +10,7 @@ export const env = {
 if (!env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing in .env");
 }
+
+if (!env.JWT_SECRET && env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET is missing in .env (required in production)");
+}
