@@ -77,16 +77,8 @@ BEGIN
         ALTER TABLE recommendations ADD CONSTRAINT fk_rec_rec_product FOREIGN KEY (recommended_product_id) REFERENCES products(id) ON DELETE CASCADE;
     END IF;
 
-    -- ML Traceability (Composite FKs to ml_models)
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_revanal_ml_model') THEN
-        ALTER TABLE review_analysis ADD CONSTRAINT fk_revanal_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_prodembed_ml_model') THEN
-        ALTER TABLE product_embeddings ADD CONSTRAINT fk_prodembed_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_usegs_ml_model') THEN
-        ALTER TABLE user_segments ADD CONSTRAINT fk_usegs_ml_model FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
-    END IF;
+    -- NOTE: ML Traceability FKs (fk_revanal_ml_model, fk_prodembed_ml_model, fk_usegs_ml_model)
+    -- are defined in 006b_ml_constraints.sql (runs after ml_models table is created in 006).
 
     -- Other ML FKs
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_revanal_review') THEN
