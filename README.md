@@ -8,7 +8,8 @@ Bienvenue dans l'architecture Backend et Data de la plateforme e-commerce intell
 
 ### 1. Topologie des Dossiers
 - **`backend/src/sql/`** : Source de vérité du schéma (001-008). Idempotent et versionné.
-- **`backend/src/services/`** : Logique métier et pont vers les scripts ML (`ml.service.ts`).
+- **`backend/src/services/`** : Logique métier dissociée des contrôleurs.
+- **`backend/src/utils/`** : Utilitaires transverses (**AppError**, **apiResponse**).
 - **`ml/scripts/seed.py`** : Point d'entrée du générateur de données synthétiques.
 - **`ml/seeder/`** : Logique de génération (catalog, config, core).
 - **`ml/core/`** : Configuration centralisée et accès DB partagé.
@@ -84,9 +85,9 @@ Pour assurer la **rigidité** et la **sécurité** du projet à chaque ouverture
 
 Le backend a été renforcé avec les standards industriels suivants :
 
-- **Authentification JWT** : Gestion sécurisée des sessions utilisateurs.
-- **HTTP Compression** : Réduction de la taille des données transmises pour plus de rapidité.
-- **Headers de Sécurité** : Implémentation via **Helmet** et **Lusca** (Clickjacking, X-XSS).
+- **Authentification JWT** : Gestion sécurisée des sessions via HTTP-Only Cookies.
+- **Validation d'Environnement** : Configuration stricte via **Zod** ([`env.ts`](file:///c:/full_stack%20projects/ecommerce-intelligent-platform/backend/src/config/env.ts)).
+- **Top-Tier Security Headers** : Implémentation via **Helmet** et **Lusca** (Clickjacking, X-XSS).
 - **Rate Limiting** : Protection contre les attaques par force brute (100 req/15min).
 
 > [!NOTE]
@@ -101,12 +102,19 @@ Vos commits sont désormais protégés. Avant chaque `git commit`, le système :
 1. S'assurera que le projet compile correctement.
 2. Empêchera le commit si les tests critiques échouent.
 
-### HTTP Status Codes
-Utilisez toujours les constantes de `http-status-codes` pour vos réponses API :
+### HTTP Status Codes & ApiResponse
+Utilisez toujours les constantes de `http-status-codes` et l'utilitaire `sendResponse` :
 ```typescript
 import { StatusCodes } from 'http-status-codes';
-res.status(StatusCodes.OK).json({ ... });
+import { sendResponse } from '../utils/apiResponse.js';
+
+sendResponse(res, StatusCodes.OK, "Success message", data);
 ```
+
+### Centralized Error Handling
+Toutes les erreurs opérationnelles doivent passer par la classe **AppError** :
+- Les erreurs sont capturées globalement par `errorHandler`.
+- Supporte les erreurs **Zod**, **JWT**, et les contraintes **PostgreSQL**.
 
 ---
 
@@ -281,4 +289,4 @@ Si vous êtes en session interactive (`docker exec -it ... psql ...`), voici des
 - **Ajout de Données** : Pour modifier les produits ou avis, intervenez directement dans `ml/seeder/catalog.py` ou `ml/seeder/generators.py`.
 
 ---
-**[ 🛑 Document consolidé le 02 Avril 2026 ]**
+**[ 🛑 Document consolidé le 04 Avril 2026 ]**
