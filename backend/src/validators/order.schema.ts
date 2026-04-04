@@ -12,3 +12,7 @@ export const orderSchema = z.object({
 export const orderIdSchema = z.object({
   id: z.coerce.number().int().positive('Order ID must be a positive integer'),
 });
+
+export const orderStatusSchema = z.object({
+  status: orderStatusEnum,
+});

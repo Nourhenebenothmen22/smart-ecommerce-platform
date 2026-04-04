@@ -9,13 +9,13 @@ import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
-import { authRouter } from "./routes/auth.routes.js";
-import { userRouter } from "./routes/user.routes.js";
-import { productRouter } from "./routes/product.routes.js";
-import { categoryRouter } from "./routes/category.routes.js";
-import { subcategoryRouter } from "./routes/subcategory.routes.js";
-import { orderRouter } from "./routes/order.routes.js";
-import { reviewRouter } from "./routes/review.routes.js";
+import { authRouter } from "./routes/auth.route.js";
+import { userRouter } from "./routes/user.route.js";
+import { productRouter } from "./routes/product.route.js";
+import { categoryRouter } from "./routes/category.route.js";
+import { subcategoryRouter } from "./routes/subcategory.route.js";
+import { orderRouter } from "./routes/order.route.js";
+import { reviewRouter } from "./routes/review.route.js";
 
 
 export const app = express();

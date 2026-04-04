@@ -1,11 +1,8 @@
-import { Router } from "express";
+import { Router } from 'express';
+import { healthController } from '../controllers/health.controller.js';
 
-export const healthRouter = Router();
+const router = Router();
 
-healthRouter.get("/", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "API is running",
-    timestamp: new Date().toISOString(),
-  });
-});
+router.get('/', healthController.check);
+
+export { router as healthRouter };
