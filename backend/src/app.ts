@@ -1,12 +1,11 @@
 import express from "express";
-import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import debug from "debug";
 
-import type { ErrorRequestHandler } from "express";
+import { corsMiddleware } from "./middlewares/cors.middleware.js";
+import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
+import { errorHandler } from "./middlewares/error.middleware.js";
 
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
@@ -20,8 +19,6 @@ import { reviewRouter } from "./routes/review.routes.js";
 
 dotenv.config();
 
-const log = debug("app:server");
-
 export const app = express();
 
 /*
@@ -32,7 +29,7 @@ app.use(helmet());
 /*
 CORS
 */
-app.use(cors());
+app.use(corsMiddleware);
 
 /*
 Body Parser
@@ -45,21 +42,12 @@ HTTP Logger
 app.use(morgan("dev"));
 
 /*
-Rate Limiter (applied only to non-health routes)
-*/
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: "Too many requests from this IP",
-});
-
-/*
 Routes
 */
 app.use("/api/health", healthRouter);
 
 // Apply rate limiter to all routes except health
-app.use(limiter);
+app.use(rateLimitMiddleware);
 
 app.use("/api/ml", mlRouter);
 app.use("/api/auth", authRouter);
@@ -81,15 +69,6 @@ app.use((_req, res) => {
 });
 
 /*
-Global Error Handler (Express 5 compatible)
+Global Error Handler
 */
-const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  log(err);
-
-  res.status(500).json({
-    success: false,
-    message: "Internal Server Error",
-  });
-};
-
 app.use(errorHandler);
