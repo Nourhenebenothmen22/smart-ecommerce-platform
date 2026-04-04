@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodTypeAny, ZodError } from 'zod';
+import { ZodTypeAny } from 'zod';
 
 /**
  * Interface for the schemas to validate against different request parts.
@@ -36,7 +36,7 @@ export const validate = (schemas: ValidationSchemas) => {
                 if (!parsed.success) {
                     results.push({ part: 'query', errors: parsed.error });
                 } else {
-                    req.query = parsed.data as any;
+                    req.query = parsed.data as Record<string, string | string[] | undefined>;
                 }
             }
 
@@ -46,7 +46,7 @@ export const validate = (schemas: ValidationSchemas) => {
                 if (!parsed.success) {
                     results.push({ part: 'params', errors: parsed.error });
                 } else {
-                    req.params = parsed.data as any;
+                    req.params = parsed.data as Record<string, string>;
                 }
             }
 

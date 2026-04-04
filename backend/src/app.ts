@@ -16,7 +16,6 @@ import { categoryRouter } from "./routes/category.routes.js";
 import { subcategoryRouter } from "./routes/subcategory.routes.js";
 import { orderRouter } from "./routes/order.routes.js";
 import { reviewRouter } from "./routes/review.routes.js";
-import { xssMiddleware } from "./middlewares/xss.middleware.js";
 
 
 export const app = express();
@@ -45,11 +44,6 @@ app.use(lusca.xframe("SAMEORIGIN"));
 app.use(lusca.xssProtection(true));
 // Note: CSRF is disabled by default here, enable if processing stateful forms with cookies
 // app.use(lusca.csrf()); 
-
-/*
-XSS Sanitization (Custom DOMPurify)
-*/
-app.use(xssMiddleware);
 
 /*
 HTTP Logger

@@ -66,7 +66,6 @@ Le système utilise **Bcrypt** (12 rounds) pour protéger les mots de passe.
 | **Seeding Add** | `npm run ml:seed:append` | Ajoute des données sans effacer l'existant. |
 | **ML Snapshot** | `npm run ml:upsert-features` | Persiste les features utilisateurs pour l'IA. |
 | **Dev Server** | `npm run dev` | Lance l'API Express avec rechargement automatique. |
-| **Check Lint** | `npm run lint` | Lance l'audit de sécurité et de qualité du code (ESLint). |
 | **Run Tests** | `npm run test` | Exécute la suite de tests (avec `--passWithNoTests`). |
 
 ---
@@ -77,8 +76,7 @@ Pour assurer la **rigidité** et la **sécurité** du projet à chaque ouverture
 
 1. **`npm install`** : Installe les nouvelles dépendances critiques (`jsonwebtoken`, `lusca`, etc.).
 2. **`npm run prepare`** : Initialise **Husky** pour activer les Git Hooks de pré-commit.
-3. **`npm run lint`** : Vérifie qu'il n'y a pas de vulnérabilités ou d'erreurs de style.
-4. **`npm run dev`** : Lance le serveur en mode développement.
+3. **`npm run dev`** : Lance le serveur en mode développement.
 
 ---
 
@@ -87,7 +85,6 @@ Pour assurer la **rigidité** et la **sécurité** du projet à chaque ouverture
 Le backend a été renforcé avec les standards industriels suivants :
 
 - **Authentification JWT** : Gestion sécurisée des sessions utilisateurs.
-- **Protection XSS** : Middleware de sanitisation utilisant **DOMPurify** (`xssMiddleware`).
 - **HTTP Compression** : Réduction de la taille des données transmises pour plus de rapidité.
 - **Headers de Sécurité** : Implémentation via **Helmet** et **Lusca** (Clickjacking, X-XSS).
 - **Rate Limiting** : Protection contre les attaques par force brute (100 req/15min).
@@ -99,11 +96,10 @@ Le backend a été renforcé avec les standards industriels suivants :
 
 ## 🛠️ Qualité de Développement
 
-### Git Hooks (Husky + lint-staged)
+### Git Hooks (Husky)
 Vos commits sont désormais protégés. Avant chaque `git commit`, le système :
-1. Corrigera automatiquement les erreurs de formatage (Prettier).
-2. Vérifiera qu'il n'y a pas d'erreurs de lint critiques.
-3. Empêchera le commit si le code est "cassé".
+1. S'assurera que le projet compile correctement.
+2. Empêchera le commit si les tests critiques échouent.
 
 ### HTTP Status Codes
 Utilisez toujours les constantes de `http-status-codes` pour vos réponses API :

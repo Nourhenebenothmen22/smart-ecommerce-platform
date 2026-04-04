@@ -41,11 +41,12 @@ export class MLController {
         success: true,
         message: "Recalculation of user features started/completed successfully."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       res.status(500).json({
         success: false,
         message: "Failed to recalculate features",
-        error: error.message
+        error: errorMessage
       });
     }
   }
@@ -72,11 +73,12 @@ export class MLController {
         success: true,
         message: `Successfully updated ${parsed.data.segments.length} user segments.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       res.status(500).json({
         success: false,
         message: "Failed to update segments",
-        error: error.message
+        error: errorMessage
       });
     }
   }
@@ -103,11 +105,12 @@ export class MLController {
         success: true,
         message: "Model registered successfully."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
       res.status(500).json({
         success: false,
         message: "Failed to register model",
-        error: error.message
+        error: errorMessage
       });
     }
   }

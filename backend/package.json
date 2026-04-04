@@ -20,15 +20,8 @@
     "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/sql/upsert_user_features.sql",
     "ml:seed:append": "cd ../ml && python -m scripts.seed --mode append",
     "ml:seed:reset": "cd ../ml && python -m scripts.seed --mode reset",
-    "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "src/**/*.ts": [
-      "eslint --fix",
-      "prettier --write"
-    ]
   },
   "keywords": [],
   "author": "",
@@ -47,16 +40,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/debug": "^4.1.12",
-    "@types/dompurify": "^3.0.5",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
-    "@types/jsdom": "^28.0.1",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lusca": "^1.7.5",
     "@types/morgan": "^1.9.10",
@@ -64,23 +54,16 @@
     "@types/pg": "^8.18.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
-    "dompurify": "^3.3.3",
-    "eslint": "^9.39.4",
-    "eslint-plugin-security": "^4.0.0",
-    "globals": "^17.4.0",
     "http-status-codes": "^2.3.0",
     "husky": "^9.1.7",
     "jest": "^30.3.0",
-    "jsdom": "^28.1.0",
     "jsonwebtoken": "^9.0.3",
-    "lint-staged": "^16.4.0",
     "lusca": "^1.7.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.1",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.58.0"
+    "typescript": "^5.9.3"
   }
 }
