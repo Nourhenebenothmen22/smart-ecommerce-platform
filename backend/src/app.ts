@@ -1,6 +1,10 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import dotenv from "dotenv";
+import compression from "compression";
+import cookieParser from "cookie-parser";
+import lusca from "lusca";
 import { corsMiddleware } from "./middlewares/cors.middleware.js";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
@@ -14,6 +18,7 @@ import { categoryRouter } from "./routes/category.routes.js";
 import { subcategoryRouter } from "./routes/subcategory.routes.js";
 import { orderRouter } from "./routes/order.routes.js";
 import { reviewRouter } from "./routes/review.routes.js";
+import { xssMiddleware } from "./middlewares/xss.middleware.js";
 
 
 export const app = express();
@@ -29,9 +34,24 @@ CORS
 app.use(corsMiddleware);
 
 /*
-Body Parser
+Performance & Parser
 */
+app.use(compression());
+app.use(cookieParser());
 app.use(express.json());
+
+/*
+Security Headers & CSRF (handled by lusca)
+*/
+app.use(lusca.xframe("SAMEORIGIN"));
+app.use(lusca.xssProtection(true));
+// Note: CSRF is disabled by default here, enable if processing stateful forms with cookies
+// app.use(lusca.csrf()); 
+
+/*
+XSS Sanitization (Custom DOMPurify)
+*/
+app.use(xssMiddleware);
 
 /*
 HTTP Logger
