@@ -1,23 +1,28 @@
-import { ErrorRequestHandler } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { StatusCodes } from 'http-status-codes';
 import debug from 'debug';
 
-const log = debug('app:server');
+const logError = debug('app:error');
 
 /**
- * Global error handler middleware.
- * Ensures consistent JSON responses for internal errors.
+ * Global error handling middleware.
+ * Formats errors into a consistent JSON response.
  */
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
-  log(err);
+export const errorHandler = (
+    err: any,
+    _req: Request,
+    res: Response,
+    _next: NextFunction
+) => {
+    logError(err.stack || err.message);
 
-  // In production, we might log to an external service and hide stack traces
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
+    const statusCode = err.status || err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
+    const message = err.message || 'An unexpected error occurred on the server';
 
-  res.status(status).json({
-    status: 'error',
-    message,
-    // Add stack trace only in development
-    // ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+    res.status(statusCode).json({
+        success: false,
+        message,
+        // Only show stack trace in development mode for easier debugging
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    });
 };

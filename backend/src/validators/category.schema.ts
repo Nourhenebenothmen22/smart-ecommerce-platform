@@ -7,5 +7,5 @@ export const categorySchema = z.object({
 });
 
 export const categoryIdSchema = z.object({
-  id: z.string().regex(/^\d+$/).transform(Number),
+  id: z.coerce.number().int().positive('Category ID must be a positive integer'),
 });

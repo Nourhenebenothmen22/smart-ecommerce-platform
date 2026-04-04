@@ -16,6 +16,7 @@ import { categoryRouter } from "./routes/category.route.js";
 import { subcategoryRouter } from "./routes/subcategory.route.js";
 import { orderRouter } from "./routes/order.route.js";
 import { reviewRouter } from "./routes/review.route.js";
+import { StatusCodes } from "http-status-codes";
 
 
 export const app = express();
@@ -71,7 +72,7 @@ app.use("/api/reviews", reviewRouter);
 404 Handler
 */
 app.use((_req, res) => {
-  res.status(404).json({
+  res.status(StatusCodes.NOT_FOUND).json({
     success: false,
     message: "Route not found",
   });
