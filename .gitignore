@@ -8,8 +8,9 @@ __pycache__/
 *.pyc
 
 # ─── Environment & Secrets ──────────────────────────────────
-.env
-.env.local
+**/.env
+**/.env.example
+**/.env.local
 *.log
 
 # ─── IDE & System ───────────────────────────────────────────
