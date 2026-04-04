@@ -1,4 +1,4 @@
 import { Router } from 'express';
-const categoryRouter = Router();
-export default categoryRouter;
+const router = Router();
+export { router as categoryRouter };
 

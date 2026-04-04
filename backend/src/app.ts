@@ -10,7 +10,13 @@ import type { ErrorRequestHandler } from "express";
 
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
+import { authRouter } from "./routes/auth.routes.js";
+import { userRouter } from "./routes/user.routes.js";
+import { productRouter } from "./routes/product.routes.js";
+import { categoryRouter } from "./routes/category.routes.js";
 import { subcategoryRouter } from "./routes/subcategory.routes.js";
+import { orderRouter } from "./routes/order.routes.js";
+import { reviewRouter } from "./routes/review.routes.js";
 
 dotenv.config();
 

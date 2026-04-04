@@ -1,3 +1,3 @@
 import { Router } from 'express';
-const orderRouter = Router();
-export default orderRouter;
+const router = Router();
+export { router as orderRouter };
