@@ -19,7 +19,8 @@
     "db:8-ml-indexes": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/008_ml_indexes.sql",
     "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/sql/upsert_user_features.sql",
     "ml:seed:append": "cd ../ml && python -m scripts.seed --mode append",
-    "ml:seed:reset": "cd ../ml && python -m scripts.seed --mode reset"
+    "ml:seed:reset": "cd ../ml && python -m scripts.seed --mode reset",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
