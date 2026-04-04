@@ -1,7 +1,6 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import lusca from "lusca";
