@@ -56,7 +56,13 @@ app.use("/api/health", healthRouter);
 app.use(limiter);
 
 app.use("/api/ml", mlRouter);
+app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
+app.use("/api/products", productRouter);
+app.use("/api/categories", categoryRouter);
 app.use("/api/subcategories", subcategoryRouter);
+app.use("/api/orders", orderRouter);
+app.use("/api/reviews", reviewRouter);
 
 /*
 404 Handler
