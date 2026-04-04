@@ -1,8 +1,6 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
-
 import { corsMiddleware } from "./middlewares/cors.middleware.js";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
@@ -17,7 +15,6 @@ import { subcategoryRouter } from "./routes/subcategory.routes.js";
 import { orderRouter } from "./routes/order.routes.js";
 import { reviewRouter } from "./routes/review.routes.js";
 
-dotenv.config();
 
 export const app = express();
 
