@@ -8,7 +8,6 @@ import lusca from "lusca";
 import { corsMiddleware } from "./middlewares/cors.middleware.js";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
 import { authRouter } from "./routes/auth.routes.js";
