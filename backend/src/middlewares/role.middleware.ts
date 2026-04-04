@@ -1,4 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
+import { AppError } from "../utils/AppError.js";
+import { StatusCodes } from "http-status-codes";
 
 /**
  * Role-based Authorization Middleware
@@ -8,25 +10,22 @@ import { Request, Response, NextFunction } from 'express';
  * @returns {Function} Express middleware function.
  */
 export const authorize = (...allowedRoles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, _res: Response, next: NextFunction) => {
     const user = req.user;
 
     // 1. Check if user information exists (from authenticate middleware)
     if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Unauthorized. Authentication required before role check.',
-      });
-      return;
+      return next(new AppError("Unauthorized. Authentication required before role check.", StatusCodes.UNAUTHORIZED));
     }
 
     // 2. Check if user role is in the allowed list
     if (!allowedRoles.includes(user.role)) {
-      res.status(403).json({
-        success: false,
-        message: `Forbidden. Your role (${user.role}) does not have permission to access this resource.`,
-      });
-      return;
+      return next(
+        new AppError(
+          `Forbidden. Your role (${user.role}) does not have permission to access this resource.`,
+          StatusCodes.FORBIDDEN
+        )
+      );
     }
 
     // Access granted

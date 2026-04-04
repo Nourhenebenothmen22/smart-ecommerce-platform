@@ -1,9 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import { sendResponse } from '../utils/apiResponse.js';
 
 export class ReviewController {
-  async createReview(req: Request, res: Response, next: NextFunction) {
+  async addReview(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(501).json({ message: 'Not implemented' });
+      // Logic for adding a product review
+      sendResponse(res, StatusCodes.NOT_IMPLEMENTED, "AddReview not implemented yet");
     } catch (error) {
       next(error);
     }
@@ -11,7 +14,8 @@ export class ReviewController {
 
   async getProductReviews(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(501).json({ message: 'Not implemented' });
+      // Logic for retrieving reviews for a specific product
+      sendResponse(res, StatusCodes.NOT_IMPLEMENTED, "GetProductReviews not implemented yet");
     } catch (error) {
       next(error);
     }
@@ -19,7 +23,7 @@ export class ReviewController {
 
   async deleteReview(req: Request, res: Response, next: NextFunction) {
     try {
-      res.status(501).json({ message: 'Not implemented' });
+      sendResponse(res, StatusCodes.NOT_IMPLEMENTED, "DeleteReview not implemented yet");
     } catch (error) {
       next(error);
     }
