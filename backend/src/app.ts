@@ -10,6 +10,7 @@ import type { ErrorRequestHandler } from "express";
 
 import { healthRouter } from "./routes/health.route.js";
 import { mlRouter } from "./routes/ml.route.js";
+import { subcategoryRouter } from "./routes/subcategory.routes.js";
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ app.use("/api/health", healthRouter);
 app.use(limiter);
 
 app.use("/api/ml", mlRouter);
+app.use("/api/subcategories", subcategoryRouter);
 
 /*
 404 Handler
