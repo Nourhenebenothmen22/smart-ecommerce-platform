@@ -4,11 +4,11 @@ import psycopg2
 import sys
 import os
 
-# Automatically add the current directory and the 'ml' directory to the path 
-# to allow running from root or from within the ml folder.
-base_ml_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if base_ml_dir not in sys.path:
-    sys.path.append(base_ml_dir)
+# Ensure the 'ml' directory is in sys.path to allow for imports of 'seeder' and 'core'
+# This works whether run from the project root or from within the scripts directory.
+MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if MOD_PATH not in sys.path:
+    sys.path.insert(0, MOD_PATH)
 
 from seeder.config import DB_CONFIG, NB_USERS, NB_PRODUCTS, NB_AUDIT_LOGS, NB_ORDER_USERS, NB_INTERACTION_USERS
 from seeder.helpers import get_user_signup_dates

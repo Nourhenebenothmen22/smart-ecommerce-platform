@@ -2,8 +2,10 @@ import psycopg2
 import sys
 import os
 
-# Set PYTHONPATH to include ml
-sys.path.append('ml')
+# Ensure the 'ml' directory is in sys.path to allow for imports of 'seeder' and 'core'
+MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if MOD_PATH not in sys.path:
+    sys.path.insert(0, MOD_PATH)
 from seeder.config import DB_CONFIG
 
 def get_counts():
