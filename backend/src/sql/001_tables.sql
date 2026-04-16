@@ -138,19 +138,27 @@ CREATE TABLE IF NOT EXISTS review_analysis (
     sentiment_score NUMERIC(6,4),
     keywords JSONB NOT NULL DEFAULT '[]'::jsonb,
     topics JSONB NOT NULL DEFAULT '[]'::jsonb,
-    model_name VARCHAR(120) NOT NULL,
-    model_version VARCHAR(50) NOT NULL,
+    model_name VARCHAR(120) NOT NULL DEFAULT 'vader',
+    model_version VARCHAR(50) NOT NULL DEFAULT '1.0',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure columns exist if table was created by an older version
+ALTER TABLE review_analysis ADD COLUMN IF NOT EXISTS model_name VARCHAR(120) NOT NULL DEFAULT 'vader';
+ALTER TABLE review_analysis ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) NOT NULL DEFAULT '1.0';
 
 CREATE TABLE IF NOT EXISTS product_embeddings (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL,
-    model_name VARCHAR(120) NOT NULL,
-    model_version VARCHAR(50) NOT NULL,
+    model_name VARCHAR(120) NOT NULL DEFAULT 'text-embedding-3-small',
+    model_version VARCHAR(50) NOT NULL DEFAULT '1.0',
     embedding_vector vector(1536) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure columns exist if table was created by an older version
+ALTER TABLE product_embeddings ADD COLUMN IF NOT EXISTS model_name VARCHAR(120) NOT NULL DEFAULT 'text-embedding-3-small';
+ALTER TABLE product_embeddings ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) NOT NULL DEFAULT '1.0';
 
 CREATE TABLE IF NOT EXISTS wishlists (
     id SERIAL PRIMARY KEY,

@@ -6,7 +6,12 @@ import os
 MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if MOD_PATH not in sys.path:
     sys.path.insert(0, MOD_PATH)
-from seeder.config import DB_CONFIG
+
+try:
+    from seeder.config import DB_CONFIG
+except ImportError as e:
+    print(f"CRITICAL: Failed to import seeder modules. Error: {e}")
+    sys.exit(1)
 
 def get_counts():
     conn = psycopg2.connect(**DB_CONFIG)

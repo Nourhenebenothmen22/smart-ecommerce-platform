@@ -15,7 +15,7 @@ export const errorHandler = (
   _req: Request,
   res: Response,
   _next: NextFunction
-) => {
+): void => {
   logError(err.stack || err.message);
 
   let statusCode = err.status || err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
