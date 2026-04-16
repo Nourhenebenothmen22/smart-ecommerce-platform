@@ -7,5 +7,6 @@
   "reportMissingModuleSource": false,
   "reportMissingImports": true,
   "include": ["ml", "backend"],
-  "exclude": ["ml/.venv"]
+  "exclude": ["ml/.venv"],
+  "extraPaths": ["ml"]
 }
