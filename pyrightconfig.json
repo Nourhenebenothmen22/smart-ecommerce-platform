@@ -8,11 +8,5 @@
   "reportMissingImports": true,
   "include": ["ml", "backend"],
   "exclude": ["ml/.venv"],
-  "executionEnvironments": [
-    {
-      "root": "ml",
-      "extraPaths": ["."]
-    }
-  ],
   "extraPaths": ["ml"]
 }

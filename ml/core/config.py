@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class settings:
+class Settings:
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = int(os.getenv("DB_PORT", "5433"))
     DB_NAME = os.getenv("DB_NAME", "ecommerce_ml_db")
@@ -24,4 +24,4 @@ class settings:
             "password": self.DB_PASS,
         }
 
-settings = settings()
+settings = Settings()
