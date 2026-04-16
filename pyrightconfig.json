@@ -7,6 +7,16 @@
   "reportMissingModuleSource": false,
   "reportMissingImports": true,
   "include": ["ml"],
-  "exclude": ["ml/.venv", "backend"],
-  "extraPaths": ["ml"]
+  "exclude": [
+    "ml/.venv",
+    "**/__pycache__",
+    "backend",
+    "node_modules"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "ml",
+      "extraPaths": ["."]
+    }
+  ]
 }
