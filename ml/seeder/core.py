@@ -297,43 +297,23 @@ def seed_user_sessions(cursor, conn, user_ids, user_signup_dates):
             cursor.execute("INSERT INTO user_sessions (user_id, session_started_at, session_ended_at, device_type, source_channel) VALUES (%s, %s, %s, %s, %s)", (user_id, start_dt, end_dt if random.random() < 0.92 else None, random.choice(device_types), random.choice(source_channels)))
     conn.commit()
 
+import os
+
 def seed_user_features(cursor, conn):
     print("Computing User Features (ML Upsert)...")
-    upsert_sql = """
-    INSERT INTO user_features (
-        user_id, total_orders, total_spent, avg_order_value, total_items_bought,
-        views_count, clicks_count, cart_add_count, wishlist_add_count,
-        purchase_interaction_count, search_count, share_count,
-        reviews_count, avg_rating_given, wishlist_count, cart_count,
-        days_since_last_order, days_since_last_interaction, days_since_signup,
-        purchase_to_view_ratio, cart_to_click_ratio, review_to_purchase_ratio,
-        computed_at
-    )
-    SELECT
-        user_id, total_orders, total_spent, avg_order_value, total_items_bought,
-        views_count, clicks_count, cart_add_count, wishlist_add_count,
-        purchase_interaction_count, search_count, share_count,
-        reviews_count, avg_rating_given, wishlist_count, cart_count,
-        EXTRACT(DAY FROM (NOW() - last_order_at))::INTEGER,
-        EXTRACT(DAY FROM (NOW() - last_interaction_at))::INTEGER,
-        EXTRACT(DAY FROM (NOW() - user_created_at))::INTEGER,
-        COALESCE(total_orders::NUMERIC / NULLIF(views_count, 0), 0),
-        COALESCE(cart_add_count::NUMERIC / NULLIF(clicks_count, 0), 0),
-        COALESCE(reviews_count::NUMERIC / NULLIF(total_orders, 0), 0),
-        NOW()
-    FROM v_user_behavior_features
-    ON CONFLICT (user_id) DO UPDATE SET
-        total_orders = EXCLUDED.total_orders, total_spent = EXCLUDED.total_spent,
-        avg_order_value = EXCLUDED.avg_order_value, total_items_bought = EXCLUDED.total_items_bought,
-        views_count = EXCLUDED.views_count, clicks_count = EXCLUDED.clicks_count,
-        cart_add_count = EXCLUDED.cart_add_count, wishlist_add_count = EXCLUDED.wishlist_add_count,
-        purchase_interaction_count = EXCLUDED.purchase_interaction_count, search_count = EXCLUDED.search_count,
-        share_count = EXCLUDED.share_count, reviews_count = EXCLUDED.reviews_count,
-        avg_rating_given = EXCLUDED.avg_rating_given, wishlist_count = EXCLUDED.wishlist_count,
-        cart_count = EXCLUDED.cart_count, days_since_last_order = EXCLUDED.days_since_last_order,
-        days_since_last_interaction = EXCLUDED.days_since_last_interaction, days_since_signup = EXCLUDED.days_since_signup,
-        purchase_to_view_ratio = EXCLUDED.purchase_to_view_ratio, cart_to_click_ratio = EXCLUDED.cart_to_click_ratio,
-        review_to_purchase_ratio = EXCLUDED.review_to_purchase_ratio, computed_at = EXCLUDED.computed_at;
-    """
-    cursor.execute(upsert_sql)
-    conn.commit()
+    
+    # Path to the SQL file relative to the ml directory
+    # Note: This assumes current working directory is the ml folder or we use absolute paths
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sql_path = os.path.join(base_dir, "data", "sql", "upsert_user_features.sql")
+    
+    try:
+        with open(sql_path, "r") as f:
+            upsert_sql = f.read()
+        
+        cursor.execute(upsert_sql)
+        conn.commit()
+    except Exception as e:
+        print(f"Error reading or executing SQL from {sql_path}: {e}")
+        conn.rollback()
+        raise
