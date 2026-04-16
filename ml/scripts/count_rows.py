@@ -6,7 +6,8 @@ import os
 MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if MOD_PATH not in sys.path:
     sys.path.insert(0, MOD_PATH)
-from seeder.config import DB_CONFIG
+
+
 
 def get_counts():
     conn = psycopg2.connect(**DB_CONFIG)

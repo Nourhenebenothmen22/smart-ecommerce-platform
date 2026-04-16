@@ -1,7 +1,7 @@
 {
   "venvPath": "ml",
   "venv": ".venv",
-  "pythonVersion": "3.11",
+  "pythonVersion": "3.14",
   "pythonPlatform": "Windows",
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": false,
@@ -10,7 +10,8 @@
   "exclude": ["ml/.venv"],
   "executionEnvironments": [
     {
-      "root": "ml"
+      "root": "ml",
+      "extraPaths": ["."]
     }
   ],
   "extraPaths": ["ml"]
