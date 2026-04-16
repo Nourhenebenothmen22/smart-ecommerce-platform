@@ -1,6 +1,15 @@
 import argparse
 import random
 import psycopg2
+import sys
+import os
+
+# Automatically add the current directory and the 'ml' directory to the path 
+# to allow running from root or from within the ml folder.
+base_ml_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if base_ml_dir not in sys.path:
+    sys.path.append(base_ml_dir)
+
 from seeder.config import DB_CONFIG, NB_USERS, NB_PRODUCTS, NB_INTERACTION_USERS, NB_ORDER_USERS, NB_RECOMMENDATION_USERS, NB_AUDIT_LOGS
 from seeder.helpers import get_user_signup_dates
 from seeder.core import (
@@ -61,13 +70,13 @@ def main():
         seed_user_sessions(cursor, conn, all_user_ids, all_signup_dates)
         seed_user_features(cursor, conn)
 
-        print(f"\n✅ Seeding Complete!")
+        print(f"\n--- Seeding Complete! ---")
         print(f"Total Users: {len(all_user_ids)}")
         print(f"Total Products: {len(all_product_ids)}")
 
     except Exception as e:
         if conn: conn.rollback()
-        print(f"\n❌ Error during seeding: {e}")
+        print(f"\nERROR during seeding: {e}")
         raise
     finally:
         if cursor: cursor.close()
