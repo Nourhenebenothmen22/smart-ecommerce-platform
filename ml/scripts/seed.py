@@ -12,32 +12,26 @@ import sys
 import os
 import time
 
+# ── Ensure the 'ml' directory is in sys.path ──────────────
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
 import psycopg2
 
-# Ensure the 'ml' directory is in sys.path
-MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if MOD_PATH not in sys.path:
-    sys.path.insert(0, MOD_PATH)
-
-try:
-    from seeder.config import (
-        DB_CONFIG, NB_USERS, NB_PRODUCTS, NB_AUDIT_LOGS,
-        NB_ORDER_USERS, NB_INTERACTION_USERS
-    )
-    from seeder.helpers import get_user_signup_dates
-    from seeder.core import (
-        clear_tables, get_or_create_categories_and_subcategories,
-        seed_users, seed_products, seed_reviews,
-        seed_wishlists_and_carts, seed_user_interactions,
-        seed_orders_payments_voice, seed_audit_logs,
-        seed_user_sessions, update_all_product_ratings,
-        get_existing_ids, get_product_lookup
-    )
-except ImportError as e:
-    print(f"CRITICAL: Failed to import seeder modules. "
-          f"Ensure you are running from the project root or ml directory.")
-    print(f"Error: {e}")
-    sys.exit(1)
+from seeder.config import (
+    DB_CONFIG, NB_USERS, NB_PRODUCTS, NB_AUDIT_LOGS,
+    NB_ORDER_USERS, NB_INTERACTION_USERS
+)
+from seeder.helpers import get_user_signup_dates
+from seeder.core import (
+    clear_tables, get_or_create_categories_and_subcategories,
+    seed_users, seed_products, seed_reviews,
+    seed_wishlists_and_carts, seed_user_interactions,
+    seed_orders_payments_voice, seed_audit_logs,
+    seed_user_sessions, update_all_product_ratings,
+    get_existing_ids, get_product_lookup
+)
 
 
 def main():

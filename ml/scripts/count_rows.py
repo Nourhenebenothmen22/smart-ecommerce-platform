@@ -2,20 +2,17 @@
 count_rows.py — Utility script to display row counts for all tables in the database.
 Usage: python -m scripts.count_rows
 """
-import psycopg2
 import sys
 import os
 
-# Ensure the 'ml' directory is in sys.path
-MOD_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if MOD_PATH not in sys.path:
-    sys.path.insert(0, MOD_PATH)
+import psycopg2
 
-try:
-    from seeder.config import DB_CONFIG
-except ImportError as e:
-    print(f"CRITICAL: Failed to import seeder modules. Error: {e}")
-    sys.exit(1)
+# ── Ensure the 'ml' directory is in sys.path ──────────────
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
+from seeder.config import DB_CONFIG
 
 
 def get_counts():

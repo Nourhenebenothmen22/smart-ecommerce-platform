@@ -16,7 +16,7 @@
   "executionEnvironments": [
     {
       "root": "ml",
-      "extraPaths": ["."]
+      "extraPaths": ["ml"]
     }
   ]
 }

@@ -1,10 +1,16 @@
+import os
+import sys
 import random
 import bcrypt
 from faker import Faker
 
 # =========================================================
-# CONFIG
+# CONFIG — Ensure ml/ root is in sys.path for sibling imports
 # =========================================================
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
 from core.config import settings
 
 DB_CONFIG = settings.db_config_dict
