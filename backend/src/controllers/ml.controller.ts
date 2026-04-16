@@ -1,6 +1,8 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+import { StatusCodes } from "http-status-codes";
 import { z } from "zod";
 import { mlService } from "../services/ml.service.js";
+import { sendResponse } from "../utils/apiResponse.js";
 
 // ─── Zod Schemas ────────────────────────────────────────────
 
@@ -34,20 +36,12 @@ export class MLController {
    * Triggers a manual recalculation of all user features.
    * POST /api/ml/recalculate-features
    */
-  async recalculateFeatures(_req: Request, res: Response) {
+  async recalculateFeatures(_req: Request, res: Response, next: NextFunction) {
     try {
       await mlService.recalculateUserFeatures();
-      res.status(200).json({
-        success: true,
-        message: "Recalculation of user features started/completed successfully."
-      });
+      sendResponse(res, StatusCodes.OK, "Recalculation of user features started/completed successfully.");
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      res.status(500).json({
-        success: false,
-        message: "Failed to recalculate features",
-        error: errorMessage
-      });
+      next(error);
     }
   }
 
@@ -55,31 +49,18 @@ export class MLController {
    * Endpoint for ML pipeline to push batch segmentation results.
    * POST /api/ml/segments
    */
-  async updateSegments(req: Request, res: Response) {
+  async updateSegments(req: Request, res: Response, next: NextFunction) {
     const parsed = segmentsBodySchema.safeParse(req.body);
 
     if (!parsed.success) {
-      res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: parsed.error.flatten().fieldErrors,
-      });
-      return;
+      return sendResponse(res, StatusCodes.BAD_REQUEST, "Validation failed", null, parsed.error.flatten().fieldErrors);
     }
 
     try {
       await mlService.recordUserSegments(parsed.data.segments);
-      res.status(200).json({
-        success: true,
-        message: `Successfully updated ${parsed.data.segments.length} user segments.`
-      });
+      sendResponse(res, StatusCodes.OK, `Successfully updated ${parsed.data.segments.length} user segments.`);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      res.status(500).json({
-        success: false,
-        message: "Failed to update segments",
-        error: errorMessage
-      });
+      next(error);
     }
   }
 
@@ -87,31 +68,18 @@ export class MLController {
    * Registers a model version after training.
    * POST /api/ml/models
    */
-  async registerModel(req: Request, res: Response) {
+  async registerModel(req: Request, res: Response, next: NextFunction) {
     const parsed = registerModelSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: parsed.error.flatten().fieldErrors,
-      });
-      return;
+      return sendResponse(res, StatusCodes.BAD_REQUEST, "Validation failed", null, parsed.error.flatten().fieldErrors);
     }
 
     try {
       await mlService.registerModel(parsed.data);
-      res.status(201).json({
-        success: true,
-        message: "Model registered successfully."
-      });
+      sendResponse(res, StatusCodes.CREATED, "Model registered successfully.");
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-      res.status(500).json({
-        success: false,
-        message: "Failed to register model",
-        error: errorMessage
-      });
+      next(error);
     }
   }
 }

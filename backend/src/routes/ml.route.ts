@@ -1,15 +1,19 @@
 import { Router } from "express";
 import { mlController } from "../controllers/ml.controller.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// Recalculate features (Admin only - middleware should be added here in real scenario)
-router.post("/recalculate-features", (req, res) => mlController.recalculateFeatures(req, res));
+// Apply authentication to all ML routes
+router.use(authenticate);
+
+// Recalculate features (Admin only - ideally we check for admin role here too)
+router.post("/recalculate-features", (req, res, next) => mlController.recalculateFeatures(req, res, next));
 
 // Update segments (ML pipeline endpoint)
-router.post("/segments", (req, res) => mlController.updateSegments(req, res));
+router.post("/segments", (req, res, next) => mlController.updateSegments(req, res, next));
 
 // Register model
-router.post("/models", (req, res) => mlController.registerModel(req, res));
+router.post("/models", (req, res, next) => mlController.registerModel(req, res, next));
 
 export const mlRouter = router;

@@ -10,7 +10,7 @@ router.get('/product/:id', validate({ params: productIdSchema }), reviewControll
 
 router.use(authenticate);
 
-router.post('/', validate({ body: reviewSchema }), reviewController.createReview);
+router.post('/', validate({ body: reviewSchema }), reviewController.addReview);
 router.delete('/:id', validate({ params: reviewIdSchema }), reviewController.deleteReview);
 
 export { router as reviewRouter };
