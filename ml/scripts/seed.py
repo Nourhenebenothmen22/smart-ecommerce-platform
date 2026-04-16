@@ -15,12 +15,12 @@ from seeder.helpers import get_user_signup_dates
 from seeder.core import (
     clear_tables, get_or_create_categories_and_subcategories, seed_users, 
     seed_products, seed_reviews, seed_wishlists_and_carts, seed_user_interactions,
-    seed_orders_payments_voice, seed_audit_logs, 
+    seed_orders_payments_voice, seed_audit_logs, seed_user_sessions, 
     update_all_product_ratings, get_existing_ids, get_product_lookup
 )
 
 def main():
-    parser = argparse.ArgumentParser(description="eCommerce Mock Data Seeder - Core Business + Interactions")
+    parser = argparse.ArgumentParser(description="eCommerce Mock Data Seeder - AI Training Source Data Preparation")
     parser.add_argument("--mode", choices=["reset", "append"], default="append", 
                         help="Mode of initialization: 'reset' cleans the DB first, 'append' adds more data.")
     args = parser.parse_args()
@@ -49,7 +49,7 @@ def main():
         product_lookup = get_product_lookup(cursor)
         all_signup_dates = get_user_signup_dates(cursor)
 
-        # 4. Behavioral & Transactional Data
+        # 4. Behavioral & Transactional Data (Source for ML)
         seed_reviews(cursor, conn, product_ids, all_user_ids, subcategory_to_category, all_signup_dates)
         
         interaction_users = random.sample(all_user_ids, k=min(NB_INTERACTION_USERS, len(all_user_ids)))
@@ -60,10 +60,13 @@ def main():
         seed_orders_payments_voice(cursor, conn, order_users, product_lookup, all_signup_dates)
         seed_audit_logs(cursor, conn, all_user_ids, all_product_ids, NB_AUDIT_LOGS)
 
-        # 5. Aggregates
+        # 5. ML Analytics (Source for ML)
+        seed_user_sessions(cursor, conn, all_user_ids, all_signup_dates)
+
+        # 6. Aggregates
         update_all_product_ratings(cursor, conn)
 
-        print(f"\n--- Seeding Complete! ---")
+        print(f"\n--- Seeding Complete (AI Source Data Prepared) ---")
         print(f"Total Users: {len(all_user_ids)}")
         print(f"Total Products: {len(all_product_ids)}")
 
