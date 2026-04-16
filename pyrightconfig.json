@@ -6,7 +6,12 @@
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": false,
   "reportMissingImports": true,
-  "include": ["ml", "backend"],
-  "exclude": ["ml/.venv"],
-  "extraPaths": ["ml"]
+  "include": ["ml"],
+  "exclude": ["ml/.venv", "backend"],
+  "executionEnvironments": [
+    {
+      "root": "ml",
+      "extraPaths": ["."]
+    }
+  ]
 }
