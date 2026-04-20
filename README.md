@@ -1,292 +1,95 @@
-# 🚀 E-Commerce Intelligent Platform (Backend & ML Architecture)
+# 🚀 E-Commerce Intelligent Platform (Backend & Machine Learning Hybride)
 
-Bienvenue dans l'architecture Backend et Data de la plateforme e-commerce intelligente. Ce projet est un environnement **hybride** mêlant logique métier (CRUD) et pipeline analytique (Machine Learning).
+Bienvenue dans l'architecture Backend et Intelligence Artificielle de la plateforme e-commerce. Ce projet est un environnement **hybride** mêlant logique métier stricte (Node.js) et pipeline de requêtes sémantiques ou génératives (Python FastAPI / LLMs / Algorithmes).
 
 ---
 
 ## 🏗️ Architecture du Projet
 
-### 1. Topologie des Dossiers
-- **`backend/src/sql/`** : Source de vérité du schéma (001-008). Idempotent et versionné.
-- **`backend/src/services/`** : Logique métier dissociée des contrôleurs.
-- **`backend/src/utils/`** : Utilitaires transverses (**AppError**, **apiResponse**).
-- **`ml/scripts/seed.py`** : Point d'entrée du générateur de données synthétiques.
-- **`ml/seeder/`** : Logique de génération (catalog, config, core).
-- **`ml/core/`** : Configuration centralisée et accès DB partagé.
-- **`ml/data/sql/`** : Scripts SQL analytiques (ex: `upsert_user_features.sql`).
+Le système s'articule autour de 3 piliers majeurs :
 
-### 2. Architecture ML (Clean Structure)
-Le dossier `ml/` est organisé selon les standards de production :
-- `api/` : Endpoints d'inférence (Inférence Temps Réel).
-- `models/` : Entraînement et artifacts des modèles (Segmentation, Reco).
-- `notebooks/` : Recherche et Exploration (EDA).
-- `scripts/` : Automatisation et Jobs (Seeding).
+### 1. Backend API (Node.js / Express) dans `backend/`
+- **`src/sql/`** : Source de vérité du schéma (001-010). Idempotent, contenant des configurations avancées et des tables spécifiques (`product_embeddings`, `chatbot_interactions`).
+- **`src/services/`** : Logique métier (Commandes, Avis, etc.) dissociée des contrôleurs.
+- **Sécurité et Scalabilité** : Zod pour la validation, JWT, Bcrypt, Helmet, et Rate Limiting centralisés.
 
-### 3. Schéma Relationnel (ERD) & Cardinalités
-Cette structure permet de passer d'une transaction client à un modèle de segmentation IA.
+### 2. Service NLP & APIs ML (Python / FastAPI) dans `ml/`
+- **`api/main.py`** : Serveur d'inférence (FastAPI) écoutant sur le port 8000. Point d'entrée pour le Chatbot documentaire (endpoint `/chat`).
+- **`nlp/chatbot/`** : Agent **RAG (Retrieval-Augmented Generation)** qui synthétise les recommandations produits en interrogeant la LLM (OpenAI par défaut). 
+- **`nlp/retrieval/`** : Moteurs d'extraction hybride configurés pour interroger la base :
+  - *DenseVectoreRetriever* : Recherche Sémantique par similarité Cosinus (via l'extension PostgreSQL `pgvector`).
+  - *BM25Retriever* : Recherche Lexicale exacte.
+- **`nlp_experiments/`** : Scripts d'automatisation des tests et benchmarks QA des modèles (Performance, Non-Regression, Overfitting).
+
+### 3. Base de Données Hybride (PostgreSQL)
+Fournie via Docker (`ecommerce_postgres`), la base intègre l'extension **pgvector** (`pgvector/pgvector:pg16`). Elle assure à la fois du transactionnel classique (Orders) et du stockage de vecteurs (Embeddings de 384 dimensions).
+
+---
+
+## 🎯 Schéma Relationnel & Traçabilité RAG
+
+Cette architecture ne se contente pas de stocker des ventes, elle capture tout le processus décisionnel IA.
 
 ```mermaid
 erDiagram
     USERS ||--o{ ORDERS : "places"
-    USERS ||--o{ REVIEWS : "writes"
-    USERS ||--o{ USER_INTERACTIONS : "performs"
-    USERS ||--o{ USER_SESSIONS : "starts"
-    USERS ||--|| USER_FEATURES : "has"
-    USERS ||--o{ USER_SEGMENTS : "belongs_to"
+    USERS ||--o{ CHATBOT_INTERACTIONS : "chats"
+    
+    PRODUCTS ||--|| PRODUCT_EMBEDDINGS : "has_vector_for_search"
+    
+    CHATBOT_INTERACTIONS ||--o{ NLP_SIMILARITY_METRICS : "evaluated_by"
+    
+    API_NODEJS ||--o{ API_FASTAPI : "proxies /chat"
+```
+_Note: `chatbot_interactions` permet de retracer le contexte fourni par `pgvector` à l'IA, sécurisant et auditable (Traçabilité complète des hallucination)._
 
-    CATEGORIES ||--o{ SUBCATEGORIES : "contains"
-    SUBCATEGORIES ||--o{ PRODUCTS : "groups"
-    PRODUCTS ||--o{ ORDER_ITEMS : "in"
-    ORDERS ||--o{ ORDER_ITEMS : "contains"
-    
-    ORDERS ||--|| PAYMENTS : "has"
-    ORDERS ||--o| VOICE_CONFIRMATIONS : "confirms"
-    
-    REVIEWS ||--|| REVIEW_ANALYSIS : "analyzed"
-    PRODUCTS ||--o{ PRODUCT_EMBEDDINGS : "represented"
-    
-    ML_MODELS ||--o{ USER_SEGMENTS : "segments"
-    ML_MODELS ||--o{ REVIEW_ANALYSIS : "enriches"
+---
+
+## 💾 Guide d'Exécution & Déploiement Local
+
+### Étape 1 : Infrastructure
+Démarrez la base de données (qui inclut nativement `pgvector`) :
+```bash
+cd backend/infra/docker
+docker-compose up -d
+```
+
+### Étape 2 : Initialisation du Backend (Environnement Transactionnel)
+```bash
+cd backend
+npm install
+npm run db:init # ⚠️ Force-refresh : Réinstalle les 10 schémas SQL incluant les tables IA !
+npm run dev     # Lance le backend Node.js (ex: http://localhost:5000)
+```
+_Astuce : Exécutez `npm run ml:seed:reset` depuis le package.json pour la génération automatisée initiale du catalogue._
+
+### Étape 3 : Initialisation du Service ML (FastAPI & Agent)
+```bash
+cd ml
+# Recommandé: Créez un Virtual Environnement
+pip install -r requirements.txt
+```
+
+**⚠️ Configuration IA (Variable d'Environnement) :**
+Pour que le Chatbot puisse répondre, configurez la clé OpenAI :
+- **Windows PowerShell :** `$env:OPENAI_API_KEY="sk-votre-cle"`
+- **Linux/Mac :** `export OPENAI_API_KEY="sk-votre-cle"`
+*(Si la clé est absente, l'API passera en mode DÉMO sécurisé sans crasher).*
+
+```bash
+# Lancement de l'API ML
+python api/main.py
 ```
 
 ---
 
-## 🔐 Sécurité & Hachage
-Le système utilise **Bcrypt** (12 rounds) pour protéger les mots de passe.
-- **Utilisateurs Seed** : Tous les comptes générés ont le mot de passe `password123`.
-- **Backend** : Utilitaire `password.ts` disponible pour le hash/compare.
+## 🛡️ Audit de Qualité Effectué (Avril 2026)
 
----
-
-## 💾 Guide d'Exécution (Commandes)
-
-| Action | Commande | Description |
-| :--- | :--- | :--- |
-| **Setup SQL** | `npm run db:init` | Initialise tables, triggers et contraintes (Force-refresh). |
-| **Seeding Reset** | `npm run ml:seed:reset` | Vide la base et génère 18 mois d'historique (Mode paid). |
-| **Seeding Add** | `npm run ml:seed:append` | Ajoute des données sans effacer l'existant. |
-| **ML Snapshot** | `npm run ml:upsert-features` | Persiste les features utilisateurs pour l'IA. |
-| **Dev Server** | `npm run dev` | Lance l'API Express avec rechargement automatique. |
-| **Run Tests** | `npm run test` | Exécute la suite de tests (avec `--passWithNoTests`). |
-
----
-
-## 🚀 Quick Start & Daily Workflow
-
-Pour assurer la **rigidité** et la **sécurité** du projet à chaque ouverture ou mise à jour, suivez ces étapes :
-
-1. **`npm install`** : Installe les nouvelles dépendances critiques (`jsonwebtoken`, `lusca`, etc.).
-2. **`npm run prepare`** : Initialise **Husky** pour activer les Git Hooks de pré-commit.
-3. **`npm run dev`** : Lance le serveur en mode développement.
-
----
-
-## 🛡️ Sécurité & Performance (Nouveautés)
-
-Le backend a été renforcé avec les standards industriels suivants :
-
-- **Authentification JWT** : Gestion sécurisée des sessions via HTTP-Only Cookies.
-- **Validation d'Environnement** : Configuration stricte via **Zod** ([`env.ts`](file:///c:/full_stack%20projects/ecommerce-intelligent-platform/backend/src/config/env.ts)).
-- **Top-Tier Security Headers** : Implémentation via **Helmet** et **Lusca** (Clickjacking, X-XSS).
-- **Rate Limiting** : Protection contre les attaques par force brute (100 req/15min).
+Le Backend et le dossier ML respectent un cahier des charges strict vérifié par l'Agent QA :
+1. **Node.js** : Utilisation stricte de Middlewares défensifs (compression, helmet, xss protection via lusca).
+2. **Pydantic (Python)** : Validation en entrée du pipeline Machine Learning pour rejeter les injections (SQL Injection ou anomalies de payload).
+3. **Prévention Overfitting** : Le `System Prompt` de l'agent Chatbot est encapsulé au niveau classe (`RAGChatbotAgent`) forçant les réponses à rester concentrées sur l'e-commerce avec des garde-fous "Hors-domaine".
+4. **Performance Hybride** : Les architectures `Node` (I/O Lourd) et `Python` (Inférence/CPU lourds) sont correctement isolées et peuvent scaler séparément via microservice.
 
 > [!NOTE]
-> Pour plus de détails sur l'implémentation de la sécurité, consultez le [**SECURITY_GUIDE.md**](file:///c:/full_stack%20projects/ecommerce-intelligent-platform/backend/SECURITY_GUIDE.md).
-
----
-
-## 🛠️ Qualité de Développement
-
-### Git Hooks (Husky)
-Vos commits sont désormais protégés. Avant chaque `git commit`, le système :
-1. S'assurera que le projet compile correctement.
-2. Empêchera le commit si les tests critiques échouent.
-
-### HTTP Status Codes & ApiResponse
-Utilisez toujours les constantes de `http-status-codes` et l'utilitaire `sendResponse` :
-```typescript
-import { StatusCodes } from 'http-status-codes';
-import { sendResponse } from '../utils/apiResponse.js';
-
-sendResponse(res, StatusCodes.OK, "Success message", data);
-```
-
-### Centralized Error Handling
-Toutes les erreurs opérationnelles doivent passer par la classe **AppError** :
-- Les erreurs sont capturées globalement par `errorHandler`.
-- Supporte les erreurs **Zod**, **JWT**, et les contraintes **PostgreSQL**.
-
----
-
-## 🧠 Le Pont ML (`Upsert`)
-Le "Secret Sauce" est le **Feature Persistence Layer** :
-1. Les actions utilisateurs (clics, orders) sont capturées en temps réel.
-2. La vue `v_user_behavior_features` agrège ces comportements.
-3. `npm run ml:upsert-features` fige ces stats dans `user_features` pour l'entraînement des modèles.
-
----
-
-## 📡 API Endpoints (ML Pipeline)
-
-L'API Express expose des points d'entrée spécifiques pour l'intégration avec les pipelines de Machine Learning :
-
-| Méthode | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/ml/recalculate-features` | Déclenche manuellement la recalculation des features utilisateurs. |
-| `POST` | `/api/ml/segments` | Permet au pipeline ML de pousser des résultats de segmentation en masse. |
-| `POST` | `/api/ml/models` | Enregistre les métadonnées et le chemin d'un nouveau modèle entraîné. |
-
----
-
-## 🐘 Commandes PostgreSQL & Docker (Accès Direct à la Base)
-
-> Ces commandes permettent d'interagir **directement** avec la base de données PostgreSQL qui tourne dans le conteneur Docker `ecommerce_postgres`.
-> Elles sont utiles pour le **debug**, la **vérification des données** après le seeding, ou simplement pour explorer le schéma.
-
-### 📌 Pré-requis
-
-Avant d'exécuter ces commandes, assurez-vous que :
-1. **Docker Desktop** est lancé et en cours d'exécution.
-2. Le conteneur `ecommerce_postgres` est **actif** (icône verte dans Docker Desktop ou vérifiez avec `docker ps`).
-3. Vous êtes dans un **terminal** (PowerShell, CMD ou Git Bash).
-
-```bash
-# Vérifier que le conteneur tourne bien
-docker ps
-# Vous devriez voir une ligne avec "ecommerce_postgres" dans la colonne NAMES
-```
-
----
-
-### 🔌 Se connecter à PostgreSQL (mode interactif)
-
-Ouvre une session `psql` interactive. Vous pouvez y taper des requêtes SQL librement.
-
-```bash
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db
-```
-
-| Paramètre | Signification |
-| :--- | :--- |
-| `docker exec -it` | Exécute une commande **dans** le conteneur en mode interactif (terminal) |
-| `ecommerce_postgres` | Nom du conteneur Docker qui héberge PostgreSQL |
-| `psql` | Client en ligne de commande de PostgreSQL |
-| `-U postgres` | Se connecter avec l'utilisateur `postgres` (superadmin) |
-| `-d ecommerce_ml_db` | Se connecter à la base de données `ecommerce_ml_db` |
-
-> **💡 Pour quitter psql** : tapez `\q` puis Entrée.
-
----
-
-### 🔍 Commandes d'exploration (mode non-interactif)
-
-Ces commandes s'exécutent en **une seule ligne** depuis votre terminal (pas besoin d'entrer dans psql).
-
-#### 📋 Lister toutes les tables de la base
-
-```bash
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "\dt"
-```
-
-> **Explication** : `\dt` est une commande psql qui affiche toutes les tables du schéma `public`.
-> Le flag `-c` permet de passer une commande à `psql` sans ouvrir une session interactive.
-
-#### 🗄️ Lister toutes les bases de données disponibles
-
-```bash
-docker exec -it ecommerce_postgres psql -U postgres -c "\l"
-```
-
-> **Explication** : `\l` liste toutes les bases de données sur le serveur PostgreSQL.
-> Vous devriez voir `ecommerce_ml_db` dans la liste.
-
-#### ✅ Tester que PostgreSQL répond correctement
-
-```bash
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT NOW();"
-```
-
-> **Explication** : `SELECT NOW()` retourne la date et l'heure actuelles du serveur.
-> Si vous obtenez un résultat avec une date, **la connexion fonctionne** ✅.
-
----
-
-### 📊 Vérifier que les tables sont remplies (après le seeding)
-
-Après avoir exécuté `npm run ml:seed:reset`, utilisez ces commandes pour vérifier que les données ont bien été insérées :
-
-```bash
-# Compter les utilisateurs
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM users;"
-
-# Compter les produits
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM products;"
-
-# Compter les commandes
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM orders;"
-
-# Compter les interactions utilisateurs
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM user_interactions;"
-
-# Compter les avis clients
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM reviews;"
-
-# Compter les paiements
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT COUNT(*) FROM payments;"
-```
-
-> **Résultat attendu** : Chaque table devrait contenir plusieurs centaines ou milliers de lignes après un seeding réussi.
-
-#### 🔎 Voir un aperçu des données (5 premières lignes)
-
-```bash
-# Aperçu des utilisateurs
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM users LIMIT 5;"
-
-# Aperçu des produits
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM products LIMIT 5;"
-
-# Aperçu des features ML
-docker exec -it ecommerce_postgres psql -U postgres -d ecommerce_ml_db -c "SELECT * FROM user_features LIMIT 5;"
-```
-
----
-
-### 🛠️ Astuces utiles dans psql (mode interactif)
-
-Si vous êtes en session interactive (`docker exec -it ... psql ...`), voici des commandes utiles :
-
-| Commande psql | Action |
-| :--- | :--- |
-| `\dt` | Lister toutes les tables |
-| `\d nom_table` | Voir la structure d'une table (colonnes, types, contraintes) |
-| `\dv` | Lister toutes les vues (views) |
-| `\l` | Lister toutes les bases de données |
-| `\pset pager off` | **Désactiver le pager** (évite le message `-- More --` ou `END`) |
-| `\x` | Activer/désactiver l'affichage étendu (vertical) |
-| `\q` | **Quitter** psql et revenir au terminal |
-| `\?` | Afficher l'aide de toutes les commandes psql |
-
-> **⚠️ Astuce importante** : Si vous voyez `(END)` ou `-- More --` en bas de l'écran, appuyez sur la touche **`q`** pour revenir à l'invite.
-> Pour éviter ce problème, exécutez `\pset pager off` dès que vous entrez dans psql.
-
----
-
-### 🚨 Résolution de problèmes courants
-
-| Problème | Cause probable | Solution |
-| :--- | :--- | :--- |
-| `Error: No such container: ecommerce_postgres` | Le conteneur n'est pas lancé | Lancez `docker-compose up -d` depuis la racine du projet |
-| `FATAL: database "ecommerce_ml_db" does not exist` | La base n'a pas été créée | Exécutez `npm run db:init` pour initialiser le schéma |
-| `FATAL: password authentication failed` | Mauvais mot de passe | Vérifiez la variable `POSTGRES_PASSWORD` dans `docker-compose.yml` |
-| `relation "users" does not exist` | Les tables n'ont pas été créées | Exécutez `npm run db:init` puis `npm run ml:seed:reset` |
-| Résultats vides (`count = 0`) | Le seeding n'a pas été lancé | Exécutez `npm run ml:seed:reset` pour générer les données |
-
----
-
-## 🛠️ Maintenance & Mise à jour
-- **Vocabulaire Status** : Les status (`paid`, `refunded`, etc.) sont désormais forcés dans le schéma via `002_constraints.sql`. Si vous changez le vocabulaire, relancez `npm run db:init`.
-- **Ajout de Données** : Pour modifier les produits ou avis, intervenez directement dans `ml/seeder/catalog.py` ou `ml/seeder/generators.py`.
-
----
-**[ 🛑 Document consolidé le 04 Avril 2026 ]**
+> Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/`.
