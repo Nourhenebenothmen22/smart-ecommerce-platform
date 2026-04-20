@@ -16,7 +16,11 @@
   "executionEnvironments": [
     {
       "root": "ml",
-      "extraPaths": ["."]
+      "extraPaths": [
+        ".",
+        "api",
+        "scripts"
+      ]
     }
   ]
 }
