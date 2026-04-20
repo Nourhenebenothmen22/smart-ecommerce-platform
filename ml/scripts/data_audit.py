@@ -39,7 +39,7 @@ def run_audit():
         cur.execute("SELECT COUNT(*) as cnt FROM products WHERE price <= 0 OR price IS NULL;")
         report['products_invalid_price'] = cur.fetchone()['cnt']
         
-        cur.execute("SELECT COUNT(*) as cnt FROM products WHERE stock_quantity < 0;")
+        cur.execute("SELECT COUNT(*) as cnt FROM products WHERE stock < 0;")
         report['products_negative_stock'] = cur.fetchone()['cnt']
         
         # 3. Orders Audit (Orphans, Anomalies)
