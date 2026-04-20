@@ -17,8 +17,8 @@ class RAGChatbotAgent:
     def __init__(self, api_key: str = None):
         from dotenv import load_dotenv
         import os
-        # Point specifically to ml/.env
-        dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../.env'))
+        # Point specifically to project root .env
+        dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../.env'))
         load_dotenv(dotenv_path) # Load variables from .env if present
         
         # We allow injecting API Key, fallback to env variable. 
