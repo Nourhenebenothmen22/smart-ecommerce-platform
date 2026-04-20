@@ -13,11 +13,5 @@
     "backend",
     "node_modules"
   ],
-  "extraPaths": ["./ml"],
-  "executionEnvironments": [
-    {
-      "root": "ml",
-      "extraPaths": ["."]
-    }
-  ]
+  "extraPaths": ["ml"]
 }
