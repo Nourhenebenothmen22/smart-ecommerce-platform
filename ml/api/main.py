@@ -3,8 +3,10 @@ from pydantic import BaseModel
 import sys
 import os
 
-# Add the 'ml' directory to the path so we can import 'nlp' module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# ── Ensure the 'ml' directory is in sys.path ──────────────
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
 
 from nlp.chatbot.agent import RAGChatbotAgent
 from nlp.retrieval.vector_search import DenseVectorRetriever

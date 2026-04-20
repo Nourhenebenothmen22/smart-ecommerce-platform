@@ -4,9 +4,12 @@ from fastapi.testclient import TestClient
 import time
 import json
 
-# Add the 'ml/api' directory to the path so we can import the app
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'api')))
-from main import app
+# ── Ensure the 'ml' directory is in sys.path ──────────────
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
+from api.main import app
 
 client = TestClient(app)
 
