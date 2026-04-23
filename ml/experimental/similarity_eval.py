@@ -1,57 +1,188 @@
-import time
-import random
+"""
+similarity_eval.py — Real evaluation of BM25 vs Dense Vector vs Hybrid search.
 
-# Exemples de requêtes d'évaluation
+Runs actual queries against the database and measures precision, latency,
+and result quality. Results can be inserted into nlp_similarity_metrics.
+"""
+import time
+import sys
+import os
+import json
+import logging
+
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+# Test queries with expected relevant product categories/keywords
 TEST_QUERIES = [
-    "téléphone portable avec bonne batterie",
-    "iphone 12 pro max",
-    "chaussures de course homme légères",
-    "Samsung Galaxy S21"
+    {
+        "query": "téléphone portable avec bonne batterie",
+        "expected_keywords": ["phone", "smartphone", "mobile", "téléphone", "batterie"],
+        "type": "semantic"
+    },
+    {
+        "query": "iphone 12 pro max",
+        "expected_keywords": ["iphone", "apple"],
+        "type": "exact"
+    },
+    {
+        "query": "chaussures de course homme légères",
+        "expected_keywords": ["chaussure", "course", "running", "sport"],
+        "type": "semantic"
+    },
+    {
+        "query": "Samsung Galaxy S21",
+        "expected_keywords": ["samsung", "galaxy"],
+        "type": "exact"
+    },
+    {
+        "query": "cadeau tech pas cher",
+        "expected_keywords": ["tech", "électronique"],
+        "type": "intent"
+    },
+    {
+        "query": "écouteurs bluetooth sans fil",
+        "expected_keywords": ["écouteur", "bluetooth", "audio", "casque"],
+        "type": "semantic"
+    }
 ]
 
-def evaluate_bm25(query: str):
-    """Simule une exécution BM25 et retourne une précision factice"""
-    start = time.time()
-    # Logique BM25 : fort sur les mots "iphone 12" ou "Samsung Galaxy", faible sur l'intention "bonne batterie"
-    time.sleep(0.01) # Simule I/O
-    precision = random.uniform(0.5, 0.9) if "12" in query or "21" in query else random.uniform(0.1, 0.4)
-    return {
-        "algorithm": "BM25",
-        "latency_ms": (time.time() - start) * 1000,
-        "precision_at_5": precision,
-        "recall_at_5": precision + 0.1
-    }
 
-def evaluate_cosine(query: str):
-    """Simule une exécution Embeddings (Dense Cohere/MiniLM) et retourne une précision factice"""
-    start = time.time()
-    # Logique Cosine : Fort sur le sens "téléphone bonne batterie" ou "légères"
-    time.sleep(0.04) # Simule Model Inference + DB I/O
-    precision = random.uniform(0.7, 0.95) if "batterie" in query or "course" in query else random.uniform(0.6, 0.8)
-    return {
-        "algorithm": "Dense_Cosine",
-        "latency_ms": (time.time() - start) * 1000,
-        "precision_at_5": precision,
-        "recall_at_5": precision + 0.15
-    }
+def compute_keyword_precision(results: list, expected_keywords: list) -> float:
+    """
+    Compute a simple keyword-based precision metric.
+    Checks how many results contain at least one expected keyword in title/brand/description.
+    """
+    if not results:
+        return 0.0
 
-def run_experiment(experiment_name: str):
-    print(f"--- Démarrage de l'expérience: {experiment_name} ---")
-    
-    results = []
-    for query in TEST_QUERIES:
-        print(f"\nRequête: '{query}'")
-        res_bm25 = evaluate_bm25(query)
-        res_cos = evaluate_cosine(query)
-        
-        print(f"  BM25   -> Précision: {res_bm25['precision_at_5']:.2f} | Latence: {res_bm25['latency_ms']:.2f}ms")
-        print(f"  Cosine -> Précision: {res_cos['precision_at_5']:.2f} | Latence: {res_cos['latency_ms']:.2f}ms")
-        
-        results.append(res_bm25)
-        results.append(res_cos)
-        
-    print(f"\n--- Fin de l'expérience ---")
-    print("Dans un environnement réel, ces résultats seraient insérés dans 'nlp_similarity_metrics'.")
+    hits = 0
+    for r in results:
+        text = f"{r.get('name', '')} {r.get('brand', '')} {r.get('description', '')}".lower()
+        if any(kw.lower() in text for kw in expected_keywords):
+            hits += 1
+
+    return hits / len(results)
+
+
+def evaluate_retriever(retriever_class, retriever_name: str, queries: list, top_k: int = 5):
+    """Run evaluation on a single retriever."""
+    results_summary = []
+
+    for q in queries:
+        query = q["query"]
+        expected = q["expected_keywords"]
+
+        start = time.time()
+        try:
+            results = retriever_class.search(query, top_k=top_k)
+        except Exception as e:
+            logger.error(f"  {retriever_name} failed on '{query}': {e}")
+            results = []
+        latency = (time.time() - start) * 1000
+
+        precision = compute_keyword_precision(results, expected)
+
+        results_summary.append({
+            "query": query,
+            "algorithm": retriever_name,
+            "num_results": len(results),
+            "precision_at_k": round(precision, 4),
+            "latency_ms": round(latency, 2),
+            "top_result": results[0].get("name", "N/A") if results else "N/A"
+        })
+
+        logger.info(
+            f"  [{retriever_name}] '{query[:40]}...' → "
+            f"{len(results)} results | P@{top_k}={precision:.2f} | {latency:.1f}ms"
+        )
+
+    return results_summary
+
+
+def save_to_db(results: list, experiment_name: str):
+    """Save evaluation results to nlp_similarity_metrics table."""
+    try:
+        from core.db import get_db_cursor
+        with get_db_cursor(commit=True) as cur:
+            for r in results:
+                cur.execute("""
+                    INSERT INTO nlp_similarity_metrics
+                    (experiment_name, dataset_size, algorithm_name, precision_at_k, avg_latency_ms, hyperparameters)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    experiment_name,
+                    len(TEST_QUERIES),
+                    r["algorithm"],
+                    r["precision_at_k"],
+                    r["latency_ms"],
+                    json.dumps({"query": r["query"], "top_result": r["top_result"]})
+                ))
+        logger.info(f"Results saved to nlp_similarity_metrics ({len(results)} rows)")
+    except Exception as e:
+        logger.warning(f"Could not save to DB (non-fatal): {e}")
+
+
+def run_experiment(experiment_name: str = "Hybrid_Evaluation_v2"):
+    """Run a full comparative evaluation of all retrievers."""
+    print(f"\n{'='*60}")
+    print(f"  Similarity Evaluation: {experiment_name}")
+    print(f"{'='*60}\n")
+
+    all_results = []
+
+    # 1. BM25
+    print("--- BM25 (Full-Text Search) ---")
+    try:
+        from nlp.retrieval.bm25_search import BM25Retriever
+        bm25 = BM25Retriever()
+        bm25_results = evaluate_retriever(bm25, "BM25", TEST_QUERIES)
+        all_results.extend(bm25_results)
+    except Exception as e:
+        print(f"  BM25 unavailable: {e}")
+
+    # 2. Dense Vector
+    print("\n--- Dense Vector (Semantic Search) ---")
+    try:
+        from nlp.retrieval.vector_search import DenseVectorRetriever
+        vector = DenseVectorRetriever()
+        vector_results = evaluate_retriever(vector, "Dense_Cosine", TEST_QUERIES)
+        all_results.extend(vector_results)
+    except Exception as e:
+        print(f"  Vector search unavailable: {e}")
+
+    # 3. Hybrid RRF
+    print("\n--- Hybrid RRF (BM25 + Vector) ---")
+    try:
+        from nlp.retrieval.hybrid_search import HybridRetriever
+        hybrid = HybridRetriever()
+        hybrid_results = evaluate_retriever(hybrid, "Hybrid_RRF", TEST_QUERIES)
+        all_results.extend(hybrid_results)
+    except Exception as e:
+        print(f"  Hybrid search unavailable: {e}")
+
+    # Summary
+    print(f"\n{'='*60}")
+    print("  Summary")
+    print(f"{'='*60}")
+
+    for algo in ["BM25", "Dense_Cosine", "Hybrid_RRF"]:
+        algo_results = [r for r in all_results if r["algorithm"] == algo]
+        if algo_results:
+            avg_precision = sum(r["precision_at_k"] for r in algo_results) / len(algo_results)
+            avg_latency = sum(r["latency_ms"] for r in algo_results) / len(algo_results)
+            print(f"  {algo:15s} | Avg P@5: {avg_precision:.2f} | Avg Latency: {avg_latency:.1f}ms")
+
+    # Save to DB
+    if all_results:
+        save_to_db(all_results, experiment_name)
+
+    print(f"\n{'='*60}\n")
+
 
 if __name__ == "__main__":
-    run_experiment("Search_Baseline_Evaluation_v1")
+    run_experiment()
