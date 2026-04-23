@@ -28,6 +28,18 @@ def run():
     print("2. Mise à jour du schéma pgvector pour accepter 384 dimensions...")
     cur.execute("ALTER TABLE product_embeddings ALTER COLUMN embedding_vector TYPE vector(384);")
     conn.commit()
+
+    # Create the model in ml_models to avoid FK violation
+    try:
+        cur.execute("""
+            INSERT INTO ml_models (name, version) 
+            VALUES ('all-MiniLM-L6-v2', '1.0') 
+            ON CONFLICT (name, version) DO NOTHING;
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Check ml_models insert: {e}")
+        conn.rollback()
     
     cur.execute("SELECT id, title, description, brand FROM products;")
     products = cur.fetchall()
