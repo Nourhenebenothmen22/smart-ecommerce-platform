@@ -111,7 +111,7 @@ python ml/api/main.py
 # Lancer la suite de tests complète (Pydantic, Injections, Scénarios)
 pytest ml/test_chat.py -v
 
-# Lancer l'outil d'évaluation QA automatisé
+# Lancer l'outil d'évaluation QA automatisé (génère un rapport détaillé)
 python ml/nlp_experiments/chatbot_qa_tester.py
 ```
 
@@ -127,10 +127,24 @@ python ml/scripts/generate_embeddings.py
 npm run ml:seed:reset
 ```
 
+## 🛠️ Dépannage (Troubleshooting)
+
+### Erreur `getaddrinfo failed` au lancement de `main.py`
+Si vous obtenez une erreur de connexion lors du premier lancement :
+- **Cause** : Le script tente de télécharger le modèle de langage (`paraphrase-multilingual-MiniLM-L12-v2`) depuis Hugging Face.
+- **Solution** : Vérifiez votre connexion internet. Une fois téléchargé, le modèle est mis en cache localement et ne nécessite plus d'internet.
+
+### Erreur de Port (5433)
+Si le service ML ne se connecte pas à la DB :
+- Vérifiez que Docker est lancé (`docker-compose ps`).
+- Le port par défaut est **5433** (mappage Docker). Si vous utilisez un Postgres local sans Docker, changez `DB_PORT=5432` dans le fichier `.env`.
+
+---
+
 > [!TIP]
 > Avant de déployer une modification sur le `System Prompt`, exécutez systématiquement `pytest ml/test_chat.py` pour vérifier que les garde-fous contre les injections sont toujours actifs.
 
 ---
 
 > [!NOTE]
-> Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/`.
+> Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/` ou le guide détaillé `ml/docs/CHATBOT_PIPELINE.md`.
