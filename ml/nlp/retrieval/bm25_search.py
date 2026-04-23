@@ -24,14 +24,20 @@ class BM25Retriever:
         if not words:
             return results
             
-        ts_query_str = " | ".join(words)
+        # Use AND (&) for high precision by default
+        ts_query_str = " & ".join(words)
         
         try:
             with get_db_cursor() as cur:
                 cur.execute("""
-                    SELECT id, title, ts_rank(to_tsvector('french', title || ' ' || description), to_tsquery('french', %s)) AS score 
-                    FROM products
-                    WHERE to_tsvector('french', title || ' ' || description) @@ to_tsquery('french', %s)
+                    SELECT p.id, p.title, p.brand, p.price, p.final_price,
+                           LEFT(p.description, 1000) AS description_preview,
+                           p.rating_avg, p.stock,
+                           ts_rank(to_tsvector('french', p.title || ' ' || p.description), to_tsquery('french', %s)) AS score 
+                    FROM products p
+                    WHERE to_tsvector('french', p.title || ' ' || p.description) @@ to_tsquery('french', %s)
+                      AND p.is_active = TRUE
+                      AND p.stock > 0
                     ORDER BY score DESC
                     LIMIT %s
                 """, (ts_query_str, ts_query_str, top_k))
@@ -40,7 +46,14 @@ class BM25Retriever:
                     results.append({
                         "product_id": row[0],
                         "name": row[1],
-                        "score": float(row[2]) if row[2] else 0.0
+                        "brand": row[2],
+                        "price": float(row[3]) if row[3] else 0.0,
+                        "final_price": float(row[4]) if row[4] else 0.0,
+                        "description": row[5] or "",
+                        "rating_avg": float(row[6]) if row[6] else 0.0,
+                        "stock": row[7] or 0,
+                        "score": round(float(row[8]), 4) if row[8] else 0.0,
+                        "source": "bm25"
                     })
         except Exception as e:
             print(f"BM25 search error: {e}")

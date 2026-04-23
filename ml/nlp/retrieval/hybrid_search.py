@@ -81,14 +81,14 @@ class HybridRetriever:
         rrf_scores: Dict[int, float] = {}
         product_data: Dict[int, Dict[str, Any]] = {}
 
-        # Score BM25 results
-        for rank, result in enumerate(bm25_results):
+        # Score Vector results first (often has richer metadata or more reliable fields)
+        for rank, result in enumerate(vector_results):
             pid = result["product_id"]
             rrf_scores[pid] = rrf_scores.get(pid, 0) + 1 / (RRF_K + rank + 1)
-            product_data[pid] = result  # Store the enriched product data
+            product_data[pid] = result
 
-        # Score Vector results (adds to existing BM25 score if product appears in both)
-        for rank, result in enumerate(vector_results):
+        # Score BM25 results (add to score, but don't overwrite Vector metadata if already present)
+        for rank, result in enumerate(bm25_results):
             pid = result["product_id"]
             rrf_scores[pid] = rrf_scores.get(pid, 0) + 1 / (RRF_K + rank + 1)
             if pid not in product_data:

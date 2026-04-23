@@ -26,6 +26,9 @@ _INJECTION_PATTERNS = [
     r"system\s*prompt",
     r"jailbreak",
     r"DAN\s+mode",
+    r"Let's\s+play\s+a\s+game",
+    r"sous\s+forme\s+de\s+tableau\s+de\s+mots\s+de\s+passe",
+    r"reponds\s+uniquement\s+par\s+le\s+code\s+source",
 ]
 _INJECTION_RE = re.compile("|".join(_INJECTION_PATTERNS), re.IGNORECASE)
 
@@ -59,7 +62,8 @@ class RAGChatbotAgent:
             "sur le contexte produit fourni.\n"
             "Règles strictes :\n"
             "1. Si on te pose une question hors du domaine e-commerce (ex: recettes de cuisine, réparation de voiture), "
-            "REFUSE POLIMENT de répondre et réoriente l'utilisateur vers nos produits.\n"
+            "REFUSE POLIMENT de répondre. Cependant, tu PEUX donner des conseils liés à l'usage ou à l'entretien "
+            "des produits (ex: comment laver un vêtement technique, comment choisir une taille).\n"
             "2. Si la question est trop vague (ex: 'Quel est le meilleur produit ?'), demande de préciser "
             "la catégorie ou l'usage souhaité (ex: électronique, vêtements de sport).\n"
             "3. Reste concis, aimable, et vendeur. Mentionne les prix et la disponibilité quand possible.\n"
@@ -103,7 +107,7 @@ class RAGChatbotAgent:
             line = (
                 f"  {i}. {name}\n"
                 f"     Marque: {brand} | Prix: {price_display} | Note: {rating}/5 | {stock_status}\n"
-                f"     Description: {description[:150]}..."
+                f"     Description: {description[:500]}..."
             )
             context_lines.append(line)
 

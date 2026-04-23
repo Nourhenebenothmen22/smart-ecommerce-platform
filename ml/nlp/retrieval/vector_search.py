@@ -55,7 +55,7 @@ class DenseVectorRetriever:
             with get_db_cursor() as cur:
                 cur.execute("""
                     SELECT p.id, p.title, p.brand, p.price, p.final_price,
-                           LEFT(p.description, 200) AS description_preview,
+                           LEFT(p.description, 1000) AS description_preview,
                            p.rating_avg, p.stock,
                            1 - (pe.embedding_vector <=> %s::vector) AS similarity
                     FROM products p
