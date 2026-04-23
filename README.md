@@ -83,13 +83,16 @@ python api/main.py
 
 ---
 
-## 🛡️ Audit de Qualité Effectué (Avril 2026)
+## 🛡️ Audit de Qualité & Remédiation (Avril 2026)
 
-Le Backend et le dossier ML respectent un cahier des charges strict vérifié par l'Agent QA :
-1. **Node.js** : Utilisation stricte de Middlewares défensifs (compression, helmet, xss protection via lusca).
-2. **Pydantic (Python)** : Validation en entrée du pipeline Machine Learning pour rejeter les injections (SQL Injection ou anomalies de payload).
-3. **Prévention Overfitting** : Le `System Prompt` de l'agent Chatbot est encapsulé au niveau classe (`RAGChatbotAgent`) forçant les réponses à rester concentrées sur l'e-commerce avec des garde-fous "Hors-domaine".
-4. **Performance Hybride** : Les architectures `Node` (I/O Lourd) et `Python` (Inférence/CPU lourds) sont correctement isolées et peuvent scaler séparément via microservice.
+Le système a subi un audit expert complet et une phase de remédiation technique pour garantir sa fiabilité en production :
+1. **Node.js** : Utilisation stricte de Middlewares défensifs (compression, helmet, xss protection).
+2. **Pydantic (Python)** : Validation stricte des entrées pour rejeter les injections SQL et anomalies de payload.
+3. **Pipeline RAG Optimisé** : 
+   - **Précision Lexicale** : Passage à une logique `AND` pour le BM25 afin d'éliminer le bruit sémantique.
+   - **Richesse du Contexte** : Augmentation de la fenêtre contextuelle (descriptions de 500 caractères) pour des réponses techniques précises.
+   - **Sécurité Agent** : Protection avancée contre le prompt injection et les tentatives de détournement de personnalité.
+4. **Cohérence de Données** : Alignement complet des schémas de recherche BM25 et Vectoriels, garantissant l'affichage systématique des prix, marques et stocks.
 
 > [!NOTE]
 > Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/`.

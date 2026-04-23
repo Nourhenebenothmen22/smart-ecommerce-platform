@@ -4,7 +4,7 @@ Ce document explique en détail le comportement du point de terminaison de Chatb
 
 ---
 
-## 1. Pourquoi la réponse contient-elle "Mock Semantic Product" ?
+## 1. Pourquoi la réponse est-elle maintenant ultra-pertinente ?
 
 Lorsque vous exécutez la requête via Swagger :
 ```json
@@ -13,14 +13,17 @@ Lorsque vous exécutez la requête via Swagger :
 }
 ```
 
-Voici le résumé du pipeline instantané qui s'est produit :
-1. **[Requête Client]** Votre navigateur a envoyé un POST `/chat` au serveur Uvicorn (FastAPI).
-2. **[Retrieval / Scaffolding]** La classe `DenseVectorRetriever` est appelée. Actuellement, pour ne pas saturer l'API, elle renvoie une réponse "Mock" (Bouchon logicielle) simulant un produit parfait valant "0.89" de similarité. **C'est pour cela que la base mentionne `Mock Semantic Product` au lieu d'un iPhone.**
-3. **[Prompt Augmentation]** L'Agent a compilé votre question et ce faux produit dans une énorme chaîne de texte cachée (Le prompt système).
-4. **[Inférence LLM]** Le texte a été envoyé via l'API locale vers le LLM `gpt-4o-mini` qui a analysé le contexte restreint à ce simple mock.
-5. **[Génération de la réponse]** Le modèle a réagi de manière naturelle et intelligente face à l'information fournie : *"Je vous recommande de jeter un œil à notre sélection..."*.
+Voici le résumé du pipeline **réel** et **optimisé** qui s'est produit :
+1. **[Requête Client]** Votre navigateur a envoyé un POST `/chat` au serveur FastAPI.
+2. **[Hybrid Retrieval (RRF)]** Le bot n'utilise plus de mocks. Il interroge simultanément :
+   - Le **BM25 (Lexical)** pour les correspondances exactes (mots-clés).
+   - Le **Dense Vector (Sémantique)** pour l'intention et les synonymes.
+   - Les résultats sont fusionnés via l'algorithme **Reciprocal Rank Fusion (RRF)**.
+3. **[Prompt Augmentation]** L'Agent compile votre question avec les 5 meilleurs produits (incluant prix, stock et descriptions longues de 500 chars).
+4. **[Inférence LLM]** Le texte est envoyé au LLM `gpt-4o-mini` avec des règles de sécurité strictes contre l'injection.
+5. **[Génération de la réponse]** Le modèle fournit un conseil de vente précis basé **uniquement** sur les données réelles du catalogue.
 
-✅ *Ceci démontre que tout le squelette est fonctionnel et connecté à un LLM externe intelligent !*
+✅ *Le système est désormais 100% data-driven et sécurisé !*
 
 ---
 
