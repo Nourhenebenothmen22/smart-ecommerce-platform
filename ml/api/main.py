@@ -150,4 +150,17 @@ def chat(request: ChatRequest, background_tasks: BackgroundTasks):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import webbrowser
+    from threading import Timer
+
+    # Use 127.0.0.1 which is more reliable than 0.0.0.0 for local access on Windows
+    url = "http://127.0.0.1:8000/docs"
+
+    def open_browser():
+        webbrowser.open(url)
+
+    # Launch browser after a short delay
+    Timer(1.5, open_browser).start()
+    
+    # Passing the app object directly is more robust when running from different CWDs
+    uvicorn.run(app, host="127.0.0.1", port=8000)

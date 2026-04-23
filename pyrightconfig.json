@@ -13,18 +13,9 @@
     "backend",
     "node_modules"
   ],
-  "executionEnvironments": [
-    {
-      "root": "ml",
-      "extraPaths": [
-        ".",
-        "api",
-        "scripts",
-        "nlp_experiments"
-      ]
-    }
-  ],
   "extraPaths": [
-    "./ml"
+    "ml",
+    "ml/api",
+    "ml/scripts"
   ]
 }
