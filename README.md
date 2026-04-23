@@ -94,5 +94,43 @@ Le système a subi un audit expert complet et une phase de remédiation techniqu
    - **Sécurité Agent** : Protection avancée contre le prompt injection et les tentatives de détournement de personnalité.
 4. **Cohérence de Données** : Alignement complet des schémas de recherche BM25 et Vectoriels, garantissant l'affichage systématique des prix, marques et stocks.
 
+---
+
+## 🧪 Maintenance, Tests & Évaluation
+
+Pour garantir la qualité continue du service ML, utilisez les commandes suivantes depuis la racine du projet :
+
+### 1. Exécution du Service
+```bash
+# Lancer l'API FastAPI (Inférence Chatbot)
+python ml/api/main.py
+```
+
+### 2. Tests QA & Validation
+```bash
+# Lancer la suite de tests complète (Pydantic, Injections, Scénarios)
+pytest ml/test_chat.py -v
+
+# Lancer l'outil d'évaluation QA automatisé
+python ml/nlp_experiments/chatbot_qa_tester.py
+```
+
+### 3. Gestion des Données & Embeddings
+```bash
+# Vérifier l'état de la base de données et des extensions (pgvector)
+python ml/scripts/health_check_db.py
+
+# (Re)Générer les embeddings vectoriels pour tout le catalogue
+python ml/scripts/generate_embeddings.py
+
+# Reset complet et seeding du catalogue (Node.js)
+npm run ml:seed:reset
+```
+
+> [!TIP]
+> Avant de déployer une modification sur le `System Prompt`, exécutez systématiquement `pytest ml/test_chat.py` pour vérifier que les garde-fous contre les injections sont toujours actifs.
+
+---
+
 > [!NOTE]
 > Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/`.
