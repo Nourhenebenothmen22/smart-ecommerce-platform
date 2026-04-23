@@ -149,15 +149,15 @@ ALTER TABLE review_analysis ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) N
 
 CREATE TABLE IF NOT EXISTS product_embeddings (
     id SERIAL PRIMARY KEY,
-    product_id INTEGER NOT NULL,
-    model_name VARCHAR(120) NOT NULL DEFAULT 'text-embedding-3-small',
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    model_name VARCHAR(120) NOT NULL DEFAULT 'all-MiniLM-L6-v2',
     model_version VARCHAR(50) NOT NULL DEFAULT '1.0',
-    embedding_vector vector(1536) NOT NULL,
+    embedding_vector vector(384) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Ensure columns exist if table was created by an older version
-ALTER TABLE product_embeddings ADD COLUMN IF NOT EXISTS model_name VARCHAR(120) NOT NULL DEFAULT 'text-embedding-3-small';
+ALTER TABLE product_embeddings ADD COLUMN IF NOT EXISTS model_name VARCHAR(120) NOT NULL DEFAULT 'all-MiniLM-L6-v2';
 ALTER TABLE product_embeddings ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) NOT NULL DEFAULT '1.0';
 
 CREATE TABLE IF NOT EXISTS wishlists (

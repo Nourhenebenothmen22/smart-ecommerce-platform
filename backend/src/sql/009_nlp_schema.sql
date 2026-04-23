@@ -5,15 +5,7 @@
 -- Enable pgvector extension if not already enabled
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 1. Table for Product Embeddings (Dense Vector Storage)
-CREATE TABLE IF NOT EXISTS product_embeddings (
-    product_id INTEGER PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
-    -- We assume using a model like all-MiniLM-L6-v2 which outputs 384 dimensions
-    embedding vector(384),
-    -- We can store the plain text concatenated representation that was embedded for debugging
-    concatenated_text TEXT NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Note: product_embeddings table is defined in 001_tables.sql
 
 -- 2. Table for Chatbot Interaction Logs (Traceability)
 CREATE TABLE IF NOT EXISTS chatbot_interactions (
