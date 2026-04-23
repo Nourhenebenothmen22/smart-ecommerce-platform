@@ -32,9 +32,9 @@ def run():
     # Create the model in ml_models to avoid FK violation
     try:
         cur.execute("""
-            INSERT INTO ml_models (name, version) 
-            VALUES ('all-MiniLM-L6-v2', '1.0') 
-            ON CONFLICT (name, version) DO NOTHING;
+            INSERT INTO ml_models (model_name, model_version, model_type, algorithm) 
+            VALUES ('all-MiniLM-L6-v2', '1.0', 'embedding', 'transformer') 
+            ON CONFLICT (model_name, model_version) DO NOTHING;
         """)
         conn.commit()
     except Exception as e:
