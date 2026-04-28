@@ -83,16 +83,29 @@ python api/main.py
 
 ---
 
-## 🛡️ Audit de Qualité & Remédiation (Avril 2026)
+## 🛡️ Audit de Qualité & Finalisation Backend (Avril 2026)
 
-Le système a subi un audit expert complet et une phase de remédiation technique pour garantir sa fiabilité en production :
-1. **Node.js** : Utilisation stricte de Middlewares défensifs (compression, helmet, xss protection).
-2. **Pydantic (Python)** : Validation stricte des entrées pour rejeter les injections SQL et anomalies de payload.
-3. **Pipeline RAG Optimisé** : 
-   - **Précision Lexicale** : Passage à une logique `AND` pour le BM25 afin d'éliminer le bruit sémantique.
-   - **Richesse du Contexte** : Augmentation de la fenêtre contextuelle (descriptions de 500 caractères) pour des réponses techniques précises.
-   - **Sécurité Agent** : Protection avancée contre le prompt injection et les tentatives de détournement de personnalité.
-4. **Cohérence de Données** : Alignement complet des schémas de recherche BM25 et Vectoriels, garantissant l'affichage systématique des prix, marques et stocks.
+Le système a subi une phase de finalisation intensive et un audit technique complet pour passer d'un prototype à une version de production :
+
+1. **Finalisation des APIs Node.js** :
+   - **Catalogue Complet** : Gestion CRUD avancée pour Produits, Catégories et Sous-catégories avec auto-slugification unique.
+   - **Système de Commandes Transactionnel** : Gestion atomique des stocks, des paiements et des snapshots de produits (prévention des race conditions via `FOR UPDATE`).
+   - **Reviews & Ratings** : Système d'avis sécurisé avec vérification automatique des achats (`verified_purchase`) et recalcul temps réel des notes moyennes.
+   - **Auth & RBAC** : Authentification JWT sécurisée par cookies `httpOnly` et gestion stricte des rôles (`admin`, `customer`).
+
+2. **Collecte de Données pour l'IA (Data Capture)** :
+   - **Interaction Logging** : Chaque action utilisateur (`view`, `purchase`, `review`) est désormais capturée dans la table `user_interactions`. 
+   - **Alimentation ML** : Ces signaux enrichissent en temps réel le profil utilisateur pour les futurs modèles de recommandation et de segmentation.
+
+3. **Sécurité & Robustesse** :
+   - **Middlewares Défensifs** : Helmet, Morgan, Rate Limiting, et validation Zod systématique sur chaque point d'entrée.
+   - **Gestion des Erreurs** : Centralisation via une classe `AppError` et un middleware global pour des réponses API normalisées.
+   - **Audit Report** : Un rapport complet (`BACKEND_AUDIT_REPORT.md`) détaille les choix architecturaux et les garanties de sécurité.
+
+4. **Pipeline RAG Optimisé** : 
+   - **Précision Lexicale** : Logique `AND` pour le BM25.
+   - **Richesse du Contexte** : Fenêtre contextuelle étendue pour des réponses IA plus techniques.
+   - **Sécurité Agent** : Protection contre le prompt injection.
 
 ---
 
