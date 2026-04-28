@@ -26,22 +26,93 @@ Fournie via Docker (`ecommerce_postgres`), la base intègre l'extension **pgvect
 
 ---
 
-## 🎯 Schéma Relationnel & Traçabilité RAG
+## 🏗️ Architecture des Données & Relations (Class Diagram)
 
-Cette architecture ne se contente pas de stocker des ventes, elle capture tout le processus décisionnel IA.
+L'architecture suit un modèle orienté services avec une forte intégrité relationnelle en base de données.
 
 ```mermaid
-erDiagram
-    USERS ||--o{ ORDERS : "places"
-    USERS ||--o{ CHATBOT_INTERACTIONS : "chats"
+classDiagram
+    class User {
+        +Int id
+        +String email
+        +String role
+        +register()
+        +login()
+    }
+    class Product {
+        +Int id
+        +String title
+        +Float price
+        +Float rating_avg
+        +Int stock
+        +create()
+        +update()
+    }
+    class Category {
+        +Int id
+        +String name
+        +slug
+    }
+    class Subcategory {
+        +Int id
+        +Int category_id
+        +String name
+    }
+    class Order {
+        +Int id
+        +Int user_id
+        +String status
+        +Float total_amount
+        +create()
+    }
+    class OrderItem {
+        +Int id
+        +Int order_id
+        +Int product_id
+        +Float unit_price
+        +Int quantity
+    }
+    class Review {
+        +Int id
+        +Int product_id
+        +Int user_id
+        +Int rating
+        +Boolean verified_purchase
+    }
+    class UserInteraction {
+        +Int id
+        +Int user_id
+        +Int product_id
+        +String type
+    }
+    class UserFeature {
+        +Int user_id
+        +Int total_orders
+        +Float total_spent
+    }
+
+    User "1" --> "*" Order : places
+    User "1" --> "*" Review : writes
+    User "1" --> "*" UserInteraction : performs
+    User "1" -- "1" UserFeature : has_stats
     
-    PRODUCTS ||--|| PRODUCT_EMBEDDINGS : "has_vector_for_search"
+    Category "1" -- "*" Subcategory : contains
+    Category "1" -- "*" Product : categorizes
+    Subcategory "1" -- "*" Product : refines
     
-    CHATBOT_INTERACTIONS ||--o{ NLP_SIMILARITY_METRICS : "evaluated_by"
+    Product "1" -- "*" Review : receives
+    Product "1" -- "*" OrderItem : included_in
+    Product "1" -- "*" UserInteraction : targets
     
-    API_NODEJS ||--o{ API_FASTAPI : "proxies /chat"
+    Order "1" *-- "*" OrderItem : contains
 ```
-_Note: `chatbot_interactions` permet de retracer le contexte fourni par `pgvector` à l'IA, sécurisant et auditable (Traçabilité complète des hallucination)._
+_Note: Les cardinalités assurent qu'un produit peut exister sans avis, mais un avis doit être lié à un produit et un utilisateur existants._
+
+---
+
+## 🎯 Traçabilité RAG & ML
+Cette architecture ne se contente pas de stocker des ventes, elle capture tout le processus décisionnel IA via les interactions et les métadonnées sémantiques.
+
 
 ---
 
