@@ -52,6 +52,11 @@ HTTP Logger
 app.use(morgan("dev"));
 
 /*
+Static Files
+*/
+app.use("/uploads", express.static("uploads"));
+
+/*
 Routes
 */
 app.use("/api/health", healthRouter);
