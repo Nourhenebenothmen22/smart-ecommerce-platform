@@ -35,13 +35,19 @@ export class OrderService {
       );
       const order = orderR.rows[0];
 
-      // 3. Create order_items & decrement stock
+      // 3. Create order_items & decrement stock & log interactions
       for (const oi of orderItems) {
         await client.query(
           `INSERT INTO order_items (order_id, product_id, product_name_snapshot, quantity, unit_price, subtotal) VALUES ($1,$2,$3,$4,$5,$6)`,
           [order.id, oi.product_id, oi.product_name, oi.quantity, oi.unit_price, oi.subtotal]
         );
         await client.query("UPDATE products SET stock = stock - $1, updated_at=NOW() WHERE id=$2", [oi.quantity, oi.product_id]);
+        
+        // Log ML Interaction
+        await client.query(
+          "INSERT INTO user_interactions (user_id, product_id, interaction_type, interaction_value) VALUES ($1,$2,'purchase',1)",
+          [userId, oi.product_id]
+        );
       }
 
       // 4. Create payment record
