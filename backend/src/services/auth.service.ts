@@ -59,7 +59,7 @@ export class AuthService {
     return jwt.sign(
       { id: user.id, role: user.role, email: user.email },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN }
+      { expiresIn: env.JWT_EXPIRES_IN as any }
     );
   }
 }
