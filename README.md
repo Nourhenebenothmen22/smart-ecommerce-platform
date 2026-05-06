@@ -19,7 +19,10 @@ Le système s'articule autour de 3 piliers majeurs :
 - **`nlp/retrieval/`** : Moteurs d'extraction hybride configurés pour interroger la base :
   - *DenseVectoreRetriever* : Recherche Sémantique par similarité Cosinus (via l'extension PostgreSQL `pgvector`).
   - *BM25Retriever* : Recherche Lexicale exacte.
-- **`nlp_experiments/`** : Scripts d'automatisation des tests et benchmarks QA des modèles (Performance, Non-Regression, Overfitting).
+- **`customer_segmentation/`** : Pipeline MLOps pour le clustering des utilisateurs (RFM + Engagement) :
+  - *Algorithmes* : K-Means, Gaussian Mixture (GMM), DBSCAN.
+  - *Profiling* : Interprétation automatique des segments pour le marketing.
+- **`nlp_experiments/`** : Scripts d'automatisation des tests et benchmarks QA des modèles.
 
 ### 3. Base de Données Hybride (PostgreSQL)
 Fournie via Docker (`ecommerce_postgres`), la base intègre l'extension **pgvector** (`pgvector/pgvector:pg16`). Elle assure à la fois du transactionnel classique (Orders) et du stockage de vecteurs (Embeddings de 384 dimensions).
@@ -154,7 +157,56 @@ python api/main.py
 
 ---
 
-## 🛡️ Audit de Qualité & Finalisation Backend (Avril 2026)
+## 📊 Segmentation & Intelligence Marketing (MLOps)
+
+Le système intègre un pipeline complet de segmentation client pour transformer les données brutes en segments actionnables.
+
+### 1. Caractéristiques (Features) extraites :
+Le pipeline calcule automatiquement des indicateurs **RFM (Récence, Fréquence, Montant)** ainsi que des scores d'engagement :
+- `recency_days`, `total_orders`, `total_spent`.
+- `views_count`, `clicks_count`, `cart_add_count`.
+- `purchase_to_view_ratio` (Taux de conversion).
+
+### 2. Algorithmes disponibles :
+- **K-Means** : Clustering basé sur la distance Euclidienne (avec méthode Elbow/Silhouette).
+- **GMM (Gaussian Mixture Model)** : Clustering probabiliste pour des segments aux formes complexes.
+- **DBSCAN** : Détection de clusters basée sur la densité (idéal pour identifier les outliers).
+
+### 3. Exécution du Pipeline :
+Depuis la racine :
+```bash
+# Exécuter tous les modèles et comparer le meilleur
+python -m ml.customer_segmentation.run_pipeline
+
+# Exécuter des modèles spécifiques (ex: K-Means et GMM)
+python -m ml.customer_segmentation.run_pipeline --models kmeans gmm
+
+# Forcer la synchronisation avec la base de données
+python -m ml.customer_segmentation.run_pipeline --force-reload
+```
+
+### 4. Visualisation des Résultats :
+Voici les graphiques clés pour interpréter les segments identifiés par le modèle **K-Means** :
+
+#### A. Matrice de Corrélation
+Explique comment les différentes variables (Dépenses, Commandes, Engagement) sont liées entre elles.
+![Corrélation](ml/artifacts/customer_segmentation/plots/correlation_matrix_important_features.png)
+
+#### B. Profils des Segments (Clustering)
+Affiche les caractéristiques moyennes de chaque groupe (ex: Panier moyen, Récence). C'est l'outil principal pour le ciblage marketing.
+![Profils](ml/artifacts/customer_segmentation/plots/kmeans_cluster_profiles.png)
+
+#### C. Projection PCA (2D)
+Permet de visualiser la séparation réelle des segments dans un espace réduit. Plus les groupes sont isolés, plus la segmentation est robuste.
+![PCA](ml/artifacts/customer_segmentation/plots/kmeans_pca_clusters.png)
+
+#### D. Distribution Finale des Segments
+Répartition globale de votre base client par segment business (ex: Champions, Clients à risque).
+![Distribution](ml/artifacts/customer_segmentation/plots/final_business_segment_distribution.png)
+
+---
+
+## 🛡️ Audit de Qualité & Finalisation Backend (Mai 2026)
 
 Le système a subi une phase de finalisation intensive et un audit technique complet pour passer d'un prototype à une version de production :
 
@@ -199,7 +251,17 @@ pytest ml/test_chat.py -v
 python ml/nlp_experiments/chatbot_qa_tester.py
 ```
 
-### 3. Gestion des Données & Embeddings
+### 3. Segmentation & Clustering
+```bash
+# Lancer le pipeline complet (Preprocessing -> Training -> Comparison -> Profiling)
+python -m ml.customer_segmentation.run_pipeline
+
+# Voir les rapports et graphiques générés
+# -> ml/artifacts/customer_segmentation/reports/
+# -> ml/artifacts/customer_segmentation/plots/
+```
+
+### 4. Gestion des Données & Embeddings
 ```bash
 # Vérifier l'état de la base de données et des extensions (pgvector)
 python ml/scripts/health_check_db.py

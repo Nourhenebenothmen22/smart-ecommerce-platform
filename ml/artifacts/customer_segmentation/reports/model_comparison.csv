@@ -1,4 +1,0 @@
-model,silhouette_score,davies_bouldin,calinski_harabasz,n_clusters,neg_sil_count,neg_sil_pct,rank_sil,rank_dbi,rank_chi,composite_rank,overall_rank
-KMeans,0.153,1.5535,100.7132,8.0,65,8.904109589041095,2.0,2.0,1.0,1.6666666666666667,1
-DBSCAN,0.1744,0.9247,24.6449,5.0,41,14.801444043321299,1.0,1.0,3.0,1.6666666666666667,1
-GMM,0.0626,2.6583,55.5026,,246,33.6986301369863,3.0,3.0,2.0,2.6666666666666665,3

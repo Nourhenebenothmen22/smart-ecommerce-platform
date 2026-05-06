@@ -1,5 +1,0 @@
-segment_label,gmm_cluster,user_count,recency_days,total_orders,total_spent,avg_order_value,unique_products_bought,total_reviews,avg_rating,user_pct
-At-Risk Customers,1,245,135.26,1.83,1288583.42,3272.18,5.13,72.95,3.68,25.8
-Champions,3,386,70.74,4.69,4565251.68,3989.59,14.69,77.13,3.68,40.6
-Dormant / Lost,2,73,132.58,1.07,237737.62,1986.4,1.59,72.07,3.73,7.7
-Loyal Customers,0,246,40.8,3.94,3142039.24,3979.96,11.96,65.39,3.72,25.9

@@ -1,74 +1,74 @@
 === KMeans -- Business Segment Report ===
 
 ────────────────────────────────────────────────────────────
-Segment : 🛒Cart Abandoners (ID: 0)
-Users   : 52 (7.1%)
+Segment : 🛒Cart Abandoners (ID: 4)
+Users   : 54 (7.4%)
 Strategy: Dynamic retargeting and limited-time coupons.
-  recency_days                   55.88
-  total_orders                   3.79
-  total_spent                    12863.33
-  avg_order_value                3402.56
-  views_count                    0.06
-  clicks_count                   1.92
-  cart_add_count                 2.06
-  wishlist_add_count             2.04
-  days_since_last_interaction    21.87
-  purchase_to_view_ratio         0.06
-  cart_to_click_ratio            0.72
+  recency_days                   59.67
+  total_orders                   3.69
+  total_spent                    12623.18
+  avg_order_value                3512.82
+  views_count                    0.09
+  clicks_count                   1.89
+  cart_add_count                 2.02
+  wishlist_add_count             1.98
+  days_since_last_interaction    22.93
+  purchase_to_view_ratio         0.09
+  cart_to_click_ratio            0.73
 
 ────────────────────────────────────────────────────────────
-Segment : 💤Inactive Customers (ID: 5)
-Users   : 67 (9.2%)
+Segment : 💤Inactive Customers (ID: 1)
+Users   : 178 (24.4%)
 Strategy: Win-back emails and deep reactivation discounts.
-  recency_days                   58.82
-  total_orders                   3.60
-  total_spent                    11331.52
-  avg_order_value                3354.81
-  views_count                    3.04
-  clicks_count                   0.13
-  cart_add_count                 1.96
-  wishlist_add_count             2.09
-  days_since_last_interaction    23.04
-  purchase_to_view_ratio         1.45
-  cart_to_click_ratio            0.04
+  recency_days                   60.90
+  total_orders                   3.53
+  total_spent                    12850.90
+  avg_order_value                3813.95
+  views_count                    4.24
+  clicks_count                   4.00
+  cart_add_count                 2.78
+  wishlist_add_count             3.17
+  days_since_last_interaction    19.84
+  purchase_to_view_ratio         0.88
+  cart_to_click_ratio            0.73
 
 ────────────────────────────────────────────────────────────
-Segment : 💛Loyal Buyers (ID: 7)
-Users   : 91 (12.5%)
+Segment : 💛Loyal Buyers (ID: 0)
+Users   : 107 (14.6%)
 Strategy: Loyalty program points and milestone rewards.
-  recency_days                   59.31
-  total_orders                   3.80
-  total_spent                    13323.75
-  avg_order_value                3644.24
-  views_count                    3.42
-  clicks_count                   1.79
-  cart_add_count                 3.89
+  recency_days                   44.10
+  total_orders                   4.33
+  total_spent                    12180.73
+  avg_order_value                2918.51
+  views_count                    1.93
+  clicks_count                   3.65
+  cart_add_count                 2.50
   wishlist_add_count             3.12
-  days_since_last_interaction    20.65
-  purchase_to_view_ratio         1.26
-  cart_to_click_ratio            2.24
+  days_since_last_interaction    18.79
+  purchase_to_view_ratio         2.31
+  cart_to_click_ratio            0.76
 
 ────────────────────────────────────────────────────────────
 Segment : 📈Potential Loyalists (ID: 3)
-Users   : 63 (8.6%)
+Users   : 66 (9.0%)
 Strategy: Welcome series and second-purchase incentives.
-  recency_days                   310.02
-  total_orders                   1.56
-  total_spent                    5132.54
-  avg_order_value                3708.22
-  views_count                    3.06
-  clicks_count                   2.62
-  cart_add_count                 2.24
-  wishlist_add_count             2.84
-  days_since_last_interaction    27.27
-  purchase_to_view_ratio         0.67
-  cart_to_click_ratio            0.75
+  recency_days                   306.86
+  total_orders                   1.55
+  total_spent                    5357.43
+  avg_order_value                3883.85
+  views_count                    3.02
+  clicks_count                   2.58
+  cart_add_count                 2.35
+  wishlist_add_count             2.88
+  days_since_last_interaction    27.91
+  purchase_to_view_ratio         0.68
+  cart_to_click_ratio            0.84
 
 ────────────────────────────────────────────────────────────
 Segment : 📦Regular Customers (ID: 2)
 Users   : 93 (12.7%)
 Strategy: Cross-sell relevant categories.
-  recency_days                   79.33
+  recency_days                   80.22
   total_orders                   1.62
   total_spent                    897.05
   avg_order_value                572.90
@@ -76,55 +76,55 @@ Strategy: Cross-sell relevant categories.
   clicks_count                   3.62
   cart_add_count                 2.46
   wishlist_add_count             3.02
-  days_since_last_interaction    21.67
+  days_since_last_interaction    22.52
   purchase_to_view_ratio         0.63
   cart_to_click_ratio            0.77
 
 ────────────────────────────────────────────────────────────
-Segment : 💎VIP Customers (ID: 6)
-Users   : 109 (14.9%)
+Segment : 💎VIP Customers (ID: 7)
+Users   : 89 (12.2%)
 Strategy: Exclusive concierge service and early access.
-  recency_days                   42.76
-  total_orders                   4.36
-  total_spent                    12133.55
-  avg_order_value                2894.34
-  views_count                    1.95
-  clicks_count                   3.65
-  cart_add_count                 2.57
-  wishlist_add_count             3.17
-  days_since_last_interaction    18.07
-  purchase_to_view_ratio         2.31
-  cart_to_click_ratio            0.77
+  recency_days                   52.79
+  total_orders                   3.97
+  total_spent                    13454.04
+  avg_order_value                3461.59
+  views_count                    3.48
+  clicks_count                   1.84
+  cart_add_count                 3.93
+  wishlist_add_count             3.19
+  days_since_last_interaction    21.43
+  purchase_to_view_ratio         1.29
+  cart_to_click_ratio            2.21
 
 ────────────────────────────────────────────────────────────
-Segment : 👀Window Shoppers (ID: 4)
-Users   : 76 (10.4%)
+Segment : 👀Window Shoppers (ID: 6)
+Users   : 78 (10.7%)
 Strategy: Personalised product recommendations based on views.
-  recency_days                   80.66
-  total_orders                   4.07
-  total_spent                    12995.43
-  avg_order_value                3219.00
-  views_count                    3.18
-  clicks_count                   2.58
-  cart_add_count                 2.34
-  wishlist_add_count             2.54
-  days_since_last_interaction    52.34
+  recency_days                   84.71
+  total_orders                   4.04
+  total_spent                    12848.56
+  avg_order_value                3190.42
+  views_count                    3.17
+  clicks_count                   2.60
+  cart_add_count                 2.36
+  wishlist_add_count             2.55
+  days_since_last_interaction    53.32
   purchase_to_view_ratio         1.45
-  cart_to_click_ratio            0.95
+  cart_to_click_ratio            0.96
 
 ────────────────────────────────────────────────────────────
-Segment : 📜Wishlist-Driven Users (ID: 1)
-Users   : 179 (24.5%)
+Segment : 📜Wishlist-Driven Users (ID: 5)
+Users   : 66 (9.0%)
 Strategy: Alerts on wishlist items and price drop notifications.
-  recency_days                   60.74
-  total_orders                   3.54
-  total_spent                    12847.45
-  avg_order_value                3809.73
-  views_count                    4.23
-  clicks_count                   4.01
-  cart_add_count                 2.78
-  wishlist_add_count             3.17
-  days_since_last_interaction    19.06
-  purchase_to_view_ratio         0.89
-  cart_to_click_ratio            0.73
+  recency_days                   58.73
+  total_orders                   3.64
+  total_spent                    11370.97
+  avg_order_value                3273.40
+  views_count                    3.08
+  clicks_count                   0.12
+  cart_add_count                 1.98
+  wishlist_add_count             2.11
+  days_since_last_interaction    23.95
+  purchase_to_view_ratio         1.46
+  cart_to_click_ratio            0.05
 
