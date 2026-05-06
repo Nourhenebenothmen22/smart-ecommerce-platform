@@ -1,0 +1,17 @@
+=== CLUSTERING AUDIT REPORT ===
+
+Negative Silhouette samples: 449 (47.3%)
+If >10%, the number of clusters is likely too high (Overfitting).
+
+Top Important Features:
+        feature  importance
+    total_spent    0.331678
+   recency_days    0.184994
+avg_order_value    0.157503
+
+Bottom (Noise) Features:
+      feature  importance
+total_reviews    0.071654
+   avg_rating    0.025931
+
+Recommendation: If importance is < 0.05, drop the feature.

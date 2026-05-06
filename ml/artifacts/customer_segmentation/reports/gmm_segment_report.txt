@@ -1,0 +1,50 @@
+=== GMM -- Business Segment Report ===
+
+────────────────────────────────────────────────────────────
+Segment : ⚠️At-Risk Customers (ID: 1)
+Users   : 245 (25.8%)
+Strategy: Win-back campaigns, personalised discounts, re-engagement emails.
+  recency_days                   135.26
+  total_orders                   1.83
+  total_spent                    1288583.42
+  avg_order_value                3272.18
+  unique_products_bought         5.13
+  total_reviews                  72.95
+  avg_rating                     3.68
+
+────────────────────────────────────────────────────────────
+Segment : 🏆Champions (ID: 3)
+Users   : 386 (40.6%)
+Strategy: Reward loyalty, early access to new products, exclusive offers.
+  recency_days                   70.74
+  total_orders                   4.69
+  total_spent                    4565251.68
+  avg_order_value                3989.59
+  unique_products_bought         14.69
+  total_reviews                  77.13
+  avg_rating                     3.68
+
+────────────────────────────────────────────────────────────
+Segment : 💤Dormant / Lost (ID: 2)
+Users   : 73 (7.7%)
+Strategy: Last-chance discount or remove from active marketing list.
+  recency_days                   132.58
+  total_orders                   1.07
+  total_spent                    237737.62
+  avg_order_value                1986.40
+  unique_products_bought         1.59
+  total_reviews                  72.07
+  avg_rating                     3.73
+
+────────────────────────────────────────────────────────────
+Segment : 💛Loyal Customers (ID: 0)
+Users   : 246 (25.9%)
+Strategy: Upsell premium products, offer subscription plans.
+  recency_days                   40.80
+  total_orders                   3.94
+  total_spent                    3142039.24
+  avg_order_value                3979.96
+  unique_products_bought         11.96
+  total_reviews                  65.39
+  avg_rating                     3.72
+

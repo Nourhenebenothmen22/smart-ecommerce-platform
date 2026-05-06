@@ -1,0 +1,3 @@
+segment_label,dbscan_cluster,user_count,recency_days,total_orders,total_spent,avg_order_value,unique_products_bought,total_reviews,avg_rating,user_pct
+Champions,0,907,74.91,3.59,3120041.52,3683.39,10.85,72.72,3.69,95.5
+Outliers / Noise,-1,43,284.07,1.28,890905.31,2904.83,3.35,70.67,3.69,4.5
