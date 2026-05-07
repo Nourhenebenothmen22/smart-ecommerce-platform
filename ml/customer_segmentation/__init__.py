@@ -11,7 +11,6 @@ Modules
 - data_understanding    : EDA helpers & statistical profiling
 - preprocessing         : Feature engineering & scaling
 - train_kmeans          : K-Means training & evaluation
-- train_gmm             : Gaussian Mixture Model training
 - train_dbscan          : DBSCAN training & evaluation
 - visualization         : All reusable plot functions
 - business_interpretation: Segment labelling & business mapping
