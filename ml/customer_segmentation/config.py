@@ -93,17 +93,6 @@ class KMeansConfig:
     random_state: int = 42
 
 
-# ─── GMM ──────────────────────────────────────────────────────────────────────
-@dataclass
-class GMMConfig:
-    n_components_range: List[int] = field(default_factory=lambda: list(range(2, 13)))
-    n_components: int = 8
-    covariance_type: str = "full"   # "full" | "tied" | "diag" | "spherical"
-    n_init: int = 5
-    max_iter: int = 200
-    random_state: int = 42
-
-
 # ─── DBSCAN ───────────────────────────────────────────────────────────────────
 @dataclass
 class DBSCANConfig:
@@ -129,7 +118,6 @@ class Config:
     db:       DBConfig      = field(default_factory=DBConfig)
     features: FeatureConfig = field(default_factory=FeatureConfig)
     kmeans:   KMeansConfig  = field(default_factory=KMeansConfig)
-    gmm:      GMMConfig     = field(default_factory=GMMConfig)
     dbscan:   DBSCANConfig  = field(default_factory=DBSCANConfig)
     viz:      VizConfig     = field(default_factory=VizConfig)
 
