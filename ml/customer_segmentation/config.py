@@ -85,10 +85,10 @@ class FeatureConfig:
 # ─── K-Means ──────────────────────────────────────────────────────────────────
 @dataclass
 class KMeansConfig:
-    k_range: List[int] = field(default_factory=lambda: list(range(2, 13)))
-    n_clusters: int = 8          # final k chosen after elbow/silhouette
+    k_range: List[int] = field(default_factory=lambda: [2, 3])
+    n_clusters: int = 3          # maximum requested
     init: str = "k-means++"
-    n_init: int = 20
+    n_init: int = 50
     max_iter: int = 500
     random_state: int = 42
 

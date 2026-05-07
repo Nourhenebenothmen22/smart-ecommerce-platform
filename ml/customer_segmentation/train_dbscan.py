@@ -45,8 +45,8 @@ def grid_search_dbscan(X: np.ndarray, config: Config = cfg) -> dict:
             noise_count = int((labels == -1).sum())
             noise_pct = (noise_count / len(labels)) * 100
             
-            # Validity check: avoid single cluster or excessive noise
-            if 2 <= n_clusters <= 10 and noise_pct < 50:
+            # Validity check: avoid single cluster or excessive noise, and respect max 3 clusters
+            if 2 <= n_clusters <= 3 and noise_pct < 50:
                 mask = labels != -1
                 score = silhouette_score(X_f[mask], labels[mask])  # type: ignore
                 

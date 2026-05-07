@@ -16,13 +16,13 @@ def calculate_model_score(metrics: dict, labels: np.ndarray) -> float:
     """
     Score = Silhouette + (Calinski / 1000) - (Davies / 10) - Penalties
     """
-    sil = float(metrics.get("silhouette_score", -1.0))
-    dbi = float(metrics.get("davies_bouldin", 99.0))
-    chi = float(metrics.get("calinski_harabasz", 0.0))
-    n_clusters = int(metrics.get("n_clusters", 0))
+    sil = metrics.get("silhouette_score", -1.0)
+    dbi = metrics.get("davies_bouldin", 99.0)
+    chi = metrics.get("calinski_harabasz", 0.0)
+    n_clusters = metrics.get("n_clusters", 0)
     
-    # Invalid model check
-    if n_clusters < 2:
+    # Invalid model check (Respect max 3 clusters constraint)
+    if n_clusters < 2 or n_clusters > 3:
         return -999.0
     
     # Base score
@@ -44,7 +44,7 @@ def calculate_model_score(metrics: dict, labels: np.ndarray) -> float:
     elif noise_pct > 15:
         score -= 0.3
         
-    return float(score)
+    return score
 
 def compare_models(kmeans_results: dict, dbscan_results: dict, config: Config = cfg) -> tuple:
     """
