@@ -21,7 +21,6 @@ from .data_loader import load_and_prepare
 from .data_understanding import run_eda
 from .preprocessing import preprocess
 from .train_kmeans import run_kmeans
-from .train_gmm import run_gmm
 from .train_dbscan import run_dbscan
 from .business_interpretation import interpret
 from .compare_models import run_comparison
@@ -78,9 +77,6 @@ def step_train(X, df_clean, feature_cols, models: list[str], config: Config) -> 
     if "kmeans" in models:
         results["KMeans"] = run_kmeans(X, df_clean, feature_cols, config)
         results["KMeans"]["X"] = X
-    if "gmm" in models:
-        results["GMM"] = run_gmm(X, df_clean, feature_cols, config)
-        results["GMM"]["X"] = X
     if "dbscan" in models:
         results["DBSCAN"] = run_dbscan(X, df_clean, feature_cols, config)
         results["DBSCAN"]["X"] = X
@@ -90,34 +86,36 @@ def step_train(X, df_clean, feature_cols, models: list[str], config: Config) -> 
 
 
 
-def step_compare(results: dict, config: Config) -> str:
+def step_compare(results: dict, config: Config) -> tuple[str, str]:
     logger.info("--- STEP 6/6 -- Model Comparison ---")
     plot_model_comparison(results, config)
     if len(results) > 1:
         return run_comparison(results, config)
     else:
-        return list(results.keys())[0]
+        winner = list(results.keys())[0]
+        return winner, f"Selected {winner} as it was the only model trained."
 
 
 # ─── Main Orchestrator ────────────────────────────────────────────────────────
 
 def run(models: list[str] | None = None, force_reload: bool = False,
-        config: Config = cfg) -> dict:
+        eda: bool = False, config: Config = cfg) -> dict:
     """
     Run the full segmentation pipeline.
 
     Parameters
     ----------
-    models       : list of model names to train, e.g. ['kmeans', 'gmm', 'dbscan']
+    models       : list of model names to train, e.g. ['kmeans', 'dbscan']
     force_reload : if True, re-query DB instead of using cached CSV
+    eda          : if True, generate EDA plots
     config       : Config instance
 
     Returns
     -------
-    dict with all model results
+    dict with pipeline results
     """
     if models is None:
-        models = ["kmeans", "gmm", "dbscan"]
+        models = ["kmeans", "dbscan"]
 
     start = time.time()
     logger.info("=" * 54)
@@ -130,7 +128,8 @@ def run(models: list[str] | None = None, force_reload: bool = False,
         df                               = step_load(config, force_reload)
         
         # 2. EDA (Separate plots handled in step_eda)
-        _                                = step_eda(df, config)
+        if eda:
+            _                            = step_eda(df, config)
         
         # 3. Preprocess
         X, df_clean, scaler, feature_cols = step_preprocess(df, config)
@@ -139,7 +138,7 @@ def run(models: list[str] | None = None, force_reload: bool = False,
         results                          = step_train(X, df_clean, feature_cols, models, config)
         
         # 5. Compare & Select Best Model (Audit integrated here)
-        winner_name                      = step_compare(results, config)
+        winner_name, winner_reason       = step_compare(results, config)
         
         # 6. Profile & Interpret ONLY the best model
         logger.info("━━━ FINAL STEP -- Interpreting Winner: %s ━━━", winner_name)
@@ -167,10 +166,22 @@ def run(models: list[str] | None = None, force_reload: bool = False,
     elapsed = time.time() - start
     logger.info("=" * 54)
     logger.info("  FINAL MODEL SELECTED: %s", winner_name)
+    logger.info("  Reason: %s", winner_reason)
     logger.info("  Pipeline COMPLETE in %.1fs", elapsed)
     logger.info("  Reports & Plots -> %s", config.reports_dir)
     logger.info("=" * 54)
-    return results
+    
+    return {
+        "results": results,
+        "winner": winner_name,
+        "winner_reason": winner_reason,
+        "labelled_data": df_labelled,
+        "output_paths": {
+            "reports_dir": str(config.reports_dir),
+            "plots_dir": str(config.plots_dir),
+            "models_dir": str(config.models_dir)
+        }
+    }
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -178,21 +189,21 @@ def run(models: list[str] | None = None, force_reload: bool = False,
 def _parse_args():
     parser = argparse.ArgumentParser(description="Customer Segmentation Pipeline")
     parser.add_argument(
-        "--models", nargs="+", default=["kmeans", "gmm", "dbscan"],
-        choices=["kmeans", "gmm", "dbscan"],
-        help="Which models to train (default: all three).",
+        "--models", nargs="+", default=["kmeans", "dbscan"],
+        choices=["kmeans", "dbscan"],
+        help="Which models to train (default: all).",
     )
     parser.add_argument(
         "--force-reload", action="store_true",
         help="Re-query the database instead of loading from cache.",
     )
     parser.add_argument(
-        "--k", type=int, default=None,
-        help="Override n_clusters for K-Means.",
+        "--eda", action="store_true",
+        help="Generate EDA plots.",
     )
     parser.add_argument(
-        "--n-components", type=int, default=None,
-        help="Override n_components for GMM.",
+        "--k", type=int, default=None,
+        help="Override n_clusters for K-Means.",
     )
     return parser.parse_args()
 
@@ -203,7 +214,5 @@ if __name__ == "__main__":
     # Apply CLI overrides to config
     if args.k:
         cfg.kmeans.n_clusters = args.k
-    if args.n_components:
-        cfg.gmm.n_components = args.n_components
 
-    run(models=args.models, force_reload=args.force_reload, config=cfg)
+    run(models=args.models, force_reload=args.force_reload, eda=args.eda, config=cfg)
