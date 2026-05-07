@@ -58,15 +58,15 @@ def load_raw_data(config: Config = cfg, force_reload: bool = False) -> pd.DataFr
     Returns
     -------
     pd.DataFrame with columns:
-        user_id, registration_date, total_orders, total_spent,
-        avg_order_value, last_order_date, total_reviews,
-        avg_rating, unique_products_bought
+        user_id, total_orders, total_spent, avg_order_value,
+        views_count, clicks_count, cart_add_count, wishlist_add_count,
+        last_order_at, last_interaction_at
     """
     cache_path: Path = config.data_dir / "users_raw.csv"
 
     if cache_path.exists() and not force_reload:
         logger.info("Loading from cache -> %s", cache_path)
-        df = pd.read_csv(cache_path, parse_dates=["registration_date", "last_order_date"])
+        df = pd.read_csv(cache_path, parse_dates=["last_order_at", "last_interaction_at"])
         logger.info("Cached dataset loaded -- shape: %s", df.shape)
         return df
 
@@ -86,21 +86,7 @@ def _save_raw(df: pd.DataFrame, path: Path) -> None:
     logger.info("Raw data saved -> %s", path)
 
 
-def add_recency(df: pd.DataFrame, snapshot_date: pd.Timestamp | None = None) -> pd.DataFrame:
-    """
-    Compute recency in days from last_order_date.
 
-    Users with no orders receive recency = 9999 (dormant sentinel).
-    """
-    if snapshot_date is None:
-        snapshot_date = pd.Timestamp.now(tz="UTC")
-
-    df = df.copy()
-    df["last_order_date"] = pd.to_datetime(df["last_order_date"], utc=True)
-    df["recency_days"] = (snapshot_date - df["last_order_date"]).dt.days
-    df["recency_days"] = df["recency_days"].fillna(9999).astype(int)
-    logger.info("Recency computed (snapshot: %s)", snapshot_date.date())
-    return df
 
 
 def load_and_prepare(config: Config = cfg, force_reload: bool = False) -> pd.DataFrame:
