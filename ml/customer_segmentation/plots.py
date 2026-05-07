@@ -7,17 +7,18 @@ Only required plots are maintained for maximum clarity and relevance.
 
 import logging
 from pathlib import Path
-from typing import Any
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.figure import Figure
 from sklearn.neighbors import NearestNeighbors
+from typing import Any, cast
 from .config import Config, cfg
 
 logger = logging.getLogger(__name__)
 
-def _save(fig: plt.Figure, path: Path, config: Config) -> None:
+def _save(fig: Figure, path: Path, config: Config) -> None:
     fig.savefig(path, dpi=config.viz.dpi, bbox_inches="tight")
     plt.close(fig)
     logger.info("Plot saved → %s", path)
@@ -105,7 +106,3 @@ def plot_final_segment_distribution(df_labelled: pd.DataFrame, config: Config = 
     
     plt.tight_layout()
     _save(fig, config.plots_dir / "final_best_model_segments.png", config)
-
-def cast(type_hint: Any, obj: Any) -> Any:
-    """Helper for inline type casting if typing.cast is not preferred."""
-    return obj
