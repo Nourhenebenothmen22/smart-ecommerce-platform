@@ -55,6 +55,9 @@ def log_transform(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     """Apply log1p to right-skewed columns (handles zeros)."""
     df = df.copy()
     for col in cols:
+        if (df[col] < 0).any():
+            logger.warning("Skipping log1p for '%s': contains negative values.", col)
+            continue
         df[col] = np.log1p(df[col])
         logger.debug("log1p applied → %s", col)
     return df
@@ -117,8 +120,14 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True):
     fc = config.features
     logger.info("=== Preprocessing Start -- %d rows, %d features ===", len(df), len(fc.feature_cols))
 
+    # 0. Check missing columns
+    required_cols = ["user_id"] + fc.feature_cols
+    missing_cols = [c for c in required_cols if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns in data: {missing_cols}")
+
     # 1. Select features
-    df_feat = df[["user_id"] + fc.feature_cols].copy()
+    df_feat = df[required_cols].copy()
 
     # 2. Impute
     df_feat = impute_missing(df_feat, fc.feature_cols)
