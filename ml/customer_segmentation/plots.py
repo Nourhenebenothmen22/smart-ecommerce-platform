@@ -20,76 +20,22 @@ def _save(fig: plt.Figure, path: Path, config: Config) -> None:
     plt.close(fig)
     logger.info("Plot saved → %s", path)
 
-# ─── 1. Data Understanding Distributions ──────────────────────────────────────
-def plot_data_distributions(df: pd.DataFrame, config: Config = cfg) -> None:
-    """
-    Objectif : Comprendre les distributions des variables business importantes.
-    """
-    features = [
-        "total_orders", "total_spent", "avg_order_value", "views_count",
-        "clicks_count", "cart_add_count", "wishlist_add_count",
-        "days_since_last_interaction", "purchase_to_view_ratio", "cart_to_click_ratio"
-    ]
-    
-    # Filter only existing columns
-    cols = [c for c in features if c in df.columns]
-    n = len(cols)
-    ncols = 2
-    nrows = int(np.ceil(n / ncols))
-    
-    fig, axes = plt.subplots(nrows, ncols, figsize=(16, 5 * nrows))
-    axes = axes.flatten()
-    
-    for i, col in enumerate(cols):
-        sns.histplot(df[col].dropna(), kde=True, ax=axes[i], color="teal")
-        axes[i].set_title(f"Distribution : {col}", fontsize=12, fontweight="bold")
-        axes[i].set_xlabel(col)
-        axes[i].set_ylabel("Frequence")
-        
-    for j in range(n, len(axes)):
-        axes[j].set_visible(False)
-        
-    plt.suptitle("Data Understanding -- Feature Distributions", fontsize=16, fontweight="bold", y=1.02)
-    plt.tight_layout()
-    _save(fig, config.plots_dir / "eda_distributions_main.png", config)
 
-# ─── 2. Correlation Matrix ───────────────────────────────────────────────────
-def plot_correlation_matrix(df: pd.DataFrame, config: Config = cfg) -> None:
-    """
-    Objectif : Vérifier les relations entre les variables importantes et détecter les redondances.
-    """
-    features = [
-        "total_orders", "total_spent", "avg_order_value", "views_count",
-        "clicks_count", "cart_add_count", "wishlist_add_count",
-        "days_since_last_interaction", "purchase_to_view_ratio", "cart_to_click_ratio"
-    ]
-    cols = [c for c in features if c in df.columns]
-    corr = df[cols].corr()
-    
-    fig, ax = plt.subplots(figsize=(12, 10))
-    sns.heatmap(corr, annot=True, fmt=".2f", cmap="RdBu_r", center=0, ax=ax, square=True)
-    ax.set_title("Correlation Matrix : Important Features", fontsize=14, fontweight="bold")
-    
-    _save(fig, config.plots_dir / "correlation_matrix_important_features.png", config)
 
-# ─── 3. Model Metric Comparison ──────────────────────────────────────────────
+# ─── 1. Model Metric Comparison ──────────────────────────────────────────────
 def plot_model_comparison(results: dict, config: Config = cfg) -> None:
     """
-    Objectif : Comparer clairement K-Means, GMM et DBSCAN.
-    Affiche : Silhouette, Davies-Bouldin, Calinski-Harabasz, n_clusters, noise_ratio, avg_confidence.
+    Objectif : Comparer clairement K-Means et DBSCAN.
+    Affiche : Silhouette, Davies-Bouldin, Calinski-Harabasz, n_clusters.
     """
-    metrics = ["silhouette_score", "davies_bouldin_score", "calinski_harabasz_score", "n_clusters"]
+    metrics = ["silhouette_score", "davies_bouldin", "calinski_harabasz", "n_clusters"]
     data = []
     
     for name, res in results.items():
         m = res.get("metrics", {})
         row = {"Model": name}
-        row.update(m)
-        # Add extra metrics
-        if name == "DBSCAN":
-            row["noise_ratio"] = m.get("noise_pct", 0) / 100
-        if name == "GMM":
-            row["avg_confidence"] = res.get("avg_confidence", 0)
+        for met in metrics:
+            row[met] = m.get(met, np.nan)
         data.append(row)
         
     df_metrics = pd.DataFrame(data)
@@ -110,11 +56,11 @@ def plot_model_comparison(results: dict, config: Config = cfg) -> None:
     for j in range(n, len(axes)):
         axes[j].set_visible(False)
         
-    plt.suptitle("Model Performance Comparison", fontsize=16, fontweight="bold", y=1.02)
+    plt.suptitle("K-Means vs DBSCAN — Model Comparison", fontsize=16, fontweight="bold", y=1.02)
     plt.tight_layout()
-    _save(fig, config.plots_dir / "model_metric_comparison.png", config)
+    _save(fig, config.plots_dir / "kmeans_vs_dbscan_comparison.png", config)
 
-# ─── 4. Final Segment Distribution ───────────────────────────────────────────
+# ─── 2. Final Segment Distribution ───────────────────────────────────────────
 def plot_final_segment_distribution(df_labelled: pd.DataFrame, config: Config = cfg) -> None:
     """
     Objectif : Vérifier la distribution finale des segments business.
@@ -133,7 +79,7 @@ def plot_final_segment_distribution(df_labelled: pd.DataFrame, config: Config = 
     for i, v in enumerate(counts["Count"]):
         ax.text(v + 3, i, str(v), color='black', va='center', fontweight='bold')
         
-    ax.set_title("Final Business Segment Distribution", fontsize=14, fontweight="bold")
+    ax.set_title("Final Business Segment Distribution — Best Model", fontsize=14, fontweight="bold")
     ax.set_xlabel("Number of Users")
     
-    _save(fig, config.plots_dir / "final_business_segment_distribution.png", config)
+    _save(fig, config.plots_dir / "final_best_model_segments.png", config)
