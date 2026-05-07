@@ -143,8 +143,7 @@ def build_segment_report(df_labelled: pd.DataFrame, cluster_col: str,
 
     agg["user_pct"] = (agg["user_count"] / agg["user_count"].sum() * 100).round(1)
 
-    # CSV
-    csv_path = config.reports_dir / f"{model_name.lower()}_segment_report.csv"
+    csv_path = config.reports_dir / "best_model_segment_report.csv"
     agg.to_csv(csv_path, index=False)
     logger.info("Segment report CSV → %s", csv_path)
 
@@ -219,10 +218,7 @@ def interpret(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.ndarray,
     # Apply labels
     df_labelled = label_dataframe(df_labelled, cluster_col, segment_map)
 
-    # Build report on RAW data
-    report = build_segment_report(df_labelled, cluster_col, feature_cols, config, model_name)
-
-    out_path = config.data_dir / f"{model_name.lower()}_users_labelled.csv"
+    out_path = config.data_dir / "best_model_users_labelled.csv"
     df_labelled.to_csv(out_path, index=False)
     logger.info("Labelled users saved → %s", out_path)
 
