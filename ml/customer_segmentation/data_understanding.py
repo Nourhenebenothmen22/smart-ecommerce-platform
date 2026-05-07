@@ -78,10 +78,60 @@ def outlier_report(df: pd.DataFrame, cols: list[str], method: str = "iqr") -> pd
     return pd.DataFrame(records).sort_values("outlier%", ascending=False)
 
 
-# ─── Visualisations ───────────────────────────────────────────────────────────
+def _save(fig: plt.Figure, path: Path, config: Config) -> None:
+    fig.savefig(path, dpi=config.viz.dpi, bbox_inches="tight")
+    plt.close(fig)
+    logger.info("Plot saved → %s", path)
 
+def plot_data_distributions(df: pd.DataFrame, config: Config = cfg) -> None:
+    """
+    Objectif : Comprendre les distributions des variables business importantes.
+    """
+    features = [
+        "total_orders", "total_spent", "avg_order_value", "views_count",
+        "clicks_count", "cart_add_count", "wishlist_add_count",
+        "days_since_last_interaction", "purchase_to_view_ratio", "cart_to_click_ratio"
+    ]
+    
+    # Filter only existing columns
+    cols = [c for c in features if c in df.columns]
+    n = len(cols)
+    ncols = 2
+    nrows = int(np.ceil(n / ncols))
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=(16, 5 * nrows))
+    axes = axes.flatten()
+    
+    for i, col in enumerate(cols):
+        sns.histplot(df[col].dropna(), kde=True, ax=axes[i], color="teal")
+        axes[i].set_title(f"Distribution : {col}", fontsize=12, fontweight="bold")
+        axes[i].set_xlabel(col)
+        axes[i].set_ylabel("Frequence")
+        
+    for j in range(n, len(axes)):
+        axes[j].set_visible(False)
+        
+    plt.suptitle("Data Understanding -- Feature Distributions", fontsize=16, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    _save(fig, config.plots_dir / "eda_distributions_main.png", config)
 
-
+def plot_correlation_matrix(df: pd.DataFrame, config: Config = cfg) -> None:
+    """
+    Objectif : Vérifier les relations entre les variables importantes et détecter les redondances.
+    """
+    features = [
+        "total_orders", "total_spent", "avg_order_value", "views_count",
+        "clicks_count", "cart_add_count", "wishlist_add_count",
+        "days_since_last_interaction", "purchase_to_view_ratio", "cart_to_click_ratio"
+    ]
+    cols = [c for c in features if c in df.columns]
+    corr = df[cols].corr()
+    
+    fig, ax = plt.subplots(figsize=(12, 10))
+    sns.heatmap(corr, annot=True, fmt=".2f", cmap="RdBu_r", center=0, ax=ax, square=True)
+    ax.set_title("Correlation Matrix : Important Features", fontsize=14, fontweight="bold")
+    
+    _save(fig, config.plots_dir / "correlation_matrix_important_features.png", config)
 
 def run_eda(df: pd.DataFrame, feature_cols: list[str], config: Config = cfg) -> dict:
     """Run full EDA pipeline and export reports."""
@@ -91,6 +141,8 @@ def run_eda(df: pd.DataFrame, feature_cols: list[str], config: Config = cfg) -> 
     stats    = statistical_summary(df)
     missing  = missing_report(df)
     outliers = outlier_report(df, feature_cols, method=config.features.outlier_method)
+    plot_data_distributions(df, config)
+    plot_correlation_matrix(df, config)
 
     # 2. Save statistical summary
     stats_path = config.reports_dir / "eda_statistical_summary.csv"

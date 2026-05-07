@@ -1,8 +1,8 @@
 """
 compare_models.py
 -----------------
-Cross-model benchmarking: collect metrics from KMeans, GMM and DBSCAN,
-produce a comparison table, radar chart and ranking report.
+Cross-model benchmarking: collect metrics from KMeans and DBSCAN,
+produce a comparison table, and ranking report.
 """
 
 import logging
@@ -28,7 +28,6 @@ def collect_metrics(results: dict[str, dict]) -> pd.DataFrame:
     ----------
     results : {
         "KMeans": {"metrics": {...}},
-        "GMM":    {"metrics": {...}},
         "DBSCAN": {"metrics": {...}},
     }
 
@@ -109,41 +108,6 @@ def plot_metrics_comparison(comparison_df: pd.DataFrame, config: Config = cfg) -
     logger.info("Comparison bar chart saved → %s", path)
 
 
-def plot_radar_chart(comparison_df: pd.DataFrame, config: Config = cfg) -> None:
-    """Radar (spider) chart comparing normalised metric scores."""
-    metrics = [c for c in ["silhouette_score", "davies_bouldin", "calinski_harabasz"]
-               if c in comparison_df.columns]
-    if len(metrics) < 2:
-        logger.warning("Not enough metrics for radar chart.")
-        return
-
-    # Normalise: flip davies_bouldin so higher = better
-    norm_df = comparison_df[metrics].copy()
-    norm_df = (norm_df - norm_df.min()) / (norm_df.max() - norm_df.min() + 1e-9)
-    if "davies_bouldin" in norm_df.columns:
-        norm_df["davies_bouldin"] = 1 - norm_df["davies_bouldin"]
-
-    angles = np.linspace(0, 2 * np.pi, len(metrics), endpoint=False).tolist()
-    angles += angles[:1]
-
-    palette = plt.cm.get_cmap("tab10")
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={"polar": True})
-
-    for i, (model, row) in enumerate(norm_df.iterrows()):
-        values = row.tolist() + [row.iloc[0]]
-        ax.plot(angles, values, "o-", linewidth=2, color=palette(i), label=model)
-        ax.fill(angles, values, alpha=0.15, color=palette(i))
-
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels([m.replace("_", "\n") for m in metrics], fontsize=11)
-    ax.set_title("Model Comparison -- Radar Chart", fontsize=14, fontweight="bold", pad=20)
-    ax.legend(loc="upper right", bbox_to_anchor=(1.3, 1.1))
-    plt.tight_layout()
-    path = config.plots_dir / "model_comparison_radar.png"
-    fig.savefig(path, dpi=config.viz.dpi, bbox_inches="tight")
-    plt.show()
-    logger.info("Radar chart saved → %s", path)
-
 
 # ─── Report ───────────────────────────────────────────────────────────────────
 
@@ -171,16 +135,20 @@ def calculate_audit_metrics(X, labels):
     # Filter out noise (-1)
     mask = labels != -1
     if len(np.unique(labels[mask])) < 2:
-        return 0, 0.0
+        return 0, 0.0, 0.0
     
     from sklearn.metrics import silhouette_samples
     sil_vals = silhouette_samples(X[mask], labels[mask])
     neg_count = int((sil_vals < 0).sum())
     neg_pct = float(neg_count / len(sil_vals) * 100)
-    return neg_count, neg_pct
+    
+    counts = pd.Series(labels[mask]).value_counts(normalize=True)
+    min_cluster_pct = float(counts.min() * 100)
+    
+    return neg_count, neg_pct, min_cluster_pct
 
 
-def select_best_model(comparison_df: pd.DataFrame) -> str:
+def select_best_model(comparison_df: pd.DataFrame) -> tuple[str, str]:
     """
     Business-aware model selection logic.
     Prioritizes:
@@ -191,26 +159,40 @@ def select_best_model(comparison_df: pd.DataFrame) -> str:
     """
     df = comparison_df.copy()
     
-    # 1. Valid models have > 1 cluster and < 90% noise
-    # (Assuming noise is handled by excluding -1 in silhouette)
     valid = df[df["n_clusters"] > 1].copy()
     if valid.empty:
-        return df.index[0]
+        winner = df.index[0]
+        return winner, f"Selected {winner} as default because no model produced >1 cluster."
 
     # 2. Score = Silhouette - (Neg_Sil_Pct / 100)
-    # We penalise models with too many negative silhouette samples (overlapping/overfit)
     valid["final_score"] = valid["silhouette_score"] - (valid["neg_sil_pct"] / 100.0)
     
     # 3. Penalise tiny clusters
-    # (Optional: can add penalty based on min_cluster_pct if available)
+    valid["final_score"] = np.where(valid["min_cluster_pct"] < 5.0, valid["final_score"] - 0.2, valid["final_score"])
     
-    winner = valid.sort_values("final_score", ascending=False).index[0]
-    return winner
+    # 4. Penalize high DBSCAN noise
+    if "noise_pct" in valid.columns:
+        # Heavily penalize if noise > 50%
+        valid["final_score"] = np.where(valid["noise_pct"].fillna(0) > 50.0, valid["final_score"] - 0.5, valid["final_score"])
+        # Light penalty for noise > 20%
+        valid["final_score"] = np.where((valid["noise_pct"].fillna(0) > 20.0) & (valid["noise_pct"].fillna(0) <= 50.0), valid["final_score"] - 0.1, valid["final_score"])
+    
+    valid = valid.sort_values("final_score", ascending=False)
+    winner = valid.index[0]
+    
+    reasons = []
+    reasons.append(f"Highest final score ({valid.iloc[0]['final_score']:.3f}).")
+    if valid.iloc[0]["min_cluster_pct"] < 5.0:
+        reasons.append("Has tiny clusters (<5%).")
+    if "noise_pct" in valid.columns and valid.iloc[0]["noise_pct"] > 20.0:
+        reasons.append(f"High noise ({valid.iloc[0]['noise_pct']:.1f}%).")
+        
+    return winner, " ".join(reasons)
 
 
 # ─── Full Run ─────────────────────────────────────────────────────────────────
 
-def run_comparison(results: dict[str, dict], config: Config = cfg) -> str:
+def run_comparison(results: dict[str, dict], config: Config = cfg) -> tuple[str, str]:
     """
     Full model comparison pipeline. Pick a winner based on metrics + audit.
     """
@@ -219,23 +201,38 @@ def run_comparison(results: dict[str, dict], config: Config = cfg) -> str:
     comparison = collect_metrics(results)
     
     # Add audit metrics to each row
-    neg_counts, neg_pcts = [], []
+    neg_counts, neg_pcts, min_pcts = [], [], []
     for model_name, res in results.items():
         X = res["X"]
         labels = res["labels"]
-        count, pct = calculate_audit_metrics(X, labels)
+        count, pct, min_pct = calculate_audit_metrics(X, labels)
         neg_counts.append(count)
         neg_pcts.append(pct)
+        min_pcts.append(min_pct)
     
     comparison["neg_sil_count"] = neg_counts
     comparison["neg_sil_pct"]   = neg_pcts
+    comparison["min_cluster_pct"] = min_pcts
     
+    if "DBSCAN" in results and "noise_pct" in results["DBSCAN"]["metrics"]:
+        comparison.loc["DBSCAN", "noise_pct"] = results["DBSCAN"]["metrics"]["noise_pct"]
+    if "noise_pct" not in comparison.columns:
+        comparison["noise_pct"] = np.nan
+        
     ranked = rank_models(comparison)
-    winner = select_best_model(ranked)
+    winner, reason = select_best_model(ranked)
 
+    # Save only required columns
+    out_cols = ["silhouette_score", "davies_bouldin", "calinski_harabasz", "n_clusters", 
+                "noise_pct", "neg_sil_pct", "min_cluster_pct"]
+    out_cols = [c for c in out_cols if c in ranked.columns]
+    if "final_score" in ranked.columns:
+        out_cols.append("final_score")
+    if "overall_rank" in ranked.columns:
+        out_cols.append("overall_rank")
+    
     plot_metrics_comparison(ranked, config)
-    plot_radar_chart(ranked, config)
-    save_comparison_report(ranked, config)
+    save_comparison_report(ranked[out_cols], config)
 
     logger.info("🏆 FINAL WINNER: %s", winner)
-    return winner
+    return winner, reason
