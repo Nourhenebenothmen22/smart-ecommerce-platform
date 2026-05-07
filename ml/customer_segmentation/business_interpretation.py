@@ -218,6 +218,9 @@ def interpret(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.ndarray,
     # Apply labels
     df_labelled = label_dataframe(df_labelled, cluster_col, segment_map)
 
+    # Build report on RAW data
+    report = build_segment_report(df_labelled, cluster_col, feature_cols, config, model_name)
+
     out_path = config.data_dir / "best_model_users_labelled.csv"
     df_labelled.to_csv(out_path, index=False)
     logger.info("Labelled users saved → %s", out_path)
