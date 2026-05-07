@@ -1,9 +1,0 @@
-segment_label,kmeans_cluster,user_count,recency_days,total_orders,total_spent,avg_order_value,views_count,clicks_count,cart_add_count,wishlist_add_count,days_since_last_interaction,purchase_to_view_ratio,cart_to_click_ratio,user_pct
-Cart Abandoners,4,54,59.67,3.69,12623.18,3512.82,0.09,1.89,2.02,1.98,22.93,0.09,0.73,7.4
-Inactive Customers,1,178,60.9,3.53,12850.9,3813.95,4.24,4.0,2.78,3.17,19.84,0.88,0.73,24.4
-Loyal Buyers,0,107,44.1,4.33,12180.73,2918.51,1.93,3.65,2.5,3.12,18.79,2.31,0.76,14.6
-Potential Loyalists,3,66,306.86,1.55,5357.43,3883.85,3.02,2.58,2.35,2.88,27.91,0.68,0.84,9.0
-Regular Customers,2,93,80.22,1.62,897.05,572.9,2.88,3.62,2.46,3.02,22.52,0.63,0.77,12.7
-VIP Customers,7,89,52.79,3.97,13454.04,3461.59,3.48,1.84,3.93,3.19,21.43,1.29,2.21,12.2
-Window Shoppers,6,78,84.71,4.04,12848.56,3190.42,3.17,2.6,2.36,2.55,53.32,1.45,0.96,10.7
-Wishlist-Driven Users,5,66,58.73,3.64,11370.97,3273.4,3.08,0.12,1.98,2.11,23.95,1.46,0.05,9.0

@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.cluster import DBSCAN
+from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
 
 from .config import Config, cfg
@@ -21,35 +22,40 @@ logger = logging.getLogger(__name__)
 
 def grid_search_dbscan(X: np.ndarray, config: Config = cfg) -> dict:
     """
-    Grid search over eps and min_samples.
-    Returns best parameters based on silhouette score (with validity checks).
+    Dynamically tunes DBSCAN by analyzing data density (k-distance).
     """
-    dc = config.dbscan
-    best_params = {"eps": float(dc.eps), "min_samples": int(dc.min_samples), "score": -1.0}
+    X_f = X.astype(np.float64)
     
-    for eps in dc.eps_range:
-        for ms in dc.min_samples_range:
-            model = DBSCAN(eps=eps, min_samples=ms, metric=dc.metric)
-            # Use Any to bypass strict type checking for ndarray in fit_predict
-            labels = model.fit_predict(X.astype(np.float64))
+    # 1. Dynamically estimate a baseline epsilon using k-distance
+    nbrs = NearestNeighbors(n_neighbors=config.dbscan.min_samples).fit(X_f)  # type: ignore
+    distances, _ = nbrs.kneighbors(X_f)  # type: ignore
+    avg_dist = float(distances[:, -1].mean())  # type: ignore
+    
+    # Create a dynamic range around the average distance
+    dynamic_eps_range = np.linspace(avg_dist * 0.5, avg_dist * 2.0, 10)  # type: ignore
+    
+    best_params = {"eps": avg_dist, "min_samples": config.dbscan.min_samples, "score": -1.0}
+    
+    for eps in dynamic_eps_range:
+        for ms in config.dbscan.min_samples_range:
+            model = DBSCAN(eps=eps, min_samples=ms, metric=config.dbscan.metric)
+            labels = model.fit_predict(X_f)  # type: ignore
             
             n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
             noise_count = int((labels == -1).sum())
             noise_pct = (noise_count / len(labels)) * 100
             
-            # Handle invalid results
-            is_valid = n_clusters >= 2 and noise_pct < 90
-            
-            if is_valid:
+            # Validity check: avoid single cluster or excessive noise
+            if 2 <= n_clusters <= 10 and noise_pct < 50:
                 mask = labels != -1
-                score = silhouette_score(X[mask], labels[mask])
+                score = silhouette_score(X_f[mask], labels[mask])  # type: ignore
                 
                 if score > best_params["score"]:
-                    best_params["eps"] = float(eps)
-                    best_params["min_samples"] = int(ms)
+                    best_params["eps"] = eps
+                    best_params["min_samples"] = ms
                     best_params["score"] = float(score)
             
-    logger.info("DBSCAN Tuning: Best Params -> eps=%.2f, min_samples=%d (score=%.4f)", 
+    logger.info("Dynamic DBSCAN Tuning: eps=%.3f, min_samples=%d (Score: %.4f)", 
                 best_params["eps"], best_params["min_samples"], best_params["score"])
     
     return best_params
@@ -57,7 +63,7 @@ def grid_search_dbscan(X: np.ndarray, config: Config = cfg) -> dict:
 def train_dbscan(X: np.ndarray, eps: float, min_samples: int, config: Config = cfg) -> DBSCAN:
     """Train DBSCAN with specific parameters."""
     model = DBSCAN(eps=eps, min_samples=min_samples, metric=config.dbscan.metric)
-    model.fit(X.astype(np.float64))
+    model.fit(X.astype(np.float64))  # type: ignore
     return model
 
 def evaluate_dbscan(X: np.ndarray, model: DBSCAN) -> dict:
@@ -80,9 +86,9 @@ def evaluate_dbscan(X: np.ndarray, model: DBSCAN) -> dict:
     }
 
     if n_clusters >= 2:
-        metrics["silhouette_score"] = round(silhouette_score(X[mask], labels[mask]), 4)
-        metrics["davies_bouldin"] = round(davies_bouldin_score(X[mask], labels[mask]), 4)
-        metrics["calinski_harabasz"] = round(calinski_harabasz_score(X[mask], labels[mask]), 4)
+        metrics["silhouette_score"] = round(float(silhouette_score(X[mask], labels[mask])), 4)  # type: ignore
+        metrics["davies_bouldin"] = round(float(davies_bouldin_score(X[mask], labels[mask])), 4)  # type: ignore
+        metrics["calinski_harabasz"] = round(float(calinski_harabasz_score(X[mask], labels[mask])), 4)  # type: ignore
     else:
         # Invalid model metrics
         metrics.update({

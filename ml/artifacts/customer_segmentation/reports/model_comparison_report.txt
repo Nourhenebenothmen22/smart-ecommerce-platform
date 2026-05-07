@@ -1,9 +1,0 @@
-=== Customer Segmentation -- Model Comparison Report ===
-
-        silhouette_score  davies_bouldin  calinski_harabasz  n_clusters  neg_sil_count  neg_sil_pct  rank_sil  rank_dbi  rank_chi  composite_rank  overall_rank
-model                                                                                                                                                          
-KMeans            0.1503          1.5520           100.6210         8.0             71     9.712722       1.0       1.0       1.0             1.0             1
-GMM               0.0522          2.5893            55.1234         NaN            210    28.727770       2.0       2.0       2.0             2.0             2
-
-✅ Recommended model: KMeans
-   (ranked by composite silhouette + davies_bouldin + calinski_harabasz)

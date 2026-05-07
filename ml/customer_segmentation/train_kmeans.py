@@ -6,7 +6,9 @@ K-Means training: elbow method, silhouette selection, model persistence.
 
 import logging
 from pathlib import Path
+from typing import Any, Dict
 import numpy as np
+import pandas as pd
 import joblib
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, davies_bouldin_score, calinski_harabasz_score
@@ -21,52 +23,62 @@ def run_kmeans_tuning(X: np.ndarray, config: Config = cfg) -> int:
     Tune k using Elbow and Silhouette.
     Returns the best_k based on highest silhouette score.
     """
-    results = {"k": [], "inertia": [], "silhouette": []}
-    kc = config.kmeans
+    X_f = X.astype(np.float64)
+    ks = list(config.kmeans.k_range)
+    inertias = []
+    silhouettes = []
 
-    for k in kc.k_range:
-        km = KMeans(n_clusters=k, init=kc.init, n_init=kc.n_init,
-                    max_iter=kc.max_iter, random_state=config.random_state)
-        km.fit(X)
-        sil = silhouette_score(X, km.labels_)
-        results["k"].append(k)
-        results["inertia"].append(km.inertia_)
-        results["silhouette"].append(sil)
+    for k in ks:
+        km = KMeans(
+            n_clusters=k, 
+            init=config.kmeans.init,  # type: ignore
+            n_init=config.kmeans.n_init,
+            max_iter=config.kmeans.max_iter, 
+            random_state=config.random_state
+        )
+        km.fit(X_f)
+        sil = float(silhouette_score(X_f, km.labels_))  # type: ignore
+        
+        inertias.append(km.inertia_)
+        silhouettes.append(sil)
         logger.info("K-Means Tuning: k=%d | inertia=%.2f | silhouette=%.4f", k, km.inertia_, sil)
 
-    plot_kmeans_elbow(results["k"], results["inertia"], config)
-    plot_kmeans_silhouette(results["k"], results["silhouette"], config)
+    plot_kmeans_elbow(ks, inertias, config)
+    plot_kmeans_silhouette(ks, silhouettes, config)
     
-    best_k = results["k"][np.argmax(results["silhouette"])]
+    if not silhouettes:
+        return 2
+        
+    best_k = ks[np.argmax(silhouettes)]
     logger.info("Best k selected by silhouette score: %d", best_k)
     return best_k
 
 def train_kmeans(X: np.ndarray, k: int, config: Config = cfg) -> KMeans:
     """Train K-Means with a specific k."""
-    kc = config.kmeans
     km = KMeans(
         n_clusters=k,
-        init=kc.init,
-        n_init=kc.n_init,
-        max_iter=kc.max_iter,
+        init=config.kmeans.init,  # type: ignore
+        n_init=config.kmeans.n_init,
+        max_iter=config.kmeans.max_iter,
         random_state=config.random_state,
     )
-    km.fit(X)
+    km.fit(X.astype(np.float64))
     return km
 
-def evaluate_kmeans(X: np.ndarray, model: KMeans) -> dict:
+def evaluate_kmeans(X: np.ndarray, model: KMeans) -> Dict[str, Any]:
     """Return clustering quality metrics."""
+    X_f = X.astype(np.float64)
     labels = model.labels_
     metrics = {
-        "silhouette_score":   round(silhouette_score(X, labels), 4),
-        "davies_bouldin":     round(davies_bouldin_score(X, labels), 4),
-        "calinski_harabasz":  round(calinski_harabasz_score(X, labels), 4),
+        "silhouette_score":   round(float(silhouette_score(X_f, labels)), 4),  # type: ignore
+        "davies_bouldin":     round(float(davies_bouldin_score(X_f, labels)), 4),  # type: ignore
+        "calinski_harabasz":  round(float(calinski_harabasz_score(X_f, labels)), 4),  # type: ignore
         "inertia":            round(model.inertia_, 4),
-        "n_clusters":         model.n_clusters,
+        "n_clusters":         model.get_params().get("n_clusters", 0),
     }
     return metrics
 
-def run_kmeans_pipeline(X: np.ndarray, df_clean, config: Config = cfg) -> dict:
+def run_kmeans_pipeline(X: np.ndarray, df_clean: pd.DataFrame, config: Config = cfg) -> Dict[str, Any]:
     """End-to-end K-Means pipeline."""
     logger.info("=== K-Means Pipeline ===")
     
@@ -81,7 +93,7 @@ def run_kmeans_pipeline(X: np.ndarray, df_clean, config: Config = cfg) -> dict:
     
     # Save labels
     df_out = df_clean[["user_id"]].copy()
-    df_out["kmeans_cluster"] = model.labels_
+    df_out["kmeans_cluster"] = model.labels_.astype(int)
     df_out.to_csv(config.data_dir / "kmeans_labels.csv", index=False)
     
     return {

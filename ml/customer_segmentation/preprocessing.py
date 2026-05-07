@@ -7,6 +7,7 @@ Outputs a clean, scaled numpy array ready for clustering.
 
 import logging
 from pathlib import Path
+from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
@@ -23,116 +24,88 @@ _SCALERS = {
     "robust":   RobustScaler,
 }
 
-
 # ─── Outlier Removal ─────────────────────────────────────────────────────────
 
-def remove_outliers_iqr(df: pd.DataFrame, cols: list[str], factor: float = 1.5) -> pd.DataFrame:
-    """Remove rows where any feature is beyond IQR * factor."""
+def remove_outliers_iqr(df: pd.DataFrame, cols: list, factor: float = 3.0) -> pd.DataFrame:
+    """
+    Remove extreme outliers. 
+    Factor 3.0 is used to keep 'legitimate' high-value customers (extreme but real).
+    """
     mask = pd.Series([True] * len(df), index=df.index)
     for col in cols:
+        if col not in df.columns:
+            continue
         q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
         iqr = q3 - q1
         mask &= df[col].between(q1 - factor * iqr, q3 + factor * iqr)
-    removed = (~mask).sum()
-    logger.info("IQR outlier removal: %d rows removed (%.1f%%)", removed, removed / len(df) * 100)
-    return df[mask].reset_index(drop=True)
+    
+    df_clean = df[mask].reset_index(drop=True)
+    removed = len(df) - len(df_clean)
+    
+    if len(df_clean) < 10 and len(df) >= 10:
+        logger.warning("Outlier removal too aggressive! Reverting to original data.")
+        return df.reset_index(drop=True)
+        
+    logger.info("IQR outlier removal: %d rows removed (%.1f%%)", removed, (removed / len(df) * 100) if len(df) > 0 else 0)
+    return df_clean
 
-
-def remove_outliers_zscore(df: pd.DataFrame, cols: list[str], threshold: float = 3.0) -> pd.DataFrame:
+def remove_outliers_zscore(df: pd.DataFrame, cols: list, threshold: float = 3.0) -> pd.DataFrame:
     """Remove rows where any feature Z-score exceeds the threshold."""
     mask = pd.Series([True] * len(df), index=df.index)
     for col in cols:
+        if col not in df.columns:
+            continue
         z = (df[col] - df[col].mean()) / df[col].std()
         mask &= z.abs() <= threshold
-    removed = (~mask).sum()
-    logger.info("Z-score outlier removal: %d rows removed (%.1f%%)", removed, removed / len(df) * 100)
-    return df[mask].reset_index(drop=True)
-
+    
+    df_clean = df[mask].reset_index(drop=True)
+    removed = len(df) - len(df_clean)
+    logger.info("Z-score outlier removal: %d rows removed (%.1f%%)", removed, (removed / len(df) * 100) if len(df) > 0 else 0)
+    return df_clean
 
 # ─── Transformations ──────────────────────────────────────────────────────────
 
-def log_transform(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+def log_transform(df: pd.DataFrame, cols: list) -> pd.DataFrame:
     """Apply log1p to right-skewed columns (handles zeros)."""
-    df = df.copy()
+    df_out = df.copy()
     for col in cols:
-        if (df[col] < 0).any():
-            logger.warning("Skipping log1p for '%s': contains negative values.", col)
+        if col not in df_out.columns:
             continue
-        df[col] = np.log1p(df[col])
-        logger.debug("log1p applied → %s", col)
-    return df
+        # Only log-transform non-negative columns
+        if (df_out[col] >= 0).all():
+            df_out[col] = np.log1p(df_out[col].astype(float))
+            logger.debug("log1p applied → %s", col)
+        else:
+            logger.warning("Skipping log1p for '%s': contains negative values.", col)
+    return df_out
 
-
-def impute_missing(df: pd.DataFrame, cols: list[str], strategy: str = "median") -> pd.DataFrame:
+def impute_missing(df: pd.DataFrame, cols: list, strategy: str = "median") -> pd.DataFrame:
     """Simple imputation for remaining NaNs."""
-    df = df.copy()
+    df_out = df.copy()
     for col in cols:
-        if df[col].isnull().any():
-            fill_val = df[col].median() if strategy == "median" else df[col].mean()
-            df[col] = df[col].fillna(fill_val)
+        if col in df_out.columns and df_out[col].isnull().any():
+            fill_val = df_out[col].median() if strategy == "median" else df_out[col].mean()
+            df_out[col] = df_out[col].fillna(fill_val)
             logger.info("Imputed '%s' with %s=%.4f", col, strategy, fill_val)
-    return df
-
-
-# ─── Scaling ──────────────────────────────────────────────────────────────────
-
-def fit_scaler(X: np.ndarray, scaler_type: str = "standard"):
-    """Fit and return a scaler."""
-    scaler_cls = _SCALERS.get(scaler_type, StandardScaler)
-    scaler = scaler_cls()
-    scaler.fit(X)
-    logger.info("Scaler fitted: %s", scaler_cls.__name__)
-    return scaler
-
-
-def scale_features(X: np.ndarray, scaler) -> np.ndarray:
-    return scaler.transform(X)
-
-
-def save_scaler(scaler, config: Config = cfg) -> Path:
-    path = config.models_dir / "scaler.pkl"
-    joblib.dump(scaler, path)
-    logger.info("Scaler saved → %s", path)
-    return path
-
-
-def load_scaler(config: Config = cfg):
-    path = config.models_dir / "scaler.pkl"
-    scaler = joblib.load(path)
-    logger.info("Scaler loaded ← %s", path)
-    return scaler
-
+    return df_out
 
 # ─── Full Pipeline ────────────────────────────────────────────────────────────
 
-def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True):
+def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True) -> Tuple[Any, pd.DataFrame, Any, list]:
     """
     End-to-end preprocessing pipeline.
-
-    Steps
-    -----
-    1. Select feature columns
-    2. Impute missing values
-    3. Log-transform skewed features (Better for outlier detection on skewed data)
-    4. Remove outliers (IQR or Z-score)
-    5. Scale features
     """
     fc = config.features
-    logger.info("=== Preprocessing Start -- %d rows, %d features ===", len(df), len(fc.feature_cols))
-
-    # 0. Check missing columns
-    required_cols = ["user_id"] + fc.feature_cols
-    missing_cols = [c for c in required_cols if c not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns in data: {missing_cols}")
+    logger.info("=== Preprocessing Start -- %d rows ===", len(df))
 
     # 1. Select features
-    df_feat = df[required_cols].copy()
+    required_cols = ["user_id"] + fc.feature_cols
+    df_feat = df[[c for c in required_cols if c in df.columns]].copy()
 
     # 2. Impute
     df_feat = impute_missing(df_feat, fc.feature_cols)
 
-    # 3. Log transform (Move BEFORE outlier removal)
+    # 3. Log transform
     df_feat = log_transform(df_feat, fc.log_transform_cols)
 
     # 4. Outlier removal
@@ -144,18 +117,21 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True):
         df_clean = df_feat.copy()
 
     # 5. Scale
-    X = df_clean[fc.feature_cols].values
+    X = df_clean[fc.feature_cols].values.astype(np.float64)
+    scaler_cls = _SCALERS.get(fc.scaler, StandardScaler)
+    
     if fit:
-        scaler = fit_scaler(X, fc.scaler)
-        save_scaler(scaler, config)
+        scaler = scaler_cls()
+        scaler.fit(X)
+        joblib.dump(scaler, config.models_dir / "scaler.pkl")
+        logger.info("Scaler fitted and saved: %s", scaler_cls.__name__)
     else:
-        scaler = load_scaler(config)
+        scaler = joblib.load(config.models_dir / "scaler.pkl")
+        logger.info("Scaler loaded.")
 
-    X_scaled = scale_features(X, scaler)
+    X_scaled = scaler.transform(X)
 
     # Persist cleaned data
-    clean_path = config.data_dir / "users_preprocessed.csv"
-    df_clean.to_csv(clean_path, index=False)
-    logger.info("Preprocessed data saved → %s  |  shape: %s", clean_path, X_scaled.shape)
-
+    df_clean.to_csv(config.data_dir / "users_preprocessed.csv", index=False)
+    
     return X_scaled, df_clean, scaler, fc.feature_cols
