@@ -1,3 +1,3 @@
 model,silhouette_score,davies_bouldin,calinski_harabasz,inertia,n_clusters,final_score,noise_count,noise_pct,eps,min_samples
-KMeans,0.2317,1.9211,176.6717,5007.4401,2,0.2162617,,,,
-DBSCAN,0.2038,0.9501,11.5578,,3,-0.3796522,109.0,12.65,1.6166669954810966,5.0
+KMeans,0.2317,1.921,176.6814,5007.3046,2,0.2162814,,,,
+DBSCAN,0.2038,0.9501,11.5577,,3,-0.3796523,109.0,12.65,1.6166152942274525,5.0

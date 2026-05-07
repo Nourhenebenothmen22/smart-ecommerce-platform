@@ -6,8 +6,9 @@ Main orchestrator for the Customer Segmentation ML pipeline.
 
 import logging
 import sys
+import shutil
 import pandas as pd
-from .config import cfg
+from .config import cfg, ARTIFACTS_DIR
 from .data_loader import load_and_prepare
 from .preprocessing import preprocess
 from .train_kmeans import run_kmeans_pipeline
@@ -24,8 +25,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pipeline")
 
+def cleanup_artifacts():
+    """Delete all previous results to ensure a fresh start."""
+    logger.info("🧹 Cleaning up old artifacts...")
+    for sub_dir in ["plots", "reports", "models", "data"]:
+        target = ARTIFACTS_DIR / sub_dir
+        if target.exists():
+            for item in target.iterdir():
+                try:
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                except Exception as e:
+                    logger.warning(f"Could not delete {item}: {e}")
+    logger.info("✨ Cleanup complete.")
+
 def run_segmentation_pipeline():
     logger.info("🚀 STARTING MACHINE LEARNING PIPELINE")
+    
+    # 0. Force cleanup
+    cleanup_artifacts()
     
     # 1. Load data
     df_raw = load_and_prepare(cfg)
@@ -57,17 +77,11 @@ def run_segmentation_pipeline():
     print("\nK-Means:")
     print(f"- best_k = {km['n_clusters']}")
     print(f"- silhouette_score = {km['silhouette_score']:.4f}")
-    print(f"- davies_bouldin = {km['davies_bouldin']:.4f}")
-    print(f"- calinski_harabasz = {km['calinski_harabasz']:.4f}")
     
     db = dbscan_results["metrics"]
     print("\nDBSCAN:")
     print(f"- best_eps = {db['eps']:.2f}")
-    print(f"- best_min_samples = {db['min_samples']}")
     print(f"- noise_pct = {db['noise_pct']}%")
-    print(f"- silhouette_score = {db['silhouette_score']:.4f}")
-    print(f"- davies_bouldin = {db['davies_bouldin']:.4f}")
-    print(f"- calinski_harabasz = {db['calinski_harabasz']:.4f}")
     
     print("\nBEST MODEL SELECTED:")
     print(f"- {winner_name}")
