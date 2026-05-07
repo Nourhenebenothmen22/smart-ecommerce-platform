@@ -1,5 +1,13 @@
 # 📊 Rapport Final de Segmentation Client
 
+## ⌨️ Commandes d'exécution
+Pour lancer le pipeline complet (Nettoyage + Entraînement) :
+```powershell
+python -m ml.customer_segmentation.run_pipeline
+```
+
+---
+
 Ce document présente les résultats de l'audit et de l'exécution du pipeline de Machine Learning sur votre base de données e-commerce (1200 utilisateurs).
 
 ## 🏁 Résultat Final : k = 2
