@@ -46,8 +46,8 @@ def plot_kmeans_silhouette(k_range: list, scores: list, config: Config = cfg) ->
 def plot_dbscan_k_distance(X: np.ndarray, k: int = 5, config: Config = cfg) -> None:
     """K-NN distance plot to help identify optimal epsilon."""
     X_f = X.astype(np.float64)
-    nbrs = NearestNeighbors(n_neighbors=k).fit(X_f)
-    distances, _ = nbrs.kneighbors(X_f)
+    nbrs = NearestNeighbors(n_neighbors=k).fit(X_f)  # type: ignore
+    distances, _ = nbrs.kneighbors(X_f)  # type: ignore
     kth_distances = np.sort(distances[:, k - 1])[::-1]
 
     fig, ax = plt.subplots(figsize=config.viz.figsize_default)
