@@ -31,7 +31,7 @@ def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
 
     mapping = {}
     for cid, row in profile.iterrows():
-        cid = int(cid)
+        cid = int(str(cid))  # type conversion via str to satisfy strict type checkers
         if cid == -1:
             mapping[-1] = DEFAULT_SEGMENT_MAP[-1]
             continue
