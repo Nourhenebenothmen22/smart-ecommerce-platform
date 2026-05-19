@@ -16,6 +16,11 @@ from .config import Config, cfg
 
 logger = logging.getLogger(__name__)
 
+# ─── Fixed Reference Date ─────────────────────────────────────────────────────
+# Pinned so that recency features are identical on every pipeline run.
+# Update this date when retraining on a new data snapshot.
+REFERENCE_DATE: pd.Timestamp = pd.Timestamp("2025-12-31", tz="UTC")
+
 # ─── SQL Query ────────────────────────────────────────────────────────────────
 _USER_SEGMENTATION_QUERY = """
     SELECT
@@ -95,15 +100,14 @@ def load_and_prepare(config: Config = cfg, force_reload: bool = False) -> pd.Dat
     """
     df = load_raw_data(config=config, force_reload=force_reload)
     
-    # 1. Compute recency features
-    now = pd.Timestamp.now(tz="UTC")
+    # 1. Compute recency features using a fixed reference date (reproducibility)
     if "last_order_at" in df.columns:
         df["last_order_at"] = pd.to_datetime(df["last_order_at"], utc=True)
-        df["recency_days"] = (now - df["last_order_at"]).dt.days.fillna(999).astype(int)
+        df["recency_days"] = (REFERENCE_DATE - df["last_order_at"]).dt.days.fillna(999).astype(int)
     
     if "last_interaction_at" in df.columns:
         df["last_interaction_at"] = pd.to_datetime(df["last_interaction_at"], utc=True)
-        df["days_since_last_interaction"] = (now - df["last_interaction_at"]).dt.days.fillna(999).astype(int)
+        df["days_since_last_interaction"] = (REFERENCE_DATE - df["last_interaction_at"]).dt.days.fillna(999).astype(int)
     
     # 2. Compute interaction ratios
     # Handle division by zero

@@ -53,12 +53,13 @@ class DBConfig:
 # ─── Feature Engineering ──────────────────────────────────────────────────────
 @dataclass
 class FeatureConfig:
-    # Columns to use for clustering (Full e-commerce behavioral set)
+    # Columns to use for clustering
+    # avg_order_value removed: it is a linear combination of total_spent / total_orders
+    # (multicollinearity inflates the weight of spending behaviour)
     feature_cols: List[str] = field(default_factory=lambda: [
         "recency_days",
         "total_orders",
         "total_spent",
-        "avg_order_value",
         "views_count",
         "clicks_count",
         "cart_add_count",
@@ -68,14 +69,17 @@ class FeatureConfig:
         "cart_to_click_ratio",
     ])
     # Columns that need log1p transformation (right-skewed)
+    # recency columns added: the 999 sentinel for users with no history
+    # is heavily right-skewed and must be compressed before scaling.
     log_transform_cols: List[str] = field(default_factory=lambda: [
         "total_spent",
-        "avg_order_value",
         "total_orders",
         "views_count",
         "clicks_count",
         "cart_add_count",
         "wishlist_add_count",
+        "recency_days",
+        "days_since_last_interaction",
     ])
     scaler: str = "robust"   # "standard" | "minmax" | "robust"
     outlier_method: str = "iqr"  # "iqr" | "zscore" | "none"
