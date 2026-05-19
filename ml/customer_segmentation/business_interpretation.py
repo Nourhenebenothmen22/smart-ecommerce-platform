@@ -29,33 +29,47 @@ def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
     if profile.empty:
         return {-1: DEFAULT_SEGMENT_MAP[-1]}
 
+    # Pre-compute percentile thresholds across clusters (raw feature scale)
+    median_recency   = profile["recency_days"].median()   if "recency_days"   in profile.columns else 90
+    q60_spent        = profile["total_spent"].quantile(0.60) if "total_spent" in profile.columns else 0
+    median_orders    = profile["total_orders"].median()   if "total_orders"   in profile.columns else 1
+    median_cart_rate = profile["cart_to_click_ratio"].median() if "cart_to_click_ratio" in profile.columns else 0
+    median_views     = profile["views_count"].median()    if "views_count"    in profile.columns else 0
+    q25_orders       = profile["total_orders"].quantile(0.25) if "total_orders" in profile.columns else 0
+
     mapping = {}
     for cid, row in profile.iterrows():
         cid = int(str(cid))  # type conversion via str to satisfy strict type checkers
         if cid == -1:
             mapping[-1] = DEFAULT_SEGMENT_MAP[-1]
             continue
-            
-        # Decision heuristics
-        if row.get("recency_days", 0) > profile.get("recency_days", pd.Series([90])).median() * 1.5:
-            # High recency -> Inactive
+
+        recency       = row.get("recency_days", 0)
+        spent         = row.get("total_spent", 0)
+        orders        = row.get("total_orders", 0)
+        cart_rate     = row.get("cart_to_click_ratio", 0)
+        views         = row.get("views_count", 0)
+
+        # Decision heuristics — evaluated in priority order
+        if recency > median_recency * 1.5:
+            # High recency → long time since last purchase → Inactive
             mapping[cid] = DEFAULT_SEGMENT_MAP[4]
-        elif row.get("total_spent", 0) >= profile.get("total_spent", pd.Series([0])).quantile(0.60):
-            # High spend -> VIP
+        elif spent >= q60_spent:
+            # Top 40% of spenders → VIP
             mapping[cid] = DEFAULT_SEGMENT_MAP[0]
-        elif row.get("cart_to_click_ratio", 0) > profile.get("cart_to_click_ratio", pd.Series([0])).median() and row.get("total_orders", 1) < profile.get("total_orders", pd.Series([1])).median():
-            # High cart activity but low orders -> Cart Abandoners
+        elif cart_rate > median_cart_rate and orders < median_orders:
+            # High cart activity but low orders → Cart Abandoners
             mapping[cid] = DEFAULT_SEGMENT_MAP[2]
-        elif row.get("total_orders", 0) >= profile.get("total_orders", pd.Series([0])).median():
-            # Solid order count -> Loyal Buyers
+        elif orders >= median_orders:
+            # Solid, repeated order count → Loyal Buyers
             mapping[cid] = DEFAULT_SEGMENT_MAP[1]
-        elif row.get("views_count", 0) > profile.get("views_count", pd.Series([0])).median() and row.get("total_orders", 1) <= profile.get("total_orders", pd.Series([1])).quantile(0.25):
-            # High views but low/no orders -> Window Shoppers
+        elif views > median_views and orders <= q25_orders:
+            # High browsing, very few purchases → Window Shoppers
             mapping[cid] = DEFAULT_SEGMENT_MAP[3]
         else:
-            # Fallback -> Regular Customers
+            # Fallback → Regular Customers
             mapping[cid] = DEFAULT_SEGMENT_MAP[6]
-            
+
     return mapping
 
 def interpret_and_save(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.ndarray, 

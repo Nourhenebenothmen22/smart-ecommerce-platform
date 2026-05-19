@@ -26,9 +26,15 @@ logging.basicConfig(
 logger = logging.getLogger("pipeline")
 
 def cleanup_artifacts():
-    """Delete all previous results to ensure a fresh start."""
+    """Delete model/plot/report artifacts but preserve the raw data snapshot.
+    
+    The raw CSV (users_raw.csv) is intentionally kept so that:
+    1. Re-runs use the same DB snapshot → consistent recency features.
+    2. Database is not hammered on every training run.
+    Use force_reload=True in load_raw_data() to explicitly refresh.
+    """
     logger.info("🧹 Cleaning up old artifacts...")
-    for sub_dir in ["plots", "reports", "models", "data"]:
+    for sub_dir in ["plots", "reports", "models"]:  # data excluded intentionally
         target = ARTIFACTS_DIR / sub_dir
         if target.exists():
             for item in target.iterdir():

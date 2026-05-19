@@ -12,38 +12,48 @@ from .plots import plot_model_comparison
 
 logger = logging.getLogger(__name__)
 
-def calculate_model_score(metrics: dict, labels: np.ndarray) -> float:
+def calculate_model_score(metrics: dict, labels: np.ndarray, all_chi: list | None = None) -> float:
     """
-    Score = Silhouette + (Calinski / 1000) - (Davies / 10) - Penalties
+    Composite clustering quality score.
+
+    Score = silhouette + 0.3 * (chi / max_chi) - (davies / 10) - penalties
+
+    CH is normalised across all competing models so that a model with a
+    naturally higher CH (e.g. KMeans at k=2) is not unfairly rewarded over
+    a model whose CH is lower due to a different cluster geometry.
     """
     sil = metrics.get("silhouette_score", -1.0)
     dbi = metrics.get("davies_bouldin", 99.0)
     chi = metrics.get("calinski_harabasz", 0.0)
     n_clusters = metrics.get("n_clusters", 0)
-    
-    # Invalid model check
+
     if n_clusters < 2 or n_clusters > 5:
         return -999.0
-    
-    # Base score
-    score = sil + (chi / 1000.0) - (dbi / 10.0)
-    
-    # Penalty: Tiny clusters (< 5% of data)
+
+    # Normalise CH so it contributes proportionally regardless of scale
+    max_chi = max(all_chi) if all_chi else (chi if chi > 0 else 1.0)
+    chi_norm = (chi / max_chi) * 0.3 if max_chi > 0 else 0.0
+
+    score = sil + chi_norm - (dbi / 10.0)
+
+    # Penalty: tiny clusters (< 5% of ALL users, not just non-noise)
+    n_total = len(labels)
     mask = labels != -1
     if mask.any():
-        counts = pd.Series(labels[mask]).value_counts(normalize=True)
-        if (counts < 0.05).any():
+        counts = pd.Series(labels[mask]).value_counts(normalize=False)
+        if (counts < 0.05 * n_total).any():
             score -= 0.5
-            logger.info("Penalty applied: Tiny clusters found.")
-        
-    # Penalty: High noise (DBSCAN specific)
+            logger.info("Penalty applied: Tiny clusters found (< 5%% of all users).")
+
+    # Penalty: High noise rate (DBSCAN specific)
     noise_pct = float(metrics.get("noise_pct", 0.0))
     if noise_pct > 30:
         score -= 1.0
         logger.info("Penalty applied: High noise (%.1f%%).", noise_pct)
     elif noise_pct > 15:
         score -= 0.3
-        
+        logger.info("Penalty applied: Elevated noise (%.1f%%).", noise_pct)
+
     return score
 
 def compare_models(kmeans_results: dict, dbscan_results: dict, config: Config = cfg) -> tuple:
@@ -51,16 +61,23 @@ def compare_models(kmeans_results: dict, dbscan_results: dict, config: Config = 
     Compare models and select the best one.
     """
     logger.info("=== Comparing Models ===")
-    
+
     results = {
         "KMeans": kmeans_results,
         "DBSCAN": dbscan_results
     }
-    
+
+    # Collect all CH values for normalisation
+    all_chi = [
+        res["metrics"].get("calinski_harabasz", 0.0)
+        for res in results.values()
+        if res["metrics"].get("calinski_harabasz") is not None
+    ]
+
     # Calculate scores
     scores = {}
     for name, res in results.items():
-        score = calculate_model_score(res["metrics"], res["labels"])
+        score = calculate_model_score(res["metrics"], res["labels"], all_chi=all_chi)
         scores[name] = score
         logger.info("%s Final Score: %.4f", name, score)
     
