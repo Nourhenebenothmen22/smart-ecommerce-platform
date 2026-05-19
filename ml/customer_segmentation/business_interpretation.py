@@ -25,27 +25,36 @@ DEFAULT_SEGMENT_MAP: Dict[int, Dict[str, str]] = {
 }
 
 def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
-    """Assign business labels based on mean metrics (Ranking heuristic)."""
+    """Assign business labels based on actual feature thresholds (Behavioral heuristics)."""
     if profile.empty:
         return {-1: DEFAULT_SEGMENT_MAP[-1]}
 
-    score = pd.Series(0.0, index=profile.index)
-    if "total_spent" in profile.columns:
-        score += profile["total_spent"].rank(pct=True)
-    if "total_orders" in profile.columns:
-        score += profile["total_orders"].rank(pct=True)
-    if "recency_days" in profile.columns:
-        score -= profile["recency_days"].rank(pct=True)
-
-    ranked = score.sort_values(ascending=False)
-    
     mapping = {}
-    for i, cluster_id in enumerate(ranked.index):
-        cid = int(cluster_id)
+    for cid, row in profile.iterrows():
+        cid = int(cid)
         if cid == -1:
             mapping[-1] = DEFAULT_SEGMENT_MAP[-1]
+            continue
+            
+        # Decision heuristics
+        if row.get("recency_days", 0) > profile.get("recency_days", pd.Series([90])).median() * 1.5:
+            # High recency -> Inactive
+            mapping[cid] = DEFAULT_SEGMENT_MAP[4]
+        elif row.get("total_spent", 0) >= profile.get("total_spent", pd.Series([0])).quantile(0.60):
+            # High spend -> VIP
+            mapping[cid] = DEFAULT_SEGMENT_MAP[0]
+        elif row.get("cart_to_click_ratio", 0) > profile.get("cart_to_click_ratio", pd.Series([0])).median() and row.get("total_orders", 1) < profile.get("total_orders", pd.Series([1])).median():
+            # High cart activity but low orders -> Cart Abandoners
+            mapping[cid] = DEFAULT_SEGMENT_MAP[2]
+        elif row.get("total_orders", 0) >= profile.get("total_orders", pd.Series([0])).median():
+            # Solid order count -> Loyal Buyers
+            mapping[cid] = DEFAULT_SEGMENT_MAP[1]
+        elif row.get("views_count", 0) > profile.get("views_count", pd.Series([0])).median() and row.get("total_orders", 1) <= profile.get("total_orders", pd.Series([1])).quantile(0.25):
+            # High views but low/no orders -> Window Shoppers
+            mapping[cid] = DEFAULT_SEGMENT_MAP[3]
         else:
-            mapping[cid] = DEFAULT_SEGMENT_MAP.get(i, {"label": f"Cluster {cid}", "emoji": "📦", "strategy": "TBD"})
+            # Fallback -> Regular Customers
+            mapping[cid] = DEFAULT_SEGMENT_MAP[6]
             
     return mapping
 

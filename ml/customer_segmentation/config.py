@@ -85,8 +85,8 @@ class FeatureConfig:
 # ─── K-Means ──────────────────────────────────────────────────────────────────
 @dataclass
 class KMeansConfig:
-    k_range: List[int] = field(default_factory=lambda: [2, 3])
-    n_clusters: int = 3          # maximum requested
+    k_range: List[int] = field(default_factory=lambda: [2, 3, 4, 5])
+    n_clusters: int = 5          # maximum requested
     init: str = "k-means++"
     n_init: int = 50
     max_iter: int = 500

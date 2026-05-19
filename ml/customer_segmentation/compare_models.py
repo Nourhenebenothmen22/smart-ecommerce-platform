@@ -21,8 +21,8 @@ def calculate_model_score(metrics: dict, labels: np.ndarray) -> float:
     chi = metrics.get("calinski_harabasz", 0.0)
     n_clusters = metrics.get("n_clusters", 0)
     
-    # Invalid model check (Respect max 3 clusters constraint)
-    if n_clusters < 2 or n_clusters > 3:
+    # Invalid model check
+    if n_clusters < 2 or n_clusters > 5:
         return -999.0
     
     # Base score

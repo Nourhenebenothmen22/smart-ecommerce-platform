@@ -28,25 +28,22 @@ _SCALERS = {
 
 def remove_outliers_iqr(df: pd.DataFrame, cols: list, factor: float = 3.0) -> pd.DataFrame:
     """
-    Remove extreme outliers. 
-    Factor 3.0 is used to keep 'legitimate' high-value customers (extreme but real).
+    Cap extreme outliers (Winsorization) instead of dropping them to ensure 
+    high-value customers (VIPs) are clustered rather than deleted.
     """
-    mask = pd.Series([True] * len(df), index=df.index)
+    df_clean = df.copy()
     for col in cols:
-        if col not in df.columns:
+        if col not in df_clean.columns:
             continue
-        q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
+        q1, q3 = df_clean[col].quantile(0.25), df_clean[col].quantile(0.75)
         iqr = q3 - q1
-        mask &= df[col].between(q1 - factor * iqr, q3 + factor * iqr)
-    
-    df_clean = df[mask].reset_index(drop=True)
-    removed = len(df) - len(df_clean)
-    
-    if len(df_clean) < 10 and len(df) >= 10:
-        logger.warning("Outlier removal too aggressive! Reverting to original data.")
-        return df.reset_index(drop=True)
+        lower_bound = q1 - factor * iqr
+        upper_bound = q3 + factor * iqr
         
-    logger.info("IQR outlier removal: %d rows removed (%.1f%%)", removed, (removed / len(df) * 100) if len(df) > 0 else 0)
+        # Clip values to bounds
+        df_clean[col] = df_clean[col].clip(lower=lower_bound, upper=upper_bound)
+        
+    logger.info("IQR outlier handling: Extreme values capped (Winsorized).")
     return df_clean
 
 def remove_outliers_zscore(df: pd.DataFrame, cols: list, threshold: float = 3.0) -> pd.DataFrame:
