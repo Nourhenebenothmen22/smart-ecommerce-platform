@@ -41,7 +41,8 @@ def calculate_model_score(metrics: dict, labels: np.ndarray, all_chi: list | Non
     mask = labels != -1
     if mask.any():
         counts = pd.Series(labels[mask]).value_counts(normalize=False)
-        if (counts < 0.05 * n_total).any():
+        min_cluster_size = int(0.05 * n_total)  # keep dtype as int to satisfy Series[int].__lt__
+        if (counts < min_cluster_size).any():
             score -= 0.5
             logger.info("Penalty applied: Tiny clusters found (< 5%% of all users).")
 
