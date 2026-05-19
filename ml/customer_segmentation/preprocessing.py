@@ -5,6 +5,7 @@ Feature engineering, outlier removal, log-transformation and scaling.
 Outputs a clean, scaled numpy array ready for clustering.
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Tuple
@@ -26,24 +27,41 @@ _SCALERS = {
 
 # ─── Outlier Removal ─────────────────────────────────────────────────────────
 
-def remove_outliers_iqr(df: pd.DataFrame, cols: list, factor: float = 3.0) -> pd.DataFrame:
+def remove_outliers_iqr(
+    df: pd.DataFrame,
+    cols: list,
+    factor: float = 3.0,
+    bounds_path: Path | None = None,
+) -> pd.DataFrame:
     """
-    Cap extreme outliers (Winsorization) instead of dropping them to ensure 
-    high-value customers (VIPs) are clustered rather than deleted.
+    Cap extreme outliers (Winsorization) instead of dropping them.
+    High-value customers (VIPs) are capped to upper bounds rather than deleted.
+
+    Parameters
+    ----------
+    bounds_path : Path | None
+        If provided, computed clip bounds are persisted to this JSON file so
+        that the same caps can be applied at inference time.
     """
     df_clean = df.copy()
+    bounds: dict = {}
     for col in cols:
         if col not in df_clean.columns:
             continue
         q1, q3 = df_clean[col].quantile(0.25), df_clean[col].quantile(0.75)
         iqr = q3 - q1
-        lower_bound = q1 - factor * iqr
-        upper_bound = q3 + factor * iqr
-        
-        # Clip values to bounds
+        lower_bound = float(q1 - factor * iqr)
+        upper_bound = float(q3 + factor * iqr)
+        bounds[col] = {"lower": lower_bound, "upper": upper_bound}
         df_clean[col] = df_clean[col].clip(lower=lower_bound, upper=upper_bound)
-        
-    logger.info("IQR outlier handling: Extreme values capped (Winsorized).")
+
+    if bounds_path is not None:
+        bounds_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(bounds_path, "w") as f:
+            json.dump(bounds, f, indent=2)
+        logger.info("Winsorization bounds saved → %s", bounds_path)
+
+    logger.info("IQR outlier handling: Extreme values capped (Winsorized, %d cols).", len(bounds))
     return df_clean
 
 def remove_outliers_zscore(df: pd.DataFrame, cols: list, threshold: float = 3.0) -> pd.DataFrame:
@@ -107,7 +125,8 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True) -> Tupl
 
     # 4. Outlier removal
     if fc.outlier_method == "iqr":
-        df_clean = remove_outliers_iqr(df_feat, fc.feature_cols)
+        bounds_path = config.models_dir / "winsorization_bounds.json" if fit else None
+        df_clean = remove_outliers_iqr(df_feat, fc.feature_cols, bounds_path=bounds_path)
     elif fc.outlier_method == "zscore":
         df_clean = remove_outliers_zscore(df_feat, fc.feature_cols, fc.outlier_threshold)
     else:
