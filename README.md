@@ -157,7 +157,7 @@ python api/main.py
 
 ---
 
-## 📊 Segmentation & Intelligence Marketing (MLOps)
+## 📊 Segmentation & Intelligence Marketing 
 
 Le système intègre un pipeline complet de segmentation client pour transformer les données brutes en segments actionnables.
 
