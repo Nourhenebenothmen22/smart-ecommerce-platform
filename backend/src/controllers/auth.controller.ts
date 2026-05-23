@@ -32,8 +32,9 @@ export class AuthController {
     }
   }
 
-  async logout(_req: Request, res: Response, next: NextFunction) {
+  async logout(req: Request, res: Response, next: NextFunction) {
     try {
+      await authService.revokeUserTokens(req.user!.id);
       res.clearCookie("access_token", COOKIE_OPTIONS);
       sendResponse(res, StatusCodes.OK, "Logged out successfully");
     } catch (error) {
