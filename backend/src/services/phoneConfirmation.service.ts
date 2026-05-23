@@ -15,6 +15,7 @@ import { pool } from "../db/pool.js";
 import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { orderService } from "./order.service.js";
+import { env } from "../config/env.js";
 import type {
   IVoiceProvider,
   CallContext,
@@ -227,7 +228,7 @@ export class PhoneConfirmationService {
 
       // Update order status (reuse existing updateStatus which handles stock restoration on cancel)
       if (outcome !== "no_answer") {
-        await orderService.updateStatus(orderId, newOrderStatus);
+        await orderService.updateStatus(orderId, newOrderStatus, client);
       }
       // If no_answer → order stays pending, we schedule a retry in the background
 
@@ -255,7 +256,7 @@ export class PhoneConfirmationService {
     );
     setTimeout(async () => {
       try {
-        const webhookBaseUrl = process.env.WEBHOOK_BASE_URL || "https://localhost:5000";
+        const webhookBaseUrl = env.WEBHOOK_BASE_URL || "https://localhost:5000";
         await this.initiateCall(orderId, webhookBaseUrl);
       } catch (err) {
         console.error(`[PhoneConfirmation] Retry #${currentRetryCount} failed for order ${orderId}:`, err);
