@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "lint": "tsc --noEmit",
     "start": "node dist/server.js",
     "db:init": "npm run db:1-tables && npm run db:2-constraints && npm run db:3-indexes && npm run db:4-triggers && npm run db:5-views && npm run db:6-ml-schema && npm run db:6b-ml-constraints && npm run db:7-ml-views && npm run db:8-ml-indexes && npm run db:9-nlp-schema && npm run db:10-nlp-evaluations && npm run db:12-voice-confirmations-extend",
     "db:1-tables": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < src/sql/001_tables.sql",
@@ -23,7 +24,7 @@
     "ml:upsert-features": "docker exec -i ecommerce_postgres psql -U postgres -d ecommerce_ml_db < ../ml/data/sql/upsert_user_features.sql",
     "ml:seed:append": "cd ../ml && python -m scripts.seed --mode append",
     "ml:seed:reset": "cd ../ml && python -m scripts.seed --mode reset",
-    "test": "jest --passWithNoTests",
+    "test": "jest --runInBand --passWithNoTests",
     "prepare": "husky"
   },
   "keywords": [],
