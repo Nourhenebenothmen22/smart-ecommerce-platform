@@ -204,6 +204,24 @@ Permet de visualiser la séparation réelle des segments dans un espace réduit.
 Répartition globale de votre base client par segment business (ex: Champions, Clients à risque).
 ![Distribution](ml/artifacts/customer_segmentation/plots/final_business_segment_distribution.png)
 
+## 📞 Agent Téléphonique de Confirmation des Commandes (Phone Confirmation Agent)
+
+Le système intègre un agent vocal de confirmation automatisé (compatible avec Retell AI / Vapi / Twilio) pour valider les commandes par appel vocal avant de les passer en production.
+
+### 1. Cycle de vie & Gating de la commande :
+1. **Création** : Les commandes sont créées avec le statut initial `pending_phone_confirmation`.
+2. **Déclenchement** : L'agent de confirmation passe un appel au numéro E.164 de l'utilisateur.
+3. **Gating & Webhooks** :
+   - **Confirmé** $\rightarrow$ Le statut passe à `processing`.
+   - **Annulé** $\rightarrow$ Le statut passe à `cancelled` (libérant automatiquement le stock).
+   - **Pas de réponse (No Answer)** $\rightarrow$ La commande reste en suspens et le système planifie un rappel (retries espacés de 1m, 2m, 3m, max 3 tentatives).
+   - **Incompris / Incertain (Unclear)** $\rightarrow$ Le statut passe à `manual_review` pour validation manuelle par l'administrateur.
+
+### 2. Sécurité & Données Transmises :
+- **HMAC Signatures** : Les webhooks reçus du fournisseur sont vérifiés cryptographiquement via une signature HMAC (`x-retell-signature`).
+- **Confidentialité** : Aucune donnée bancaire ou de paiement sensible n'est partagée avec le modèle vocal ou le fournisseur de service. Seul un descripteur générique (ex: `paid via credit_card`) est transmis.
+- **Prévention des doublons** : Un index unique partiel en base de données empêche le déclenchement de multiples appels actifs simultanés pour la même commande.
+
 ---
 
 ## 🛡️ Audit de Qualité & Finalisation Backend (Mai 2026)
