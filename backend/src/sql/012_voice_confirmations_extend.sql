@@ -16,6 +16,8 @@ ALTER TABLE voice_confirmations
 
 -- Unique partial index: only one active (non-terminal) call per order at a time.
 -- This is the database-level duplicate-call prevention.
+ALTER TABLE voice_confirmations DROP CONSTRAINT IF EXISTS uq_voice_order;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_voice_confirmations_active_order
   ON voice_confirmations (order_id)
   WHERE call_status NOT IN ('completed', 'failed', 'cancelled');
