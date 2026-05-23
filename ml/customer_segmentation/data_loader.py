@@ -1,14 +1,11 @@
 """
-data_loader.py
---------------
-Responsible for extracting user behavioural data from PostgreSQL
-and persisting the raw dataset as a CSV artifact.
+Load backend-compatible customer segmentation features from PostgreSQL.
 """
 
 import logging
+import os
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text
 
@@ -16,30 +13,35 @@ from .config import Config, cfg
 
 logger = logging.getLogger(__name__)
 
-# ─── Fixed Reference Date ─────────────────────────────────────────────────────
-# Pinned so that recency features are identical on every pipeline run.
-# Update this date when retraining on a new data snapshot.
-REFERENCE_DATE: pd.Timestamp = pd.Timestamp("2025-12-31", tz="UTC")
-
-# ─── SQL Query ────────────────────────────────────────────────────────────────
 _USER_SEGMENTATION_QUERY = """
     SELECT
         user_id,
         total_orders,
         total_spent,
         avg_order_value,
+        total_items_bought,
         views_count,
         clicks_count,
         cart_add_count,
         wishlist_add_count,
-        last_order_at,
-        last_interaction_at
-    FROM v_user_behavior_features
+        purchase_interaction_count,
+        search_count,
+        share_count,
+        reviews_count,
+        avg_rating_given,
+        wishlist_count,
+        cart_count,
+        COALESCE(days_since_last_order, 999) AS days_since_last_order,
+        COALESCE(days_since_last_interaction, 999) AS days_since_last_interaction,
+        COALESCE(days_since_signup, 999) AS days_since_signup,
+        purchase_to_view_ratio,
+        cart_to_click_ratio,
+        review_to_purchase_ratio,
+        computed_at
+    FROM user_features
     ORDER BY total_spent DESC;
 """
 
-
-# ─── Core Functions ───────────────────────────────────────────────────────────
 
 def get_engine(config: Config = cfg):
     """Create and return a SQLAlchemy engine from config."""
@@ -50,32 +52,22 @@ def get_engine(config: Config = cfg):
 
 def load_raw_data(config: Config = cfg, force_reload: bool = False) -> pd.DataFrame:
     """
-    Load raw user behavioural data.
+    Load user_features rows.
 
-    Tries the cached CSV first (unless force_reload=True), then falls back
-    to a live DB query.
-
-    Parameters
-    ----------
-    config       : Config  – pipeline config
-    force_reload : bool    – bypass cache and re-query the DB
-
-    Returns
-    -------
-    pd.DataFrame with columns:
-        user_id, total_orders, total_spent, avg_order_value,
-        views_count, clicks_count, cart_add_count, wishlist_add_count,
-        last_order_at, last_interaction_at
+    The DB is queried by default to avoid stale training data. Set
+    ML_USE_FEATURE_CACHE=true for local experiments that intentionally reuse the
+    cached CSV.
     """
     cache_path: Path = config.data_dir / "users_raw.csv"
+    use_cache = os.getenv("ML_USE_FEATURE_CACHE", "false").lower() == "true"
 
-    if cache_path.exists() and not force_reload:
+    if use_cache and cache_path.exists() and not force_reload:
         logger.info("Loading from cache -> %s", cache_path)
-        df = pd.read_csv(cache_path, parse_dates=["last_order_at", "last_interaction_at"])
+        df = pd.read_csv(cache_path)
         logger.info("Cached dataset loaded -- shape: %s", df.shape)
         return df
 
-    logger.info("Querying database …")
+    logger.info("Querying user_features table.")
     engine = get_engine(config)
     with engine.connect() as conn:
         df = pd.read_sql(text(_USER_SEGMENTATION_QUERY), conn)
@@ -91,28 +83,18 @@ def _save_raw(df: pd.DataFrame, path: Path) -> None:
     logger.info("Raw data saved -> %s", path)
 
 
-
-
-
 def load_and_prepare(config: Config = cfg, force_reload: bool = False) -> pd.DataFrame:
     """
-    Load data from behavior view and compute interaction features.
+    Load backend-generated features and validate the training contract.
     """
     df = load_raw_data(config=config, force_reload=force_reload)
-    
-    # 1. Compute recency features using a fixed reference date (reproducibility)
-    if "last_order_at" in df.columns:
-        df["last_order_at"] = pd.to_datetime(df["last_order_at"], utc=True)
-        df["recency_days"] = (REFERENCE_DATE - df["last_order_at"]).dt.days.fillna(999).astype(int)
-    
-    if "last_interaction_at" in df.columns:
-        df["last_interaction_at"] = pd.to_datetime(df["last_interaction_at"], utc=True)
-        df["days_since_last_interaction"] = (REFERENCE_DATE - df["last_interaction_at"]).dt.days.fillna(999).astype(int)
-    
-    # 2. Compute interaction ratios
-    # Handle division by zero
-    df["purchase_to_view_ratio"] = (df["total_orders"] / df["views_count"].replace(0, np.nan)).fillna(0)
-    df["cart_to_click_ratio"] = (df["cart_add_count"] / df["clicks_count"].replace(0, np.nan)).fillna(0)
-    
-    logger.info("Feature preparation complete: recency and ratios computed.")
+
+    missing = [col for col in config.features.feature_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"user_features is missing required ML columns: {missing}")
+
+    for col in config.features.feature_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    logger.info("Feature preparation complete from user_features table.")
     return df
