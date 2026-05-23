@@ -12,6 +12,7 @@ import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../utils/apiResponse.js";
 import { PhoneConfirmationService } from "../services/phoneConfirmation.service.js";
 import { RetellProvider } from "../services/voice/retell.provider.js";
+import { env } from "../config/env.js";
 
 // ── Lazy singleton ──────────────────────────────────────────────────────────
 let _service: PhoneConfirmationService | null = null;
@@ -60,7 +61,7 @@ export class VoiceConfirmationController {
     try {
       const service = getService();
       const orderId = Number(req.params.id);
-      const webhookBaseUrl = process.env.WEBHOOK_BASE_URL || `${req.protocol}://${req.get("host")}`;
+      const webhookBaseUrl = env.WEBHOOK_BASE_URL || `${req.protocol}://${req.get("host")}`;
 
       const result = await service.initiateCall(orderId, webhookBaseUrl);
 
