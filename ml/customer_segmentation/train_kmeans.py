@@ -5,7 +5,6 @@ K-Means training: elbow method, silhouette selection, model persistence.
 """
 
 import logging
-from pathlib import Path
 from typing import Any, Dict
 import numpy as np
 import pandas as pd
@@ -24,7 +23,12 @@ def run_kmeans_tuning(X: np.ndarray, config: Config = cfg) -> int:
     Returns the best_k based on highest silhouette score.
     """
     X_f = X.astype(np.float64)
-    ks = list(config.kmeans.k_range)
+    if len(X_f) < 3:
+        raise ValueError("K-Means training requires at least 3 user feature rows.")
+
+    ks = [k for k in config.kmeans.k_range if 2 <= k < len(X_f)]
+    if not ks:
+        raise ValueError(f"No valid K-Means cluster count for {len(X_f)} rows.")
     inertias = []
     silhouettes = []
 
