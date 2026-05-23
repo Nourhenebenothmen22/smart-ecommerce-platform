@@ -42,7 +42,7 @@ export class OrderController {
   async deleteOrder(req: Request, res: Response, next: NextFunction) {
     try {
       await orderService.deleteOrder(Number(req.params.id));
-      sendResponse(res, StatusCodes.OK, "Order deleted");
+      sendResponse(res, StatusCodes.OK, "Order cancelled");
     } catch (error) { next(error); }
   }
 }

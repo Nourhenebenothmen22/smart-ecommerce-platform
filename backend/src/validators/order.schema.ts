@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-export const orderStatusEnum = z.enum(['pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']);
+export const orderStatusEnum = z.enum(['pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'completed', 'on_hold']);
 export const paymentStatusEnum = z.enum(['pending', 'paid', 'failed', 'refunded']);
+export const paymentMethodEnum = z.enum(['credit_card', 'paypal', 'cash_on_delivery', 'bank_transfer', 'crypto', 'apple_pay']);
 
 export const createOrderSchema = z.object({
   items: z.array(
@@ -10,7 +11,7 @@ export const createOrderSchema = z.object({
       quantity: z.number().int().min(1, 'Quantity must be at least 1'),
     })
   ).min(1, 'At least one item is required'),
-  payment_method: z.string().min(1, 'Payment method is required').max(50),
+  payment_method: paymentMethodEnum,
 });
 
 export const orderIdSchema = z.object({

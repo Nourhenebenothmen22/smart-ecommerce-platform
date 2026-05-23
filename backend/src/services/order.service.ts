@@ -4,6 +4,19 @@ import { StatusCodes } from "http-status-codes";
 import { env } from "../config/env.js";
 import type { PoolClient } from "pg";
 
+const ALLOWED_STATUS_TRANSITIONS: Record<string, Set<string>> = {
+  pending: new Set(["pending_phone_confirmation", "processing", "cancelled", "on_hold"]),
+  pending_phone_confirmation: new Set(["processing", "manual_review", "cancelled", "on_hold"]),
+  manual_review: new Set(["processing", "cancelled", "on_hold"]),
+  processing: new Set(["shipped", "cancelled", "refunded", "on_hold"]),
+  shipped: new Set(["delivered", "refunded"]),
+  delivered: new Set(["completed", "refunded"]),
+  on_hold: new Set(["pending_phone_confirmation", "manual_review", "processing", "cancelled"]),
+  cancelled: new Set([]),
+  refunded: new Set([]),
+  completed: new Set([]),
+};
+
 export class OrderService {
   async createOrder(userId: number, items: { product_id: number; quantity: number }[], payment_method: string) {
     const client = await pool.connect();
@@ -137,9 +150,22 @@ export class OrderService {
   private async updateStatusWithClient(client: PoolClient, orderId: number, status: string) {
     const current = await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [orderId]);
     if (current.rows.length === 0) throw new AppError("Order not found", StatusCodes.NOT_FOUND);
+    const currentStatus = current.rows[0].status as string;
+
+    if (currentStatus === status) {
+      return current.rows[0];
+    }
+
+    const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] ?? new Set<string>();
+    if (!allowedNextStatuses.has(status)) {
+      throw new AppError(
+        `Invalid order status transition from "${currentStatus}" to "${status}"`,
+        StatusCodes.CONFLICT
+      );
+    }
 
     // If cancelling, restore stock
-    if (status === "cancelled" && current.rows[0].status !== "cancelled") {
+    if (status === "cancelled" && currentStatus !== "cancelled") {
       const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id=$1", [orderId]);
       for (const item of items.rows) {
         await client.query("UPDATE products SET stock=stock+$1,updated_at=NOW() WHERE id=$2", [item.quantity, item.product_id]);
@@ -154,8 +180,7 @@ export class OrderService {
   }
 
   async deleteOrder(orderId: number) {
-    const r = await pool.query("DELETE FROM orders WHERE id=$1 RETURNING id", [orderId]);
-    if (r.rows.length === 0) throw new AppError("Order not found", StatusCodes.NOT_FOUND);
+    await this.updateStatus(orderId, "cancelled");
   }
 }
 

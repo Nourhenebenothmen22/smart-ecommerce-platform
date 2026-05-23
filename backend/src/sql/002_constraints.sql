@@ -192,7 +192,7 @@ BEGIN
 
     -- Orders Statuses
     ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_status;
-    ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'));
+    ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded', 'completed', 'on_hold'));
 
     -- Orders Payment Status
     ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_payment_status;
@@ -207,8 +207,16 @@ BEGIN
     ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payment_status;
     ALTER TABLE payments ADD CONSTRAINT chk_payment_status CHECK (status IN ('pending', 'paid', 'failed', 'refunded'));
 
+    -- Payments Method
+    ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payment_method;
+    ALTER TABLE payments ADD CONSTRAINT chk_payment_method CHECK (payment_method IN ('credit_card', 'paypal', 'cash_on_delivery', 'bank_transfer', 'crypto', 'apple_pay'));
+
     -- Interaction Types
     ALTER TABLE user_interactions DROP CONSTRAINT IF EXISTS chk_interaction_type;
     ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search', 'review'));
+
+    -- Voice Confirmation Status
+    ALTER TABLE voice_confirmations DROP CONSTRAINT IF EXISTS chk_voice_status;
+    ALTER TABLE voice_confirmations ADD CONSTRAINT chk_voice_status CHECK (call_status IN ('pending', 'in_progress', 'completed', 'failed', 'ignored', 'cancelled'));
 
 END $$;

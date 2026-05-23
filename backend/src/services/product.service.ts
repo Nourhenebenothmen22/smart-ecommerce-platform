@@ -78,10 +78,19 @@ export class ProductService {
   }
 
   async updateProduct(id: number, data: any) {
-    if (data.subcategory_id && data.category_id) {
-      const s = await pool.query("SELECT id FROM subcategories WHERE id=$1 AND category_id=$2", [data.subcategory_id, data.category_id]);
-      if (s.rows.length === 0) throw new AppError("Subcategory does not belong to category", StatusCodes.BAD_REQUEST);
+    const current = await pool.query("SELECT id, category_id, subcategory_id FROM products WHERE id=$1", [id]);
+    if (current.rows.length === 0) throw new AppError("Product not found", StatusCodes.NOT_FOUND);
+
+    const categoryId = data.category_id ?? current.rows[0].category_id;
+    const subcategoryId = data.subcategory_id ?? current.rows[0].subcategory_id;
+    const s = await pool.query(
+      "SELECT id FROM subcategories WHERE id=$1 AND category_id=$2",
+      [subcategoryId, categoryId]
+    );
+    if (s.rows.length === 0) {
+      throw new AppError("Subcategory does not belong to category", StatusCodes.BAD_REQUEST);
     }
+
     const fields = ["title","slug","description","brand","category_id","subcategory_id","price","discount_percent","stock","thumbnail","is_active"];
     const ups: string[] = []; const vals: any[] = []; let idx = 1;
     for (const f of fields) { if (data[f] !== undefined) { ups.push(`${f}=$${idx}`); vals.push(data[f]); idx++; } }
