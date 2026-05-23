@@ -1,97 +1,80 @@
 """
-generate_embeddings.py — Generate product embeddings using a multilingual model.
-
-Uses paraphrase-multilingual-MiniLM-L12-v2 (384 dimensions) for French-compatible
-semantic embeddings. Encodes title + brand + description for each product.
+Generate or refresh product embeddings using versioned upserts.
 """
-import os
+
+import logging
+import time
+
 import psycopg2
 from sentence_transformers import SentenceTransformer
-import time
-import logging
+
+from ml.core.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_NAME = os.environ.get("DB_NAME", "ecommerce_ml_db")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASS = os.environ.get("DB_PASS", "postgres")
-DB_PORT = os.environ.get("DB_PORT", "5433")
-
-# Multilingual model — supports French, English, 50+ languages (384 dimensions)
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-MODEL_VERSION = "1.0"
+MODEL_NAME = settings.EMBEDDING_MODEL_NAME
+MODEL_VERSION = settings.EMBEDDING_MODEL_VERSION
 
 
 def get_connection():
     try:
-        return psycopg2.connect(
-            host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
-            user=DB_USER, password=DB_PASS
-        )
-    except Exception as e:
-        raise Exception(f"Cannot connect to database on {DB_HOST}:{DB_PORT}/{DB_NAME}: {e}")
+        return psycopg2.connect(**settings.db_config_dict)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Cannot connect to database on {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}: {exc}"
+        ) from exc
 
 
 def run():
-    logger.info(f"1. Loading multilingual model ({MODEL_NAME})...")
+    logger.info("1. Loading embedding model (%s v%s).", MODEL_NAME, MODEL_VERSION)
     model = SentenceTransformer(MODEL_NAME)
 
     conn = get_connection()
     cur = conn.cursor()
 
-    # Ensure vector column is 384 dimensions (matches model output)
-    logger.info("2. Updating pgvector schema for 384 dimensions...")
-    cur.execute("ALTER TABLE product_embeddings ALTER COLUMN embedding_vector TYPE vector(384);")
+    cur.execute(
+        """
+        INSERT INTO ml_models (model_name, model_version, model_type, algorithm, is_active)
+        VALUES (%s, %s, 'embedding', 'transformer', true)
+        ON CONFLICT (model_name, model_version)
+        DO UPDATE SET model_type = EXCLUDED.model_type, algorithm = EXCLUDED.algorithm, is_active = true;
+        """,
+        (MODEL_NAME, MODEL_VERSION),
+    )
     conn.commit()
 
-    # Register model in ml_models to satisfy FK constraint
-    try:
-        cur.execute("""
-            INSERT INTO ml_models (model_name, model_version, model_type, algorithm)
-            VALUES (%s, %s, 'embedding', 'transformer')
-            ON CONFLICT (model_name, model_version) DO NOTHING;
-        """, (MODEL_NAME, MODEL_VERSION))
-        conn.commit()
-        logger.info(f"   Model '{MODEL_NAME}' v{MODEL_VERSION} registered in ml_models.")
-    except Exception as e:
-        logger.warning(f"   ml_models insert check: {e}")
-        conn.rollback()
-
-    cur.execute("SELECT id, title, description, brand FROM products;")
+    cur.execute("SELECT id, title, description, brand FROM products WHERE is_active = TRUE;")
     products = cur.fetchall()
 
-    logger.info(f"3. {len(products)} products found. Clearing existing embeddings...")
-    cur.execute("TRUNCATE TABLE product_embeddings RESTART IDENTITY;")
-    conn.commit()
-
-    logger.info("4. Generating embeddings... This may take a few minutes.")
+    logger.info("2. Generating embeddings for %d active products.", len(products))
     start_time = time.time()
 
     inserted = 0
-    for row in products:
-        p_id, title, desc, brand = row
-        # Combine all searchable text fields for rich semantic representation
-        text_to_embed = f"{title}. {brand}. {desc}"
-
+    for p_id, title, desc, brand in products:
+        text_to_embed = f"{title or ''}. {brand or ''}. {desc or ''}"
         vector = model.encode(text_to_embed).tolist()
 
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO product_embeddings (product_id, model_name, model_version, embedding_vector)
             VALUES (%s, %s, %s, %s)
-        """, (p_id, MODEL_NAME, MODEL_VERSION, vector))
+            ON CONFLICT (product_id, model_name, model_version)
+            DO UPDATE SET embedding_vector = EXCLUDED.embedding_vector, created_at = NOW();
+            """,
+            (p_id, MODEL_NAME, MODEL_VERSION, vector),
+        )
 
         inserted += 1
         if inserted % 500 == 0:
-            logger.info(f"   [{inserted}/{len(products)}] processed...")
+            logger.info("   [%d/%d] processed.", inserted, len(products))
             conn.commit()
 
     conn.commit()
     cur.close()
     conn.close()
     elapsed = time.time() - start_time
-    logger.info(f"Success! {inserted} multilingual embeddings generated in {elapsed:.2f} seconds.")
+    logger.info("Success. %d embeddings upserted in %.2f seconds.", inserted, elapsed)
 
 
 if __name__ == "__main__":
