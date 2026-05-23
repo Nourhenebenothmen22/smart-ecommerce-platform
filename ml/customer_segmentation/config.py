@@ -5,20 +5,14 @@ Centralised configuration for the Customer Segmentation pipeline.
 All paths, hyper-parameters and DB settings live here.
 """
 
-# Load ml/.env BEFORE any os.getenv call
-from pathlib import Path as _Path
-try:
-    from dotenv import load_dotenv as _load_dotenv
-    _env_file = _Path(__file__).resolve().parent.parent / ".env"  # ml/.env
-    if _env_file.exists():
-        _load_dotenv(dotenv_path=_env_file, override=False)
-except ImportError:
-    pass  # python-dotenv not installed -- rely on shell environment
-
-import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
+
+try:
+    from ml.core.config import settings
+except ImportError:  # pragma: no cover - supports running from inside ml/
+    from core.config import settings
 
 # ─── Root Paths ──────────────────────────────────────────────────────────────
 ML_ROOT       = Path(__file__).resolve().parent.parent          # ml/
@@ -36,18 +30,15 @@ for _dir in [PLOTS_DIR, REPORTS_DIR, MODELS_DIR, DATA_DIR]:
 # ─── Database ─────────────────────────────────────────────────────────────────
 @dataclass
 class DBConfig:
-    user:     str = os.getenv("POSTGRES_USER",     "postgres")
-    password: str = os.getenv("POSTGRES_PASSWORD", "postgres")
-    host:     str = os.getenv("POSTGRES_HOST",     "localhost")
-    port:     str = os.getenv("POSTGRES_PORT",     "5432")
-    name:     str = os.getenv("POSTGRES_DB",       "ecommerce_db")
+    user: str = settings.DB_USER
+    password: str = settings.DB_PASS
+    host: str = settings.DB_HOST
+    port: str = str(settings.DB_PORT)
+    name: str = settings.DB_NAME
 
     @property
     def url(self) -> str:
-        return (
-            f"postgresql+psycopg2://{self.user}:{self.password}"
-            f"@{self.host}:{self.port}/{self.name}"
-        )
+        return f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
 
 
 # ─── Feature Engineering ──────────────────────────────────────────────────────
@@ -57,7 +48,7 @@ class FeatureConfig:
     # avg_order_value removed: it is a linear combination of total_spent / total_orders
     # (multicollinearity inflates the weight of spending behaviour)
     feature_cols: List[str] = field(default_factory=lambda: [
-        "recency_days",
+        "days_since_last_order",
         "total_orders",
         "total_spent",
         "views_count",
@@ -78,7 +69,7 @@ class FeatureConfig:
         "clicks_count",
         "cart_add_count",
         "wishlist_add_count",
-        "recency_days",
+        "days_since_last_order",
         "days_since_last_interaction",
     ])
     scaler: str = "robust"   # "standard" | "minmax" | "robust"
@@ -133,6 +124,10 @@ class Config:
 
     random_state: int = 42
     n_jobs: int = -1
+    segmentation_model_name: str = settings.SEGMENTATION_MODEL_NAME
+    segmentation_model_version: str = settings.SEGMENTATION_MODEL_VERSION
+    embedding_model_name: str = settings.EMBEDDING_MODEL_NAME
+    embedding_model_version: str = settings.EMBEDDING_MODEL_VERSION
 
 
 # Singleton-style default instance
