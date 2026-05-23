@@ -59,9 +59,13 @@ CREATE TABLE IF NOT EXISTS users (
     country VARCHAR(120),
     role VARCHAR(30) NOT NULL DEFAULT 'customer',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure columns exist if table was created by an older version
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS reviews (
     id SERIAL PRIMARY KEY,
