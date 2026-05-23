@@ -50,6 +50,30 @@ class ConfigAndSqlContractTests(unittest.TestCase):
         self.assertNotIn("TRUNCATE TABLE product_embeddings", content)
         self.assertNotIn("ALTER TABLE product_embeddings", content)
         self.assertIn("ON CONFLICT (product_id, model_name, model_version)", content)
+        self.assertIn("EMBEDDING_BATCH_SIZE", content)
+        self.assertIn("show_progress_bar=False", content)
+        self.assertNotIn("model.encode(text_to_embed)", content)
+
+    def test_ml_model_schema_matches_training_persistence(self):
+        sql_path = os.path.join(os.getcwd(), "backend", "src", "sql", "006_ml_schema.sql")
+        persistence_path = os.path.join(os.getcwd(), "ml", "customer_segmentation", "persistence.py")
+        embeddings_path = os.path.join(os.getcwd(), "ml", "scripts", "generate_embeddings.py")
+
+        with open(sql_path, encoding="utf-8") as f:
+            sql = f.read()
+        with open(persistence_path, encoding="utf-8") as f:
+            persistence = f.read()
+        with open(embeddings_path, encoding="utf-8") as f:
+            embeddings = f.read()
+
+        self.assertIn("is_active BOOLEAN", sql)
+        self.assertIn("trained_at TIMESTAMPTZ", sql)
+        self.assertIn("algorithm VARCHAR", sql)
+        self.assertIn("computed_at", sql)
+        self.assertIn("algorithm = EXCLUDED.algorithm", persistence)
+        self.assertIn("computed_at = NOW()", persistence)
+        self.assertNotIn("assigned_at", persistence)
+        self.assertIn("trained_at = NOW()", embeddings)
 
     def test_vector_search_filters_embedding_model_version(self):
         script_path = os.path.join(os.getcwd(), "ml", "nlp", "retrieval", "vector_search.py")

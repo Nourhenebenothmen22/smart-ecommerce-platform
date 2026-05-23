@@ -10,6 +10,8 @@ class SecurityContractTests(unittest.TestCase):
 
         self.assertIn("ALLOW_UNVERIFIED_CHAT_USER_ID", content)
         self.assertIn("X-ML-User-Id", content)
+        self.assertIn("X-ML-Service-Token", content)
+        self.assertIn("verify_ml_service_token", content)
         self.assertIn("Ignoring unverified body user_id", content)
 
     def test_bm25_uses_safe_websearch_query_parser(self):
