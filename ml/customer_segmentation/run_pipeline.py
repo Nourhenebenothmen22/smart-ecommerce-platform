@@ -15,6 +15,7 @@ from .train_kmeans import run_kmeans_pipeline
 from .train_dbscan import run_dbscan_pipeline
 from .compare_models import compare_models
 from .business_interpretation import interpret_and_save
+from .persistence import register_segmentation_model, persist_user_segments
 from .plots import plot_final_segment_distribution
 
 # Configure logging
@@ -71,10 +72,21 @@ def run_segmentation_pipeline():
     # 6. Business Interpretation
     df_labelled = interpret_and_save(df_raw, df_clean, winner_data["labels"], features, cfg)
     
-    # 7. Final Plot
+    # 7. Persist selected model metadata and user segment assignments
+    model_file = "kmeans_model.pkl" if winner_name.lower().startswith("k") else "dbscan_model.pkl"
+    register_segmentation_model(
+        algorithm=winner_name,
+        metrics=winner_data["metrics"],
+        artifact_path=str(cfg.models_dir / model_file),
+        config=cfg,
+    )
+    persisted_count = persist_user_segments(df_labelled, cfg)
+    logger.info("Persisted %d user segment assignments.", persisted_count)
+
+    # 8. Final Plot
     plot_final_segment_distribution(df_labelled, cfg)
     
-    # 8. Print Final Result
+    # 9. Print Final Result
     print("\n" + "="*50)
     print("FINAL MACHINE LEARNING PIPELINE RESULT")
     print("="*50)
