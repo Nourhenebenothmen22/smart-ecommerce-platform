@@ -193,7 +193,7 @@ describe("Phone Confirmation Service Tests", () => {
 
     await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
 
-    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "processing");
+    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "processing", mockClient);
   });
 
   // 5. Webhook: Cancelled call updates order to cancelled
@@ -214,7 +214,7 @@ describe("Phone Confirmation Service Tests", () => {
 
     await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
 
-    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "cancelled");
+    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "cancelled", mockClient);
   });
 
   // 6. Webhook: No Answer keeps order pending
@@ -256,6 +256,6 @@ describe("Phone Confirmation Service Tests", () => {
 
     await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
 
-    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "manual_review");
+    expect(orderService.updateStatus).toHaveBeenCalledWith(123, "manual_review", mockClient);
   });
 });
