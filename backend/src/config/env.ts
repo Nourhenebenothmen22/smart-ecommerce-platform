@@ -65,6 +65,8 @@ const envSchema = z.object({
   RETELL_AGENT_ID: z.string().optional(),
   RETELL_FROM_NUMBER: z.string().optional(),
   RETELL_WEBHOOK_SECRET: z.string().optional(),
+  ML_SERVICE_TOKEN: z.string().optional(),
+  TRUST_PROXY: z.string().default("false"),
   COOKIE_SECRET: z.string().optional(), // Added for CSRF/Session if needed
 }).superRefine((data, ctx) => {
   if (data.NODE_ENV === "production" && data.JWT_SECRET.length < 32) {
@@ -80,6 +82,14 @@ const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["RETELL_WEBHOOK_SECRET"],
       message: "RETELL_WEBHOOK_SECRET is required in production",
+    });
+  }
+
+  if (data.NODE_ENV === "production" && (!data.ML_SERVICE_TOKEN || data.ML_SERVICE_TOKEN.length < 32)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["ML_SERVICE_TOKEN"],
+      message: "ML_SERVICE_TOKEN must be at least 32 characters in production",
     });
   }
 });

@@ -13,6 +13,7 @@ import { sendResponse } from "../utils/apiResponse.js";
 import { PhoneConfirmationService } from "../services/phoneConfirmation.service.js";
 import { RetellProvider } from "../services/voice/retell.provider.js";
 import { env } from "../config/env.js";
+import { AppError } from "../utils/AppError.js";
 
 // ── Lazy singleton ──────────────────────────────────────────────────────────
 let _service: PhoneConfirmationService | null = null;
@@ -36,12 +37,14 @@ export class VoiceConfirmationController {
     try {
       const service = getService();
 
-      // Express raw body is available when express.raw() middleware is used
-      // on this specific route (see route file).
-      const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify(req.body));
+      if (!Buffer.isBuffer(req.body)) {
+        throw new AppError("Webhook raw body is required", StatusCodes.BAD_REQUEST);
+      }
+
+      const rawBody = req.body;
       const signature = (req.headers["x-retell-signature"] as string) ?? "";
 
-      const result = await service.handleWebhookResult(req.body, rawBody, signature);
+      const result = await service.handleWebhookResult(rawBody, signature);
 
       if (!result) {
         return sendResponse(res, StatusCodes.OK, "Ignored (unknown or invalid payload)");

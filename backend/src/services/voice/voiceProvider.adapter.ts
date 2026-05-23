@@ -36,10 +36,10 @@ export interface IVoiceProvider {
   dispatch(ctx: CallContext): Promise<DispatchResult>;
 
   /**
-   * Parse the incoming webhook payload into a normalised result.
+   * Verify and parse the incoming raw webhook payload into a normalised result.
    * Returns null if the payload does not belong to this provider.
    */
-  parseWebhook(body: unknown, rawBody: Buffer, signature: string): WebhookResult | null;
+  parseWebhook(rawBody: Buffer, signature: string): WebhookResult | null;
 }
 
 export type CallOutcome =

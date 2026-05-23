@@ -18,10 +18,17 @@ import { subcategoryRouter } from "./routes/subcategory.route.js";
 import { orderRouter } from "./routes/order.route.js";
 import { reviewRouter } from "./routes/review.route.js";
 import { voiceRouter } from "./routes/voice.route.js";
+import { voiceWebhookRouter } from "./routes/voice.route.js";
 import { StatusCodes } from "http-status-codes";
-
+import { env } from "./config/env.js";
+import { parseTrustProxy } from "./config/trustProxy.js";
 
 export const app = express();
+
+const trustProxy = parseTrustProxy(env.TRUST_PROXY);
+if (trustProxy !== false) {
+  app.set("trust proxy", trustProxy);
+}
 
 /*
 Security Middleware
@@ -38,8 +45,6 @@ Performance & Parser
 */
 app.use(compression());
 app.use(cookieParser());
-app.use(express.json());
-app.use(csrfOriginMiddleware);
 
 /*
 Security Headers & CSRF (handled by lusca)
@@ -66,6 +71,12 @@ app.use("/api/health", healthRouter);
 
 // Apply rate limiter to all routes except health
 app.use(rateLimitMiddleware);
+
+// Webhook must be mounted before express.json() so HMAC uses the exact raw body.
+app.use("/api/voice/webhook", voiceWebhookRouter);
+
+app.use(express.json());
+app.use(csrfOriginMiddleware);
 
 app.use("/api/ml", mlRouter);
 app.use("/api/auth", authRouter);

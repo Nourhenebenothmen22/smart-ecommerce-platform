@@ -152,11 +152,10 @@ export class PhoneConfirmationService {
 
   // ── 2. Handle webhook result ───────────────────────────────────────────────
   async handleWebhookResult(
-    body: unknown,
     rawBody: Buffer,
     signature: string
   ): Promise<{ orderId: number; outcome: CallOutcome } | null> {
-    const parsed = this.provider.parseWebhook(body, rawBody, signature);
+    const parsed = this.provider.parseWebhook(rawBody, signature);
     if (!parsed) return null;
 
     const { providerCallId, outcome, transcript } = parsed;

@@ -64,7 +64,7 @@ export class RetellProvider implements IVoiceProvider {
     return { providerCallId: data.call_id };
   }
 
-  parseWebhook(body: unknown, rawBody: Buffer, signature: string): WebhookResult | null {
+  parseWebhook(rawBody: Buffer, signature: string): WebhookResult | null {
     const expected = crypto
       .createHmac("sha256", this.webhookSecret)
       .update(rawBody)
@@ -80,7 +80,13 @@ export class RetellProvider implements IVoiceProvider {
       return null;
     }
 
-    const payload = body as Record<string, unknown>;
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawBody.toString("utf-8")) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+
     const callId = payload["call_id"] as string | undefined;
     if (!callId) return null;
 

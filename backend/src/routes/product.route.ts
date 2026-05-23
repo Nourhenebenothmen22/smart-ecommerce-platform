@@ -5,7 +5,7 @@ import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/role.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import { productSchema, productUpdateSchema, productIdSchema, productQuerySchema } from '../validators/product.schema.js';
-import { uploadProductImages } from '../middlewares/upload.middleware.js';
+import { uploadProductImages, validateUploadedProductImages } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -15,8 +15,8 @@ router.get('/:id', validate({ params: productIdSchema }), productController.getP
 router.get('/:productId/reviews', reviewController.getProductReviews);
 
 // Admin routes
-router.post('/', authenticate, authorize('admin'), uploadProductImages.array('images', 8), validate({ body: productSchema }), productController.createProduct);
-router.patch('/:id', authenticate, authorize('admin'), uploadProductImages.array('images', 8), validate({ params: productIdSchema, body: productUpdateSchema }), productController.updateProduct);
+router.post('/', authenticate, authorize('admin'), uploadProductImages.array('images', 8), validateUploadedProductImages, validate({ body: productSchema }), productController.createProduct);
+router.patch('/:id', authenticate, authorize('admin'), uploadProductImages.array('images', 8), validateUploadedProductImages, validate({ params: productIdSchema, body: productUpdateSchema }), productController.updateProduct);
 router.delete('/:id', authenticate, authorize('admin'), validate({ params: productIdSchema }), productController.deleteProduct);
 
 export { router as productRouter };
