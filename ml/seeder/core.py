@@ -82,6 +82,11 @@ def update_all_product_ratings(cursor, conn) -> None:
     conn.commit()
 
 
+def fake_e164_phone() -> str:
+    """Generate a deterministic-shape phone number accepted by backend validators."""
+    return f"+1{random.randint(2000000000, 9999999999)}"
+
+
 # =========================================================
 # CORE SEEDING FUNCTIONS
 # =========================================================
@@ -164,7 +169,7 @@ def seed_users(cursor, conn, n_users: int):
             RETURNING id
         """, (
             first_name, last_name, email, DEFAULT_PASSWORD_HASH,
-            fake.phone_number()[:30], fake.address()[:100],
+            fake_e164_phone(), fake.address()[:100],
             fake.city()[:100], fake.postcode()[:20], fake.country()[:100],
             random.choice(["customer", "customer", "customer", "customer", "admin", "manager"]),
             random_bool(0.95),
@@ -373,8 +378,8 @@ def seed_orders_payments_voice(cursor, conn, user_ids, product_lookup, user_sign
             cursor.execute(
                 "INSERT INTO voice_confirmations (order_id, phone_number, call_status, transcript, confirmed, confirmed_at, created_at) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (order_id, fake.phone_number()[:30],
-                 random.choice(["pending", "completed", "failed", "ignored"]),
+                (order_id, fake_e164_phone(),
+                 random.choice(["pending", "completed", "failed", "cancelled"]),
                  fake.sentence(nb_words=12), random_bool(0.65), confirmed_at, voice_date)
             )
     conn.commit()
