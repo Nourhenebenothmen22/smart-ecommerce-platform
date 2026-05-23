@@ -54,22 +54,22 @@ def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
 
         # Decision heuristics — evaluated in priority order
         if recency > median_recency * 1.5:
-            # High recency → long time since last purchase → Inactive
+            # High recency -> long time since last purchase -> Inactive
             mapping[cid] = DEFAULT_SEGMENT_MAP[4]
         elif spent >= q60_spent:
-            # Top 40% of spenders → VIP
+            # Top 40% of spenders -> VIP
             mapping[cid] = DEFAULT_SEGMENT_MAP[0]
         elif cart_rate > median_cart_rate and orders < median_orders:
-            # High cart activity but low orders → Cart Abandoners
+            # High cart activity but low orders -> Cart Abandoners
             mapping[cid] = DEFAULT_SEGMENT_MAP[2]
         elif orders >= median_orders:
-            # Solid, repeated order count → Loyal Buyers
+            # Solid, repeated order count -> Loyal Buyers
             mapping[cid] = DEFAULT_SEGMENT_MAP[1]
         elif views > median_views and orders <= q25_orders:
-            # High browsing, very few purchases → Window Shoppers
+            # High browsing, very few purchases -> Window Shoppers
             mapping[cid] = DEFAULT_SEGMENT_MAP[3]
         else:
-            # Fallback → Regular Customers
+            # Fallback -> Regular Customers
             mapping[cid] = DEFAULT_SEGMENT_MAP[6]
 
     return mapping
@@ -110,6 +110,6 @@ def interpret_and_save(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.
     # 4. Save final labelled users
     out_path = config.data_dir / "best_model_users_labelled.csv"
     df_results.to_csv(out_path, index=False)
-    logger.info("Final labelled users saved → %s", out_path)
+    logger.info("Final labelled users saved -> %s", out_path)
     
     return df_results

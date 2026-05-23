@@ -61,7 +61,7 @@ def remove_outliers_iqr(
         bounds_path.parent.mkdir(parents=True, exist_ok=True)
         with open(bounds_path, "w") as f:
             json.dump(bounds, f, indent=2)
-        logger.info("Winsorization bounds saved → %s", bounds_path)
+        logger.info("Winsorization bounds saved -> %s", bounds_path)
 
     logger.info("IQR outlier handling: Extreme values capped (Winsorized, %d cols).", len(bounds))
     return df_clean
@@ -111,7 +111,7 @@ def log_transform(df: pd.DataFrame, cols: list) -> pd.DataFrame:
         # Only log-transform non-negative columns
         if (df_out[col] >= 0).all():
             df_out[col] = np.log1p(df_out[col].astype(float))
-            logger.debug("log1p applied → %s", col)
+            logger.debug("log1p applied -> %s", col)
         else:
             logger.warning("Skipping log1p for '%s': contains negative values.", col)
     return df_out

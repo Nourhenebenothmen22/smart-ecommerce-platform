@@ -93,7 +93,7 @@ def run_kmeans_pipeline(X: np.ndarray, df_clean: pd.DataFrame, config: Config = 
     # Save model
     model_path = config.models_dir / "kmeans_model.pkl"
     joblib.dump(model, model_path)
-    logger.info("K-Means model saved → %s", model_path)
+    logger.info("K-Means model saved -> %s", model_path)
     
     # Save labels
     df_out = df_clean[["user_id"]].copy()

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def _save(fig: Figure, path: Path, config: Config) -> None:
     fig.savefig(path, dpi=config.viz.dpi, bbox_inches="tight")
     plt.close(fig)
-    logger.info("Plot saved → %s", path)
+    logger.info("Plot saved -> %s", path)
 
 def plot_kmeans_elbow(k_range: list, inertias: list, config: Config = cfg) -> None:
     fig, ax = plt.subplots(figsize=config.viz.figsize_default)
@@ -96,7 +96,15 @@ def plot_final_segment_distribution(df_labelled: pd.DataFrame, config: Config = 
     counts.columns = ["Segment", "Count"]
     
     fig, ax = plt.subplots(figsize=(12, 7))
-    sns.barplot(x="Count", y="Segment", data=counts, ax=cast(Any, ax), palette="magma")
+    sns.barplot(
+        x="Count",
+        y="Segment",
+        hue="Segment",
+        data=counts,
+        ax=cast(Any, ax),
+        palette="magma",
+        legend=False,
+    )
     
     for i, v in enumerate(counts["Count"]):
         ax.text(v + 0.5, i, str(v), color='black', va='center', fontweight='bold')

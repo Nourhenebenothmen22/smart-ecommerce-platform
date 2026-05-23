@@ -115,7 +115,7 @@ def run_dbscan_pipeline(X: np.ndarray, df_clean: pd.DataFrame, config: Config = 
     # Save model
     model_path = config.models_dir / "dbscan_model.pkl"
     joblib.dump(model, model_path)
-    logger.info("DBSCAN model saved → %s", model_path)
+    logger.info("DBSCAN model saved -> %s", model_path)
     
     # Save labels
     df_out = df_clean[["user_id"]].copy()

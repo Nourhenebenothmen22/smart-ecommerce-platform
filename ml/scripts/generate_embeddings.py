@@ -3,6 +3,7 @@ Generate or refresh product embeddings using versioned upserts.
 """
 
 import logging
+import os
 import time
 
 import psycopg2
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 MODEL_NAME = settings.EMBEDDING_MODEL_NAME
 MODEL_VERSION = settings.EMBEDDING_MODEL_VERSION
+EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))
 
 
 def get_connection():
@@ -35,10 +37,14 @@ def run():
 
     cur.execute(
         """
-        INSERT INTO ml_models (model_name, model_version, model_type, algorithm, is_active)
-        VALUES (%s, %s, 'embedding', 'transformer', true)
+        INSERT INTO ml_models (model_name, model_version, model_type, algorithm, is_active, trained_at)
+        VALUES (%s, %s, 'embedding', 'transformer', true, NOW())
         ON CONFLICT (model_name, model_version)
-        DO UPDATE SET model_type = EXCLUDED.model_type, algorithm = EXCLUDED.algorithm, is_active = true;
+        DO UPDATE SET
+            model_type = EXCLUDED.model_type,
+            algorithm = EXCLUDED.algorithm,
+            is_active = true,
+            trained_at = NOW();
         """,
         (MODEL_NAME, MODEL_VERSION),
     )
@@ -51,24 +57,29 @@ def run():
     start_time = time.time()
 
     inserted = 0
-    for p_id, title, desc, brand in products:
-        text_to_embed = f"{title or ''}. {brand or ''}. {desc or ''}"
-        vector = model.encode(text_to_embed).tolist()
-
-        cur.execute(
-            """
-            INSERT INTO product_embeddings (product_id, model_name, model_version, embedding_vector)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (product_id, model_name, model_version)
-            DO UPDATE SET embedding_vector = EXCLUDED.embedding_vector, created_at = NOW();
-            """,
-            (p_id, MODEL_NAME, MODEL_VERSION, vector),
+    for start in range(0, len(products), EMBEDDING_BATCH_SIZE):
+        batch = products[start : start + EMBEDDING_BATCH_SIZE]
+        texts_to_embed = [f"{title or ''}. {brand or ''}. {desc or ''}" for _, title, desc, brand in batch]
+        vectors = model.encode(
+            texts_to_embed,
+            batch_size=EMBEDDING_BATCH_SIZE,
+            show_progress_bar=False,
         )
 
-        inserted += 1
-        if inserted % 500 == 0:
-            logger.info("   [%d/%d] processed.", inserted, len(products))
-            conn.commit()
+        for (p_id, _title, _desc, _brand), vector in zip(batch, vectors):
+            cur.execute(
+                """
+                INSERT INTO product_embeddings (product_id, model_name, model_version, embedding_vector)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (product_id, model_name, model_version)
+                DO UPDATE SET embedding_vector = EXCLUDED.embedding_vector, created_at = NOW();
+                """,
+                (p_id, MODEL_NAME, MODEL_VERSION, vector.tolist()),
+            )
+
+        inserted += len(batch)
+        logger.info("   [%d/%d] processed.", inserted, len(products))
+        conn.commit()
 
     conn.commit()
     cur.close()

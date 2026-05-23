@@ -5,6 +5,7 @@ Main orchestrator for the Customer Segmentation ML pipeline.
 """
 
 import logging
+import os
 import sys
 import shutil
 import pandas as pd
@@ -30,11 +31,17 @@ def cleanup_artifacts():
     """Delete model/plot/report artifacts but preserve the raw data snapshot.
     
     The raw CSV (users_raw.csv) is intentionally kept so that:
-    1. Re-runs use the same DB snapshot → consistent recency features.
+    1. Re-runs use the same DB snapshot -> consistent recency features.
     2. Database is not hammered on every training run.
     Use force_reload=True in load_raw_data() to explicitly refresh.
     """
-    logger.info("🧹 Cleaning up old artifacts...")
+    if os.getenv("ML_CLEAN_ARTIFACTS", "false").lower() != "true":
+        logger.info("Skipping artifact cleanup. Set ML_CLEAN_ARTIFACTS=true to delete old outputs.")
+        for sub_dir in ["plots", "reports", "models", "data"]:
+            (ARTIFACTS_DIR / sub_dir).mkdir(parents=True, exist_ok=True)
+        return
+
+    logger.info("Cleaning up old artifacts...")
     for sub_dir in ["plots", "reports", "models"]:  # data excluded intentionally
         target = ARTIFACTS_DIR / sub_dir
         if target.exists():
@@ -46,10 +53,10 @@ def cleanup_artifacts():
                         shutil.rmtree(item)
                 except Exception as e:
                     logger.warning(f"Could not delete {item}: {e}")
-    logger.info("✨ Cleanup complete.")
+    logger.info("Cleanup complete.")
 
 def run_segmentation_pipeline():
-    logger.info("🚀 STARTING MACHINE LEARNING PIPELINE")
+    logger.info("STARTING MACHINE LEARNING PIPELINE")
     
     # 0. Force cleanup
     cleanup_artifacts()

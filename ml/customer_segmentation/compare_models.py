@@ -106,6 +106,6 @@ def compare_models(kmeans_results: dict, dbscan_results: dict, config: Config = 
     reason = f"The {best_model_name} model was selected because it achieved a higher composite score ({winner_score:.3f}) "
     reason += "based on silhouette stability, cluster separation, and reasonable segment sizes."
     
-    logger.info("🏆 Best Model: %s", best_model_name)
+    logger.info("Best Model: %s", best_model_name)
     
     return best_model_name, best_model_data, reason, df_comp
