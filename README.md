@@ -312,3 +312,208 @@ Si le service ML ne se connecte pas à la DB :
 
 > [!NOTE]
 > Pour des questions pointues concernant le stockage vectoriel ou les expérimentations algorithmiques, consultez le dossier expérimental `ml/nlp_experiments/` ou le guide détaillé `ml/docs/CHATBOT_PIPELINE.md`.
+---
+
+## Backend And ML Operating Guide
+
+### Project Overview
+This repository contains a TypeScript Express API, a PostgreSQL database with pgvector support, and a Python ML layer for product embeddings, hybrid product search, chatbot logging, and customer segmentation. The backend owns the transactional API and database schema. The ML folder consumes backend tables, writes model metadata and predictions back to PostgreSQL, and exposes optional FastAPI inference endpoints.
+
+### Backend Stack
+- Runtime: Node.js, TypeScript, Express.
+- Database: PostgreSQL with SQL scripts in `backend/src/sql`.
+- Security: JWT authentication, bcrypt password hashing, Helmet, CORS, rate limiting, Zod validation, and webhook validation.
+- Tests: Jest and Supertest.
+
+### ML Folder
+- `ml/api`: FastAPI service for the RAG chatbot endpoint.
+- `ml/core`: shared database and environment configuration.
+- `ml/customer_segmentation`: preprocessing, training, model comparison, segment persistence, and prediction helpers.
+- `ml/nlp/retrieval`: BM25 and pgvector retrieval.
+- `ml/scripts`: seeding, embedding generation, and operational utilities.
+- `ml/data/sql/upsert_user_features.sql`: backend-compatible feature materialization for `user_features`.
+
+### PostgreSQL Setup
+Start the database:
+
+```bash
+cd backend/infra/docker
+docker-compose up -d
+```
+
+Initialize the backend schema:
+
+```bash
+cd backend
+npm install
+npm run db:init
+```
+
+Refresh ML features:
+
+```bash
+cd backend
+npm run ml:upsert-features
+```
+
+### Environment Variables
+The backend and ML layer now share the same DB configuration names. `DATABASE_URL` is supported, and individual variables can also be used.
+
+Required:
+- `DB_HOST` or `POSTGRES_HOST`
+- `DB_PORT` or `POSTGRES_PORT`
+- `DB_NAME` or `POSTGRES_DB`
+- `DB_USER` or `POSTGRES_USER`
+- `DB_PASS` or `POSTGRES_PASSWORD`
+- `JWT_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CORS_ORIGIN`
+
+ML-specific:
+- `OPENAI_API_KEY` for chatbot generation.
+- `EMBEDDING_MODEL_NAME`, default `paraphrase-multilingual-MiniLM-L12-v2`.
+- `EMBEDDING_MODEL_VERSION`, default `1.0`.
+- `SEGMENTATION_MODEL_NAME`, default `customer_segmentation`.
+- `SEGMENTATION_MODEL_VERSION`, default `1.0`.
+- `ML_USE_FEATURE_CACHE=true` only when intentionally training from cached CSV data.
+- `ALLOW_UNVERIFIED_CHAT_USER_ID=true` only for local experiments. Production should pass the verified user id through `X-ML-User-Id`.
+
+### Installation
+Backend:
+
+```bash
+cd backend
+npm install
+```
+
+ML:
+
+```bash
+cd ml
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Backend Commands
+```bash
+cd backend
+npm run dev
+npm run build
+npm test
+npx jest --runInBand --passWithNoTests
+```
+
+There is currently no `npm run lint` script in `backend/package.json`.
+
+### ML Preprocessing And Training
+The segmentation pipeline reads from `user_features`, not the older behavior view. Run feature upsert first, then train:
+
+```bash
+cd backend
+npm run ml:upsert-features
+
+cd ..
+python -m ml.customer_segmentation.run_pipeline
+```
+
+The pipeline now:
+- loads backend-compatible `user_features`;
+- stores scaler and winsorization bounds;
+- trains K-Means and DBSCAN with small-dataset guards;
+- saves a segment label map;
+- registers the selected model in `ml_models`;
+- upserts assignments into `user_segments`.
+
+### ML Prediction And Inference
+For programmatic segment prediction:
+
+```python
+from ml.customer_segmentation.prediction import predict_segment
+
+result = predict_segment(user_feature_payload)
+```
+
+The prediction payload must match the backend `user_features` columns used by training. K-Means artifacts support production prediction. DBSCAN can still be trained and persisted for batch segmentation, including noise segment `-1`.
+
+Run the FastAPI chatbot service:
+
+```bash
+cd ml
+python api/main.py
+```
+
+Call `/chat` with a query. In production, do not trust `user_id` in the JSON body; pass the authenticated user id as `X-ML-User-Id` from the backend gateway.
+
+### Embedding Generation
+Generate or refresh active product embeddings:
+
+```bash
+python -m ml.scripts.generate_embeddings
+```
+
+Embedding generation uses `(product_id, model_name, model_version)` upserts. It no longer truncates `product_embeddings`, so previous model versions remain available. Vector search filters by the configured model name and version.
+
+### Seeder Commands
+From the backend package:
+
+```bash
+cd backend
+npm run ml:seed:reset
+npm run ml:seed:append
+```
+
+The ML seeder uses backend-compatible order statuses, E.164-shaped phone numbers, and voice confirmation statuses.
+
+### Tests, Build, And Smoke Checks
+Backend:
+
+```bash
+cd backend
+npm run build
+npx jest --runInBand --passWithNoTests
+```
+
+ML:
+
+```bash
+$env:PYTHONDONTWRITEBYTECODE='1'
+python -m unittest discover -s ml/tests -v
+```
+
+The ML tests cover DB/env config, SQL contracts, preprocessing fit/inference parity, training guards, production prediction, embedding upsert safety, vector model/version filtering, BM25 query hardening, and chat user identity handling.
+
+### Docker Commands
+```bash
+cd backend/infra/docker
+docker-compose up -d
+docker-compose down
+docker-compose logs -f
+```
+
+### End-To-End Workflow
+1. Start PostgreSQL with Docker.
+2. Run `npm run db:init` from `backend`.
+3. Seed data with `npm run ml:seed:reset` if needed.
+4. Compute `user_features` with `npm run ml:upsert-features`.
+5. Train segmentation with `python -m ml.customer_segmentation.run_pipeline`.
+6. Confirm `ml_models` and `user_segments` contain the new model version and assignments.
+7. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
+8. Start the backend API and optional ML FastAPI service.
+9. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.
+
+### Troubleshooting
+- If ML cannot connect to PostgreSQL, check `DATABASE_URL` or the shared `DB_*` / `POSTGRES_*` variables.
+- If vector search returns no results, confirm embeddings exist for the configured `EMBEDDING_MODEL_NAME` and `EMBEDDING_MODEL_VERSION`.
+- If segmentation training fails, refresh `user_features` and ensure at least three users exist.
+- If Python tests cannot create temporary files in a restricted sandbox, run them with normal filesystem permissions.
+- If `npm test` fails with worker spawn permissions, run `npx jest --runInBand --passWithNoTests`.
+- If `npm run lint` fails, add a lint script first; it is not currently configured.
+
+### Security Notes
+- Keep JWT secrets strong and environment-specific.
+- Never enable `ALLOW_UNVERIFIED_CHAT_USER_ID` in production.
+- Restrict CORS to trusted frontend origins.
+- Keep embedding and segmentation model versions explicit.
+- Do not truncate production ML tables during refreshes; use versioned upserts.
+- Treat cached CSVs as local development artifacts, not production training input.
