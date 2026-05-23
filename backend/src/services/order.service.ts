@@ -1,6 +1,8 @@
 import { pool } from "../db/pool.js";
 import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { env } from "../config/env.js";
+import type { PoolClient } from "pg";
 
 export class OrderService {
   async createOrder(userId: number, items: { product_id: number; quantity: number }[], payment_method: string) {
@@ -58,6 +60,21 @@ export class OrderService {
 
       await client.query("COMMIT");
 
+      // Auto-trigger the phone confirmation service in the background
+      try {
+        const webhookBaseUrl = env.WEBHOOK_BASE_URL || "http://localhost:5000";
+        const { PhoneConfirmationService } = await import("./phoneConfirmation.service.js");
+        const { RetellProvider } = await import("./voice/retell.provider.js");
+        const phoneService = new PhoneConfirmationService(new RetellProvider());
+        
+        // Fire-and-forget background trigger
+        phoneService.initiateCall(order.id, webhookBaseUrl).catch((err: any) => {
+          console.error(`[OrderService] Failed to auto-trigger voice call for order ${order.id}:`, err.message || err);
+        });
+      } catch (err: any) {
+        console.error(`[OrderService] Failed to import/initialize voice service for auto-trigger:`, err.message || err);
+      }
+
       // Return full order with items
       return { ...order, items: orderItems };
     } catch (error) {
@@ -98,33 +115,42 @@ export class OrderService {
     return order;
   }
 
-  async updateStatus(orderId: number, status: string) {
+  async updateStatus(orderId: number, status: string, existingClient?: PoolClient) {
+    if (existingClient) {
+      return this.updateStatusWithClient(existingClient, orderId, status);
+    }
+
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const current = await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [orderId]);
-      if (current.rows.length === 0) throw new AppError("Order not found", StatusCodes.NOT_FOUND);
-
-      // If cancelling, restore stock
-      if (status === "cancelled" && current.rows[0].status !== "cancelled") {
-        const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id=$1", [orderId]);
-        for (const item of items.rows) {
-          await client.query("UPDATE products SET stock=stock+$1,updated_at=NOW() WHERE id=$2", [item.quantity, item.product_id]);
-        }
-      }
-
-      const r = await client.query(
-        "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING *",
-        [status, orderId]
-      );
+      const order = await this.updateStatusWithClient(client, orderId, status);
       await client.query("COMMIT");
-      return r.rows[0];
+      return order;
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  private async updateStatusWithClient(client: PoolClient, orderId: number, status: string) {
+    const current = await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [orderId]);
+    if (current.rows.length === 0) throw new AppError("Order not found", StatusCodes.NOT_FOUND);
+
+    // If cancelling, restore stock
+    if (status === "cancelled" && current.rows[0].status !== "cancelled") {
+      const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id=$1", [orderId]);
+      for (const item of items.rows) {
+        await client.query("UPDATE products SET stock=stock+$1,updated_at=NOW() WHERE id=$2", [item.quantity, item.product_id]);
+      }
+    }
+
+    const r = await client.query(
+      "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2 RETURNING *",
+      [status, orderId]
+    );
+    return r.rows[0];
   }
 
   async deleteOrder(orderId: number) {
