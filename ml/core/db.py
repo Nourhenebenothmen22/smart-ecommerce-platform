@@ -1,79 +1,87 @@
 """
-Database connection pool with consistent port configuration.
+Database connection helpers for ML services.
 
-Uses environment variables with defaults matching docker-compose.yml (port 5433).
-No silent port fallback — fails explicitly if the configured port is wrong.
+The pool is initialized lazily so tests and CLI utilities can import ML modules
+without opening a PostgreSQL connection immediately.
 """
-import logging
-import psycopg2
-from psycopg2.pool import SimpleConnectionPool
-import os
 import contextlib
+import logging
+
+from psycopg2.pool import SimpleConnectionPool
+
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
-# Single source of truth for DB config — matches docker-compose.yml defaults
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_PORT = os.environ.get("DB_PORT", "5433")  # docker-compose maps 5433:5432
-DB_NAME = os.environ.get("DB_NAME", "ecommerce_ml_db")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASS = os.environ.get("DB_PASS", "postgres")
-
-_pool = None
+_pool: SimpleConnectionPool | None = None
 
 
-def _init_pool():
-    """Initialize the connection pool. Logs clearly on success or failure."""
+def _init_pool() -> SimpleConnectionPool | None:
     global _pool
     try:
         _pool = SimpleConnectionPool(
-            1, 10,
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS,
-            port=DB_PORT
+            1,
+            10,
+            host=settings.DB_HOST,
+            database=settings.DB_NAME,
+            user=settings.DB_USER,
+            password=settings.DB_PASS,
+            port=settings.DB_PORT,
         )
-        logger.info(f"Database pool initialized: {DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
-    except Exception as e:
-        logger.error(f"Database pool failed to initialize on {DB_HOST}:{DB_PORT}/{DB_NAME}: {e}")
+        logger.info(
+            "Database pool initialized: %s@%s:%s/%s",
+            settings.DB_USER,
+            settings.DB_HOST,
+            settings.DB_PORT,
+            settings.DB_NAME,
+        )
+    except Exception as exc:
+        logger.error(
+            "Database pool failed to initialize on %s:%s/%s: %s",
+            settings.DB_HOST,
+            settings.DB_PORT,
+            settings.DB_NAME,
+            exc,
+        )
         _pool = None
+    return _pool
 
 
-# Initialize on module load
-_init_pool()
+def get_pool() -> SimpleConnectionPool | None:
+    return _pool or _init_pool()
 
 
 @contextlib.contextmanager
-def get_db_cursor(commit=False):
+def get_db_cursor(commit: bool = False):
     """
-    Context manager to get a cursor from the connection pool.
-
-    Usage:
-        with get_db_cursor(commit=True) as cur:
-            cur.execute("INSERT ...")
-
-    Raises:
-        Exception: If the DB pool is not initialized.
+    Yield a PostgreSQL cursor from the shared connection pool.
     """
-    if not _pool:
-        raise Exception(
-            f"DB Pool not initialized. Check connection to {DB_HOST}:{DB_PORT}/{DB_NAME}. "
-            f"Ensure PostgreSQL is running and environment variables are correct."
+    pool = get_pool()
+    if not pool:
+        raise RuntimeError(
+            f"DB pool not initialized. Check {settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME} "
+            "and the DB_HOST/DB_PORT/DB_NAME or POSTGRES_* environment variables."
         )
 
-    conn = _pool.getconn()
+    conn = pool.getconn()
     cur = None
     try:
         cur = conn.cursor()
         yield cur
         if commit:
             conn.commit()
-    except Exception as e:
+    except Exception as exc:
         conn.rollback()
-        logger.error(f"Database operation failed: {e}")
+        logger.error("Database operation failed: %s", exc)
         raise
     finally:
         if cur:
             cur.close()
-        _pool.putconn(conn)
+        pool.putconn(conn)
+
+
+def close_pool() -> None:
+    global _pool
+    if _pool:
+        _pool.closeall()
+        _pool = None
