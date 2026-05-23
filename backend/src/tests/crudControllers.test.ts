@@ -69,6 +69,10 @@ function mockResponse() {
   return res;
 }
 
+function mockRequest(data: Record<string, unknown> = {}) {
+  return data as unknown as Request;
+}
+
 describe("CRUD controller flows", () => {
   let next: NextFunction;
 
@@ -83,9 +87,9 @@ describe("CRUD controller flows", () => {
     (categoryService.update as any).mockResolvedValue({ id: 1, name: "Smartphones" });
     (categoryService.delete as any).mockResolvedValue(undefined);
 
-    await categoryController.createCategory({ body: { name: "Phones" } } as Request, res, next);
-    await categoryController.updateCategory({ params: { id: "1" }, body: { name: "Smartphones" } } as unknown as Request, res, next);
-    await categoryController.deleteCategory({ params: { id: "1" } } as unknown as Request, res, next);
+    await categoryController.createCategory(mockRequest({ body: { name: "Phones" } }), res, next);
+    await categoryController.updateCategory(mockRequest({ params: { id: "1" }, body: { name: "Smartphones" } }), res, next);
+    await categoryController.deleteCategory(mockRequest({ params: { id: "1" } }), res, next);
 
     expect(categoryService.create).toHaveBeenCalledWith({ name: "Phones" });
     expect(categoryService.update).toHaveBeenCalledWith(1, { name: "Smartphones" });
@@ -100,9 +104,9 @@ describe("CRUD controller flows", () => {
     (productService.updateProduct as any).mockResolvedValue({ id: 10, price: 450 });
     (productService.deleteProduct as any).mockResolvedValue({ soft_deleted: true });
 
-    await productController.createProduct({ body: { title: "Phone" } } as Request, res, next);
-    await productController.updateProduct({ params: { id: "10" }, body: { price: 450 } } as unknown as Request, res, next);
-    await productController.deleteProduct({ params: { id: "10" } } as unknown as Request, res, next);
+    await productController.createProduct(mockRequest({ body: { title: "Phone" } }), res, next);
+    await productController.updateProduct(mockRequest({ params: { id: "10" }, body: { price: 450 } }), res, next);
+    await productController.deleteProduct(mockRequest({ params: { id: "10" } }), res, next);
 
     expect(productService.createProduct).toHaveBeenCalledWith({ title: "Phone" });
     expect(productService.updateProduct).toHaveBeenCalledWith(10, { price: 450 });
@@ -117,9 +121,9 @@ describe("CRUD controller flows", () => {
     (orderService.getOrderById as any).mockResolvedValue({ id: 99, user_id: 7 });
     (orderService.updateStatus as any).mockResolvedValue({ id: 99, status: "processing" });
 
-    await orderController.createOrder({ user, body: { items: [{ product_id: 1, quantity: 2 }], payment_method: "card" } } as Request, res, next);
-    await orderController.getOrderById({ user, params: { id: "99" } } as unknown as Request, res, next);
-    await orderController.updateOrderStatus({ params: { id: "99" }, body: { status: "processing" } } as unknown as Request, res, next);
+    await orderController.createOrder(mockRequest({ user, body: { items: [{ product_id: 1, quantity: 2 }], payment_method: "card" } }), res, next);
+    await orderController.getOrderById(mockRequest({ user, params: { id: "99" } }), res, next);
+    await orderController.updateOrderStatus(mockRequest({ params: { id: "99" }, body: { status: "processing" } }), res, next);
 
     expect(orderService.createOrder).toHaveBeenCalledWith(7, [{ product_id: 1, quantity: 2 }], "card");
     expect(orderService.getOrderById).toHaveBeenCalledWith(99, 7, "customer");
@@ -133,9 +137,9 @@ describe("CRUD controller flows", () => {
     (reviewService.update as any).mockResolvedValue({ id: 5, rating: 4 });
     (reviewService.delete as any).mockResolvedValue(undefined);
 
-    await reviewController.addReview({ user, body: { product_id: 1, rating: 5, review_text: "Great" } } as Request, res, next);
-    await reviewController.updateReview({ user, params: { id: "5" }, body: { rating: 4 } } as unknown as Request, res, next);
-    await reviewController.deleteReview({ user, params: { id: "5" } } as unknown as Request, res, next);
+    await reviewController.addReview(mockRequest({ user, body: { product_id: 1, rating: 5, review_text: "Great" } }), res, next);
+    await reviewController.updateReview(mockRequest({ user, params: { id: "5" }, body: { rating: 4 } }), res, next);
+    await reviewController.deleteReview(mockRequest({ user, params: { id: "5" } }), res, next);
 
     expect(reviewService.create).toHaveBeenCalledWith(7, { product_id: 1, rating: 5, review_text: "Great" });
     expect(reviewService.update).toHaveBeenCalledWith(5, 7, "customer", { rating: 4 });
@@ -150,10 +154,10 @@ describe("CRUD controller flows", () => {
     (userService.updateStatus as any).mockResolvedValue({ id: 8, is_active: false });
     (userService.deleteUser as any).mockResolvedValue(undefined);
 
-    await userController.updateMe({ user, body: { city: "Tunis" } } as Request, res, next);
-    await userController.updateRole({ params: { id: "8" }, body: { role: "manager" } } as unknown as Request, res, next);
-    await userController.updateStatus({ params: { id: "8" }, body: { is_active: false } } as unknown as Request, res, next);
-    await userController.deleteUser({ params: { id: "8" } } as unknown as Request, res, next);
+    await userController.updateMe(mockRequest({ user, body: { city: "Tunis" } }), res, next);
+    await userController.updateRole(mockRequest({ params: { id: "8" }, body: { role: "manager" } }), res, next);
+    await userController.updateStatus(mockRequest({ params: { id: "8" }, body: { is_active: false } }), res, next);
+    await userController.deleteUser(mockRequest({ params: { id: "8" } }), res, next);
 
     expect(userService.updateProfile).toHaveBeenCalledWith(7, { city: "Tunis" });
     expect(userService.updateRole).toHaveBeenCalledWith(8, "manager");
