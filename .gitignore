@@ -1,4 +1,4 @@
-# ─── Dependencies ──────────────────────────────────────────
+# Dependencies
 node_modules/
 dist/
 .venv/
@@ -7,18 +7,21 @@ env/
 __pycache__/
 *.pyc
 
-# ─── Environment & Secrets ──────────────────────────────────
+# Environment & secrets
 **/.env
-**/.env.example
 **/.env.local
 *.log
 
-# ─── IDE & System ───────────────────────────────────────────
+# IDE & system
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+.tmp/
 
-# ─── Database ───────────────────────────────────────────────
+# Database
 postgres_data/
 *.sqlite
+
+# Generated ML artifacts
+ml/artifacts/
