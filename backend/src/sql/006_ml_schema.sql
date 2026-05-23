@@ -12,9 +12,16 @@ CREATE TABLE IF NOT EXISTS ml_models (
     metrics JSONB NOT NULL DEFAULT '{}'::jsonb,
     parameters JSONB NOT NULL DEFAULT '{}'::jsonb,
     artifact_path TEXT, -- Path to the saved model file (e.g., S3 or local path)
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    trained_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_model_version UNIQUE(model_name, model_version)
 );
+
+ALTER TABLE ml_models ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE ml_models ADD COLUMN IF NOT EXISTS trained_at TIMESTAMPTZ;
+ALTER TABLE ml_models ADD COLUMN IF NOT EXISTS parameters JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE ml_models ADD COLUMN IF NOT EXISTS algorithm VARCHAR(50) NOT NULL DEFAULT 'unknown';
 
 -- 2. Table for User Features (Flat table for ML input)
 CREATE TABLE IF NOT EXISTS user_features (
@@ -68,6 +75,8 @@ CREATE TABLE IF NOT EXISTS user_segments (
     
     CONSTRAINT unique_user_model_assignment UNIQUE(user_id, model_name, model_version)
 );
+
+ALTER TABLE user_segments ADD COLUMN IF NOT EXISTS computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- Bonus: User Sessions Table
 -- Purpose: Tracking session duration, entry points, and device types allows for much finer segmentation

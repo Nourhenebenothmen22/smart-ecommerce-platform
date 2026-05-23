@@ -92,12 +92,16 @@ export class MLService {
   }): Promise<void> {
     const query = `
       INSERT INTO ml_models (
-        model_name, model_version, model_type, algorithm, metrics, parameters, artifact_path
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        model_name, model_version, model_type, algorithm, metrics, parameters, artifact_path, is_active, trained_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW())
       ON CONFLICT (model_name, model_version) DO UPDATE SET
+        model_type = EXCLUDED.model_type,
+        algorithm = EXCLUDED.algorithm,
         metrics = EXCLUDED.metrics,
         parameters = EXCLUDED.parameters,
-        artifact_path = EXCLUDED.artifact_path;
+        artifact_path = EXCLUDED.artifact_path,
+        is_active = true,
+        trained_at = NOW();
     `;
 
     await pool.query(query, [
