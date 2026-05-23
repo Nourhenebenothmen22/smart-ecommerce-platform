@@ -5,6 +5,7 @@ Translates numeric cluster IDs into actionable business segment labels.
 """
 
 import logging
+import json
 from typing import Dict, Any
 import pandas as pd
 import numpy as np
@@ -30,7 +31,8 @@ def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
         return {-1: DEFAULT_SEGMENT_MAP[-1]}
 
     # Pre-compute percentile thresholds across clusters (raw feature scale)
-    median_recency   = profile["recency_days"].median()   if "recency_days"   in profile.columns else 90
+    recency_col = "days_since_last_order" if "days_since_last_order" in profile.columns else "recency_days"
+    median_recency   = profile[recency_col].median()   if recency_col in profile.columns else 90
     q60_spent        = profile["total_spent"].quantile(0.60) if "total_spent" in profile.columns else 0
     median_orders    = profile["total_orders"].median()   if "total_orders"   in profile.columns else 1
     median_cart_rate = profile["cart_to_click_ratio"].median() if "cart_to_click_ratio" in profile.columns else 0
@@ -44,7 +46,7 @@ def auto_assign_segments(profile: pd.DataFrame) -> Dict[int, Dict[str, str]]:
             mapping[-1] = DEFAULT_SEGMENT_MAP[-1]
             continue
 
-        recency       = row.get("recency_days", 0)
+        recency       = row.get(recency_col, 0)
         spent         = row.get("total_spent", 0)
         orders        = row.get("total_orders", 0)
         cart_rate     = row.get("cart_to_click_ratio", 0)
@@ -99,6 +101,11 @@ def interpret_and_save(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.
     df_results["segment"] = cluster_series.map(lambda c: segment_map.get(int(c), {}).get("label", f"Cluster {c}"))
     df_results["emoji"] = cluster_series.map(lambda c: segment_map.get(int(c), {}).get("emoji", "📦"))
     df_results["strategy"] = cluster_series.map(lambda c: segment_map.get(int(c), {}).get("strategy", "TBD"))
+
+    map_path = config.models_dir / "segment_map.json"
+    with open(map_path, "w") as f:
+        json.dump({str(k): v for k, v in segment_map.items()}, f, indent=2)
+    logger.info("Segment map saved -> %s", map_path)
     
     # 4. Save final labelled users
     out_path = config.data_dir / "best_model_users_labelled.csv"
