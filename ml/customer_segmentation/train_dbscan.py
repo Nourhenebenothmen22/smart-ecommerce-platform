@@ -6,8 +6,6 @@ model persistence, and noise analysis.
 """
 
 import logging
-from pathlib import Path
-from typing import Any
 import numpy as np
 import pandas as pd
 import joblib
@@ -25,19 +23,22 @@ def grid_search_dbscan(X: np.ndarray, config: Config = cfg) -> dict:
     Dynamically tunes DBSCAN by analyzing data density (k-distance).
     """
     X_f = X.astype(np.float64)
+    if len(X_f) < 3:
+        raise ValueError("DBSCAN training requires at least 3 user feature rows.")
     
     # 1. Dynamically estimate a baseline epsilon using k-distance
-    nbrs = NearestNeighbors(n_neighbors=config.dbscan.min_samples).fit(X_f)  # type: ignore
+    n_neighbors = min(config.dbscan.min_samples, len(X_f))
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors).fit(X_f)  # type: ignore
     distances, _ = nbrs.kneighbors(X_f)  # type: ignore
     avg_dist = float(distances[:, -1].mean())  # type: ignore
     
     # Create a dynamic range around the average distance
     dynamic_eps_range = np.linspace(avg_dist * 0.5, avg_dist * 2.0, 10)  # type: ignore
     
-    best_params = {"eps": avg_dist, "min_samples": config.dbscan.min_samples, "score": -1.0}
+    best_params = {"eps": avg_dist, "min_samples": n_neighbors, "score": -1.0}
     
     for eps in dynamic_eps_range:
-        for ms in config.dbscan.min_samples_range:
+        for ms in [value for value in config.dbscan.min_samples_range if 2 <= value <= len(X_f)]:
             model = DBSCAN(eps=eps, min_samples=ms, metric=config.dbscan.metric)
             labels = model.fit_predict(X_f)  # type: ignore
             
@@ -48,6 +49,8 @@ def grid_search_dbscan(X: np.ndarray, config: Config = cfg) -> dict:
             # Validity check: avoid single cluster or excessive noise, and respect max 3 clusters
             if 2 <= n_clusters <= 3 and noise_pct < 50:
                 mask = labels != -1
+                if len(set(labels[mask])) < 2:
+                    continue
                 score = silhouette_score(X_f[mask], labels[mask])  # type: ignore
                 
                 if score > best_params["score"]:
@@ -103,7 +106,7 @@ def run_dbscan_pipeline(X: np.ndarray, df_clean: pd.DataFrame, config: Config = 
     """End-to-end DBSCAN pipeline."""
     logger.info("=== DBSCAN Pipeline ===")
     
-    plot_dbscan_k_distance(X, k=config.dbscan.min_samples, config=config)
+    plot_dbscan_k_distance(X, k=min(config.dbscan.min_samples, len(X)), config=config)
     
     best_params = grid_search_dbscan(X, config)
     model = train_dbscan(X, best_params["eps"], best_params["min_samples"], config)
