@@ -148,9 +148,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_wishlst_user_product') THEN
         ALTER TABLE wishlists ADD CONSTRAINT uq_wishlst_user_product UNIQUE (user_id, product_id);
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_voice_order') THEN
-        ALTER TABLE voice_confirmations ADD CONSTRAINT uq_voice_order UNIQUE (order_id);
-    END IF;
+    -- Historical voice confirmation rows are allowed; active duplicate calls are
+    -- prevented by the partial unique index in 012_voice_confirmations_extend.sql.
+    ALTER TABLE voice_confirmations DROP CONSTRAINT IF EXISTS uq_voice_order;
 END $$;
 
 
@@ -192,7 +192,7 @@ BEGIN
 
     -- Orders Statuses
     ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_status;
-    ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'));
+    ALTER TABLE orders ADD CONSTRAINT chk_order_status CHECK (status IN ('pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'));
 
     -- Orders Payment Status
     ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_order_payment_status;
@@ -209,6 +209,6 @@ BEGIN
 
     -- Interaction Types
     ALTER TABLE user_interactions DROP CONSTRAINT IF EXISTS chk_interaction_type;
-    ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search'));
+    ALTER TABLE user_interactions ADD CONSTRAINT chk_interaction_type CHECK (interaction_type IN ('view', 'click', 'add_to_cart', 'add_to_wishlist', 'purchase', 'share', 'search', 'review'));
 
 END $$;
