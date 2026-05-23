@@ -16,6 +16,7 @@ import { categoryRouter } from "./routes/category.route.js";
 import { subcategoryRouter } from "./routes/subcategory.route.js";
 import { orderRouter } from "./routes/order.route.js";
 import { reviewRouter } from "./routes/review.route.js";
+import { voiceRouter } from "./routes/voice.route.js";
 import { StatusCodes } from "http-status-codes";
 
 
@@ -72,6 +73,7 @@ app.use("/api/categories", categoryRouter);
 app.use("/api/subcategories", subcategoryRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/reviews", reviewRouter);
+app.use("/api/voice", voiceRouter);
 
 /*
 404 Handler

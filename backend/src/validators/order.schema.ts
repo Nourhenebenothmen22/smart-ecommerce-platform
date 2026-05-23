@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const orderStatusEnum = z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']);
+export const orderStatusEnum = z.enum(['pending', 'pending_phone_confirmation', 'manual_review', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded']);
 export const paymentStatusEnum = z.enum(['pending', 'paid', 'failed', 'refunded']);
 
 export const createOrderSchema = z.object({

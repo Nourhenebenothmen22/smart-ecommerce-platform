@@ -28,9 +28,9 @@ export class OrderService {
         orderItems.push({ product_id: item.product_id, product_name: product.title, unit_price: product.final_price, quantity: item.quantity, subtotal });
       }
 
-      // 2. Create order
+      // 2. Create order with phone-confirmation gate
       const orderR = await client.query(
-        `INSERT INTO orders (user_id, status, total_amount, payment_status) VALUES ($1,'pending',$2,'pending') RETURNING *`,
+        `INSERT INTO orders (user_id, status, total_amount, payment_status) VALUES ($1,'pending_phone_confirmation',$2,'pending') RETURNING *`,
         [userId, totalAmount]
       );
       const order = orderR.rows[0];
