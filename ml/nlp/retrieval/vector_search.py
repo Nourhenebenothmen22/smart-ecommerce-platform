@@ -15,11 +15,13 @@ if _ML_ROOT not in sys.path:
     sys.path.insert(0, _ML_ROOT)
 
 from core.db import get_db_cursor
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Multilingual model — supports French, English, and 50+ languages (384 dimensions)
-DEFAULT_MODEL = 'paraphrase-multilingual-MiniLM-L12-v2'
+DEFAULT_MODEL = settings.EMBEDDING_MODEL_NAME
+DEFAULT_MODEL_VERSION = settings.EMBEDDING_MODEL_VERSION
 
 
 class DenseVectorRetriever:
@@ -28,9 +30,10 @@ class DenseVectorRetriever:
     Queries the PostgreSQL pgvector database with business filters.
     """
 
-    def __init__(self, embedding_model: str = DEFAULT_MODEL):
+    def __init__(self, embedding_model: str = DEFAULT_MODEL, model_version: str = DEFAULT_MODEL_VERSION):
         logger.info(f"Loading SentenceTransformer: {embedding_model}...")
         self.model_name = embedding_model
+        self.model_version = model_version
         self.model = SentenceTransformer(embedding_model)
         logger.info(f"SentenceTransformer loaded: {embedding_model}")
 
@@ -62,9 +65,11 @@ class DenseVectorRetriever:
                     JOIN product_embeddings pe ON p.id = pe.product_id
                     WHERE p.is_active = TRUE
                       AND p.stock > 0
+                      AND pe.model_name = %s
+                      AND pe.model_version = %s
                     ORDER BY pe.embedding_vector <=> %s::vector
                     LIMIT %s
-                """, (vector, vector, top_k))
+                """, (vector, self.model_name, self.model_version, vector, top_k))
 
                 for row in cur.fetchall():
                     results.append({
