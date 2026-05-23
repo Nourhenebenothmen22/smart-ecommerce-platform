@@ -63,7 +63,7 @@ export class UserService {
 
   async updateRole(id: number, role: string) {
     const result = await pool.query(
-      `UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING ${SAFE_USER_COLUMNS}`,
+      `UPDATE users SET role = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING ${SAFE_USER_COLUMNS}`,
       [role, id]
     );
     if (result.rows.length === 0) {
@@ -74,7 +74,7 @@ export class UserService {
 
   async updateStatus(id: number, is_active: boolean) {
     const result = await pool.query(
-      `UPDATE users SET is_active = $1, updated_at = NOW() WHERE id = $2 RETURNING ${SAFE_USER_COLUMNS}`,
+      `UPDATE users SET is_active = $1, token_version = token_version + 1, updated_at = NOW() WHERE id = $2 RETURNING ${SAFE_USER_COLUMNS}`,
       [is_active, id]
     );
     if (result.rows.length === 0) {
@@ -86,7 +86,7 @@ export class UserService {
   async deleteUser(id: number) {
     // Soft delete — deactivate instead of removing
     const result = await pool.query(
-      `UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1 RETURNING id`,
+      `UPDATE users SET is_active = false, token_version = token_version + 1, updated_at = NOW() WHERE id = $1 RETURNING id`,
       [id]
     );
     if (result.rows.length === 0) {
