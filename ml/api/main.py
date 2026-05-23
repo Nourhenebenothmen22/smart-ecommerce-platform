@@ -13,10 +13,10 @@ import json
 import sys
 import os
 
-from fastapi import FastAPI, BackgroundTasks, Header
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, status
+from pydantic import BaseModel, Field, field_validator
 
-# ── Ensure the 'ml' directory is in sys.path ──────────────
+# Ensure the 'ml' directory is in sys.path.
 _ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ML_ROOT not in sys.path:
     sys.path.insert(0, _ML_ROOT)
@@ -26,23 +26,23 @@ from nlp.retrieval.hybrid_search import HybridRetriever
 from core.db import get_db_cursor
 from core.config import settings
 
-# ── Logging ───────────────────────────────────────────────
+# Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# ── App ───────────────────────────────────────────────────
+# App
 app = FastAPI(
     title="eCommerce ML Intelligence API",
     description="RAG Chatbot API with Hybrid Search (BM25 + Dense Vector + RRF Fusion).",
     version="2.0.0"
 )
 
-# Initialize engines — Hybrid retriever uses both BM25 + Vector internally
+# Initialize engines. Hybrid retriever uses both BM25 + Vector internally.
 retriever = HybridRetriever()
 agent = RAGChatbotAgent()
 
 
-# ── Request/Response Models ───────────────────────────────
+# Request/Response Models
 
 class ChatRequest(BaseModel):
     query: str = Field(
@@ -61,8 +61,16 @@ class ChatRequest(BaseModel):
         description="Optional session ID for multi-turn conversation tracking. Auto-generated if not provided."
     )
 
+    @field_validator("query")
+    @classmethod
+    def strip_query_whitespace(cls, v: str) -> str:
+        query = v.strip()
+        if not query:
+            raise ValueError("Query must not be empty or whitespace.")
+        return query
 
-# ── Endpoints ─────────────────────────────────────────────
+
+# Endpoints
 
 @app.get("/health")
 def health_check():
@@ -105,6 +113,7 @@ def chat(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
     x_ml_user_id: int | None = Header(default=None, alias="X-ML-User-Id"),
+    x_ml_service_token: str | None = Header(default=None, alias="X-ML-Service-Token"),
 ):
     """
     RAG Chatbot endpoint.
@@ -115,6 +124,12 @@ def chat(
     # Generate or reuse session ID
     session_id = request.session_id or str(uuid.uuid4())
     effective_user_id = x_ml_user_id
+    if x_ml_user_id is not None and not settings.verify_ml_service_token(x_ml_service_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid ML service token",
+        )
+
     if effective_user_id is None and settings.ALLOW_UNVERIFIED_CHAT_USER_ID:
         effective_user_id = request.user_id
 

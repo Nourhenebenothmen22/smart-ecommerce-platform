@@ -1,4 +1,5 @@
 import os
+import secrets
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 
@@ -42,6 +43,10 @@ class Settings:
     SEGMENTATION_MODEL_NAME = os.getenv("SEGMENTATION_MODEL_NAME", "customer_segmentation")
     SEGMENTATION_MODEL_VERSION = os.getenv("SEGMENTATION_MODEL_VERSION", "1.0")
     ALLOW_UNVERIFIED_CHAT_USER_ID = os.getenv("ALLOW_UNVERIFIED_CHAT_USER_ID", "false").lower() == "true"
+    ML_SERVICE_TOKEN = os.getenv("ML_SERVICE_TOKEN", "")
+
+    def verify_ml_service_token(self, token: str | None) -> bool:
+        return bool(self.ML_SERVICE_TOKEN) and bool(token) and secrets.compare_digest(token, self.ML_SERVICE_TOKEN)
 
     @property
     def database_url(self):
