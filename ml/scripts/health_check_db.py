@@ -1,106 +1,120 @@
+"""
+Database health check for the backend/ML shared PostgreSQL schema.
+"""
+
+import json
 import os
 import sys
-import json
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_NAME = os.environ.get("DB_NAME", "ecommerce_ml_db")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASS = os.environ.get("DB_PASS", "postgres")
+_ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
+try:
+    from ml.core.config import settings
+except ImportError:  # pragma: no cover - supports running from ml/
+    from core.config import settings
+
+TABLES_TO_CHECK = (
+    "users",
+    "products",
+    "reviews",
+    "orders",
+    "user_features",
+    "product_embeddings",
+    "chatbot_interactions",
+    "nlp_similarity_metrics",
+)
+
 
 def get_connection():
-    # Try typical ports
-    ports_to_try = [os.environ.get("DB_PORT", "5432"), "5433", "5432"]
-    for p in ports_to_try:
-        try:
-            conn = psycopg2.connect(host=DB_HOST, port=p, dbname=DB_NAME, user=DB_USER, password=DB_PASS)
-            return conn
-        except Exception:
-            pass
-    raise Exception("Impossible de se connecter à la base de données PostgreSQL locale.")
+    return psycopg2.connect(**settings.db_config_dict)
+
+
+def _count_table(cur, table_name: str):
+    if table_name not in TABLES_TO_CHECK:
+        raise ValueError(f"Unexpected table name: {table_name}")
+    cur.execute(f"SELECT COUNT(*) AS count FROM {table_name};")
+    return cur.fetchone()["count"]
+
 
 def run_deep_audit():
+    audit_results = {
+        "tables": {},
+        "nlp_embeddings": {},
+        "chatbot_interactions": {},
+        "data_consistency": {},
+    }
+
     try:
-        conn = get_connection()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        
-        audit_results = {
-            "1_ETAT_DES_TABLES": {},
-            "2_NLP_ET_EMBEDDINGS": {},
-            "3_CHATBOT_INTERACTIONS": {},
-            "4_COHERENCE_DONNEES": {}
-        }
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                for table in TABLES_TO_CHECK:
+                    try:
+                        audit_results["tables"][table] = _count_table(cur, table)
+                    except psycopg2.errors.UndefinedTable:
+                        conn.rollback()
+                        audit_results["tables"][table] = "missing"
 
-        # ---------------------------------------------------------
-        # 1. Vérification des tables principales
-        # ---------------------------------------------------------
-        tables = ['users', 'products', 'reviews', 'orders', 'user_features', 'product_embeddings', 'chatbot_interactions', 'nlp_similarity_metrics']
-        
-        for table in tables:
-            try:
-                cur.execute(f"SELECT COUNT(*) as count FROM {table};")
-                audit_results["1_ETAT_DES_TABLES"][table] = cur.fetchone()['count']
-            except psycopg2.errors.UndefinedTable:
-                conn.rollback() # Reset transaction after error
-                audit_results["1_ETAT_DES_TABLES"][table] = "[ERREUR] TABLE INEXISTANTE"
+                cur.execute("SELECT extname FROM pg_extension WHERE extname = 'vector';")
+                audit_results["nlp_embeddings"]["pgvector_installed"] = bool(cur.fetchone())
 
-        # ---------------------------------------------------------
-        # 2. Audit NLP & VECTEURS (pgvector)
-        # ---------------------------------------------------------
-        # Check pgvector extension
-        cur.execute("SELECT extname FROM pg_extension WHERE extname = 'vector';")
-        ext = cur.fetchone()
-        audit_results["2_NLP_ET_EMBEDDINGS"]["pgvector_installe"] = "[OK] OUI" if ext else "[ERREUR] NON"
+                if audit_results["tables"].get("product_embeddings") != "missing":
+                    cur.execute(
+                        """
+                        SELECT COUNT(*) AS count
+                        FROM products p
+                        LEFT JOIN product_embeddings pe
+                          ON p.id = pe.product_id
+                         AND pe.model_name = %s
+                         AND pe.model_version = %s
+                        WHERE p.is_active = TRUE
+                          AND pe.product_id IS NULL;
+                        """,
+                        (settings.EMBEDDING_MODEL_NAME, settings.EMBEDDING_MODEL_VERSION),
+                    )
+                    audit_results["nlp_embeddings"]["active_products_missing_current_embedding"] = cur.fetchone()["count"]
+                    audit_results["nlp_embeddings"]["embedding_model"] = settings.EMBEDDING_MODEL_NAME
+                    audit_results["nlp_embeddings"]["embedding_version"] = settings.EMBEDDING_MODEL_VERSION
 
-        if audit_results["1_ETAT_DES_TABLES"].get("product_embeddings") not in [None, "[ERREUR] TABLE INEXISTANTE"]:
-            # Check products without embeddings
-            cur.execute("""
-                SELECT COUNT(*) as count 
-                FROM products p 
-                LEFT JOIN product_embeddings pe ON p.id = pe.product_id 
-                WHERE pe.product_id IS NULL;
-            """)
-            missing = cur.fetchone()['count']
-            audit_results["2_NLP_ET_EMBEDDINGS"]["produits_sans_embeddings"] = missing
-            if missing > 0:
-                audit_results["2_NLP_ET_EMBEDDINGS"]["coherence_vecteurs"] = f"[ERREUR] {missing} produits n'ont pas d'embeddings!"
-            else:
-               audit_results["2_NLP_ET_EMBEDDINGS"]["coherence_vecteurs"] = "[OK] Tous les produits ont un embedding."
+                if audit_results["tables"].get("chatbot_interactions") != "missing":
+                    count_chatbot = audit_results["tables"].get("chatbot_interactions", 0)
+                    audit_results["chatbot_interactions"]["total"] = count_chatbot
+                    if count_chatbot:
+                        cur.execute(
+                            """
+                            SELECT COUNT(*) AS count
+                            FROM chatbot_interactions
+                            WHERE llm_response IS NULL OR llm_response = '';
+                            """
+                        )
+                        audit_results["chatbot_interactions"]["empty_llm_responses"] = cur.fetchone()["count"]
 
-        # ---------------------------------------------------------
-        # 3. Audit CHATBOT
-        # ---------------------------------------------------------
-        if audit_results["1_ETAT_DES_TABLES"].get("chatbot_interactions") != "[ERREUR] TABLE INEXISTANTE":
-            count_chatbot = audit_results["1_ETAT_DES_TABLES"].get("chatbot_interactions", 0)
-            if count_chatbot == 0:
-                audit_results["3_CHATBOT_INTERACTIONS"]["historique_conversations"] = "[ATTENTION] AUCUNE INTERACTION. La table est complètement vide."
-            else:
-                cur.execute("SELECT COUNT(*) as count FROM chatbot_interactions WHERE llm_response IS NULL OR llm_response = '';")
-                empty_responses = cur.fetchone()['count']
-                audit_results["3_CHATBOT_INTERACTIONS"]["reponses_llm_vides"] = empty_responses
-                
-                cur.execute("SELECT COUNT(DISTINCT retrieval_algorithm) as count FROM chatbot_interactions;")
-                algos = cur.fetchone()['count']
-                audit_results["3_CHATBOT_INTERACTIONS"]["algorithmes_utilises"] = algos
+                cur.execute(
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM reviews r
+                    LEFT JOIN products p ON p.id = r.product_id
+                    WHERE p.id IS NULL;
+                    """
+                )
+                audit_results["data_consistency"]["orphaned_reviews"] = cur.fetchone()["count"]
 
-        # ---------------------------------------------------------
-        # 4. Audit de Cohérence Générale
-        # ---------------------------------------------------------
-        # Check orphaned reviews
-        cur.execute("SELECT COUNT(*) as count FROM reviews WHERE product_id NOT IN (SELECT id FROM products);")
-        audit_results["4_COHERENCE_DONNEES"]["avis_orphelins_produits_inexistants"] = cur.fetchone()['count']
-        
-        # Display the report
-        print("====== RÉSULTAT DE L'AUDIT DE LA BASE DE DONNÉES ======\n")
-        print(json.dumps(audit_results, indent=3))
-        print("\n=======================================================")
+        print(json.dumps(audit_results, indent=2))
+        max_missing = os.getenv("ML_HEALTH_MAX_MISSING_EMBEDDINGS")
+        missing_embeddings = audit_results["nlp_embeddings"].get("active_products_missing_current_embedding")
+        if max_missing is not None and isinstance(missing_embeddings, int) and missing_embeddings > int(max_missing):
+            raise SystemExit(
+                f"Current embedding coverage failed: {missing_embeddings} missing active product embeddings "
+                f"(allowed: {max_missing})"
+            )
+    except Exception as exc:
+        print(f"Database health check failed: {exc}")
+        raise
 
-        cur.close()
-        conn.close()
-
-    except Exception as e:
-        print(f"ERREUR CRITIQUE PENDANT L'AUDIT: {e}")
 
 if __name__ == "__main__":
     run_deep_audit()

@@ -1,9 +1,8 @@
 import uuid
+import hashlib
 from decimal import Decimal
 from datetime import datetime, timedelta
-from urllib.parse import quote
 import random
-from .config import CATEGORY_THEME
 
 def make_unique_slug(text: str) -> str:
     base = (
@@ -56,12 +55,92 @@ def get_user_signup_dates(cursor):
     cursor.execute("SELECT id, created_at FROM users")
     return {uid: created_at for uid, created_at in cursor.fetchall()}
 
+SUBCATEGORY_KEYWORDS = {
+    # 1. Electronics
+    "smartphones": "smartphone",
+    "laptops": "laptop",
+    "tablets": "tablet",
+    "headphones": "headphones",
+    "cameras": "camera",
+    "smartwatches": "smartwatch",
+    "televisions": "television",
+    # 2. Beauty
+    "skincare": "skincare",
+    "makeup": "makeup",
+    "haircare": "haircare",
+    "fragrance": "perfume",
+    "personal_hygiene": "soap",
+    # 3. Home Appliances
+    "kitchen_appliances": "blender",
+    "cleaning_devices": "vacuum",
+    "air_conditioning": "airconditioner",
+    "washing_machines": "washingmachine",
+    "refrigerators": "refrigerator",
+    # 4. Computers
+    "desktop_pc": "computer",
+    "computer_accessories": "keyboard",
+    "storage_devices": "usb",
+    "monitors": "monitor",
+    # 5. Gaming
+    "gaming_consoles": "console",
+    "gaming_accessories": "controller",
+    "gaming_chairs": "officechair",
+    "gaming_headsets": "headset",
+    # 6. Sports
+    "fitness_equipment": "treadmill",
+    "running_shoes": "shoes",
+    "cycling": "bicycle",
+    "sportswear": "sportswear",
+    # 7. Fashion
+    "mens_clothing": "menswear",
+    "womens_clothing": "dress",
+    "footwear": "shoes",
+    "bags_accessories": "backpack",
+    # 8. Books & Stationery
+    "fiction_books": "novel",
+    "non_fiction_books": "book",
+    "stationery": "notebook",
+    # 9. Food & Beverages
+    "coffee_tea": "coffee",
+    "snacks": "cookie",
+    "supplements": "vitamins",
+    # 10. Toys & Kids
+    "educational_toys": "toy",
+    "action_figures": "toy",
+    "board_games": "boardgame",
+    # 11. Automotive
+    "car_electronics": "gps",
+    "car_care": "carwash",
+    "car_accessories": "caraccessories",
+    # 12. Health & Wellness
+    "medical_devices": "medical",
+    "vitamins_supplements": "vitamins",
+    "yoga_recovery": "yoga",
+    # 13. Home Decor & Furniture
+    "furniture": "furniture",
+    "lighting": "lamp",
+    "bedding_bath": "bedding",
+    # 14. Office
+    "office_furniture": "desk",
+    "office_supplies": "stationery",
+    "printers_scanners": "printer",
+    # 15. Pet Supplies
+    "dog_supplies": "dog",
+    "cat_supplies": "cat",
+    "aquarium_supplies": "aquarium"
+}
+
 def build_product_image_url(category: str, subcategory: str, title: str, slug: str, view_label: str, width=900, height=900):
-    theme = CATEGORY_THEME.get(category, CATEGORY_THEME["default"])
-    text = f"{subcategory.replace('_', ' ').title()} | {view_label} | {title}"
-    encoded_text = quote(text)
-    unique_path = quote(f"{slug}-{view_label.lower().replace(' ', '-')}")
-    return f"https://placehold.co/{width}x{height}/{theme['bg']}/{theme['fg']}?text={encoded_text}&seed={unique_path}"
+    # Compute a deterministic lock integer from the slug + view_label
+    # using MD5 to be stable across process restarts
+    key = f"{slug}-{view_label}"
+    md5_hash = hashlib.md5(key.encode("utf-8")).hexdigest()
+    lock_val = int(md5_hash[:8], 16) % 10000
+    
+    # Map subcategory to a clean, recognized keyword for loremflickr
+    keyword = SUBCATEGORY_KEYWORDS.get(subcategory, subcategory.replace("_", "").replace("-", ""))
+    
+    return f"https://loremflickr.com/{width}/{height}/{keyword}?lock={lock_val}"
 
 def generate_product_images(category: str, subcategory: str, title: str, slug: str):
     views = ["Front View", "Side View", "Detail View", "Packaging"]
