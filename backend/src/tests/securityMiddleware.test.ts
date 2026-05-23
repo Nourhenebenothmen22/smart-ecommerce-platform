@@ -4,6 +4,9 @@ import { env } from "../config/env.js";
 import { getAllowedOrigins } from "../middlewares/cors.middleware.js";
 import { csrfOriginMiddleware } from "../middlewares/csrf.middleware.js";
 import { authRateLimitConfig, standardRateLimitConfig } from "../middlewares/rateLimit.middleware.js";
+import { parseTrustProxy } from "../config/trustProxy.js";
+import fs from "fs";
+import path from "path";
 
 describe("security middleware configuration", () => {
   const originalNodeEnv = env.NODE_ENV;
@@ -60,5 +63,18 @@ describe("security middleware configuration", () => {
     csrfOriginMiddleware(req, {} as Response, next);
 
     expect(next).toHaveBeenCalledWith();
+  });
+
+  test("trust proxy parser only enables explicit safe values", () => {
+    expect(parseTrustProxy("false")).toBe(false);
+    expect(parseTrustProxy("0")).toBe(false);
+    expect(parseTrustProxy("true")).toBe(true);
+    expect(parseTrustProxy("1")).toBe(1);
+  });
+
+  test("voice webhook is mounted before global json parser", () => {
+    const appSource = fs.readFileSync(path.join(process.cwd(), "src", "app.ts"), "utf-8");
+    expect(appSource.indexOf('app.use("/api/voice/webhook", voiceWebhookRouter)'))
+      .toBeLessThan(appSource.indexOf("app.use(express.json())"));
   });
 });

@@ -1,5 +1,8 @@
 import { productSchema, productUpdateSchema } from "../validators/product.schema.js";
 import { registerSchema } from "../validators/auth.schema.js";
+import { createOrderSchema, orderStatusEnum, paymentMethodEnum } from "../validators/order.schema.js";
+import { parseJwtExpiryMs } from "../controllers/auth.controller.js";
+import { isAllowedImageSignature } from "../middlewares/upload.middleware.js";
 
 describe("validation hardening", () => {
   test("product create requires required catalog fields", () => {
@@ -50,5 +53,28 @@ describe("validation hardening", () => {
       email: "ada@example.com",
       password: "password123",
     }).success).toBe(true);
+  });
+
+  test("order status and payment method enums are aligned with seeded data", () => {
+    expect(orderStatusEnum.safeParse("completed").success).toBe(true);
+    expect(orderStatusEnum.safeParse("on_hold").success).toBe(true);
+    expect(paymentMethodEnum.safeParse("credit_card").success).toBe(true);
+    expect(paymentMethodEnum.safeParse("apple_pay").success).toBe(true);
+    expect(createOrderSchema.safeParse({
+      items: [{ product_id: 1, quantity: 1 }],
+      payment_method: "card",
+    }).success).toBe(false);
+  });
+
+  test("jwt cookie expiry follows JWT_EXPIRES_IN duration syntax", () => {
+    expect(parseJwtExpiryMs("15m")).toBe(15 * 60 * 1000);
+    expect(parseJwtExpiryMs("2h")).toBe(2 * 60 * 60 * 1000);
+    expect(parseJwtExpiryMs("7d")).toBe(7 * 24 * 60 * 60 * 1000);
+  });
+
+  test("uploaded image signatures require real image bytes", () => {
+    expect(isAllowedImageSignature(Buffer.from([0xff, 0xd8, 0xff, 0x00]))).toBe(true);
+    expect(isAllowedImageSignature(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(true);
+    expect(isAllowedImageSignature(Buffer.from("not an image"))).toBe(false);
   });
 });

@@ -191,7 +191,7 @@ describe("Phone Confirmation Service Tests", () => {
       .mockResolvedValueOnce({ rows: [] }) // Update voice_confirmation
       .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
-    await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
+    await service.handleWebhookResult(Buffer.from("{}"), "sig");
 
     expect(orderService.updateStatus).toHaveBeenCalledWith(123, "processing", mockClient);
   });
@@ -212,7 +212,7 @@ describe("Phone Confirmation Service Tests", () => {
       .mockResolvedValueOnce({ rows: [] }) // Update voice_confirmation
       .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
-    await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
+    await service.handleWebhookResult(Buffer.from("{}"), "sig");
 
     expect(orderService.updateStatus).toHaveBeenCalledWith(123, "cancelled", mockClient);
   });
@@ -232,7 +232,7 @@ describe("Phone Confirmation Service Tests", () => {
       .mockResolvedValueOnce({ rows: [] }) // Update voice_confirmation
       .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
-    await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
+    await service.handleWebhookResult(Buffer.from("{}"), "sig");
 
     // Order status update should NOT be called
     expect(orderService.updateStatus).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe("Phone Confirmation Service Tests", () => {
       .mockResolvedValueOnce({ rows: [] }) // Update voice_confirmation
       .mockResolvedValueOnce({ rows: [] }); // COMMIT
 
-    await service.handleWebhookResult({}, Buffer.from("{}"), "sig");
+    await service.handleWebhookResult(Buffer.from("{}"), "sig");
 
     expect(orderService.updateStatus).toHaveBeenCalledWith(123, "manual_review", mockClient);
   });

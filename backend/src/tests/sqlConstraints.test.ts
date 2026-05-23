@@ -27,6 +27,32 @@ describe("SQL constraint alignment", () => {
     expect(voiceExtension).toContain("WHERE call_status NOT IN ('completed', 'failed', 'cancelled')");
   });
 
+  test("voice confirmation statuses include in_progress and cancelled", () => {
+    const sql = fs.readFileSync(path.join(sqlDir, "002_constraints.sql"), "utf-8");
+    expect(sql).toContain("chk_voice_status");
+    expect(sql).toContain("'pending'");
+    expect(sql).toContain("'in_progress'");
+    expect(sql).toContain("'completed'");
+    expect(sql).toContain("'failed'");
+    expect(sql).toContain("'ignored'");
+    expect(sql).toContain("'cancelled'");
+  });
+
+  test("payment methods are constrained to supported values", () => {
+    const sql = fs.readFileSync(path.join(sqlDir, "002_constraints.sql"), "utf-8");
+    expect(sql).toContain("chk_payment_method");
+    expect(sql).toContain("'credit_card'");
+    expect(sql).toContain("'cash_on_delivery'");
+    expect(sql).toContain("'apple_pay'");
+  });
+
+  test("ml model schema supports active version metadata", () => {
+    const sql = fs.readFileSync(path.join(sqlDir, "006_ml_schema.sql"), "utf-8");
+    expect(sql).toContain("is_active BOOLEAN");
+    expect(sql).toContain("trained_at TIMESTAMPTZ");
+    expect(sql).toContain("algorithm VARCHAR");
+  });
+
   test("users table supports token version based session revocation", () => {
     const sql = fs.readFileSync(path.join(sqlDir, "001_tables.sql"), "utf-8");
 

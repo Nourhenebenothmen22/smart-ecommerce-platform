@@ -121,11 +121,11 @@ describe("CRUD controller flows", () => {
     (orderService.getOrderById as any).mockResolvedValue({ id: 99, user_id: 7 });
     (orderService.updateStatus as any).mockResolvedValue({ id: 99, status: "processing" });
 
-    await orderController.createOrder(mockRequest({ user, body: { items: [{ product_id: 1, quantity: 2 }], payment_method: "card" } }), res, next);
+    await orderController.createOrder(mockRequest({ user, body: { items: [{ product_id: 1, quantity: 2 }], payment_method: "credit_card" } }), res, next);
     await orderController.getOrderById(mockRequest({ user, params: { id: "99" } }), res, next);
     await orderController.updateOrderStatus(mockRequest({ params: { id: "99" }, body: { status: "processing" } }), res, next);
 
-    expect(orderService.createOrder).toHaveBeenCalledWith(7, [{ product_id: 1, quantity: 2 }], "card");
+    expect(orderService.createOrder).toHaveBeenCalledWith(7, [{ product_id: 1, quantity: 2 }], "credit_card");
     expect(orderService.getOrderById).toHaveBeenCalledWith(99, 7, "customer");
     expect(orderService.updateStatus).toHaveBeenCalledWith(99, "processing");
   });

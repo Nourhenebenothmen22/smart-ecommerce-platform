@@ -20,7 +20,7 @@ describe("RetellProvider webhook verification", () => {
     const provider = new RetellProvider();
 
     expect(
-      provider.parseWebhook({ call_id: "call_1", event: "call_ended" }, Buffer.from("{}"), "bad")
+      provider.parseWebhook(Buffer.from("{}"), "bad")
     ).toBeNull();
   });
 
@@ -39,10 +39,21 @@ describe("RetellProvider webhook verification", () => {
       .update(rawBody)
       .digest("hex")}`;
 
-    expect(provider.parseWebhook(body, rawBody, signature)).toEqual({
+    expect(provider.parseWebhook(rawBody, signature)).toEqual({
       providerCallId: "call_1",
       outcome: "confirmed",
       transcript: undefined,
     });
+  });
+
+  test("rejects signed but malformed JSON payloads", () => {
+    const provider = new RetellProvider();
+    const rawBody = Buffer.from("{bad-json");
+    const signature = `sha256=${crypto
+      .createHmac("sha256", "webhook-secret")
+      .update(rawBody)
+      .digest("hex")}`;
+
+    expect(provider.parseWebhook(rawBody, signature)).toBeNull();
   });
 });
