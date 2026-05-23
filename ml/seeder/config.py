@@ -38,7 +38,16 @@ _plain_password = "password123"
 DEFAULT_PASSWORD_HASH = bcrypt.hashpw(_plain_password.encode('utf-8'), bcrypt.gensalt(12)).decode('utf-8')
 
 INTERACTION_TYPES = ["view", "click", "add_to_cart", "add_to_wishlist", "purchase", "share", "search"]
-ORDER_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled", "refunded"]
+ORDER_STATUSES = [
+    "pending",
+    "pending_phone_confirmation",
+    "manual_review",
+    "processing",
+    "shipped",
+    "delivered",
+    "cancelled",
+    "refunded",
+]
 PAYMENT_STATUSES = ["pending", "paid", "failed", "refunded"]
 PAYMENT_METHODS = ["credit_card", "paypal", "cash_on_delivery", "bank_transfer", "crypto", "apple_pay"]
 
