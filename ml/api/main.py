@@ -13,7 +13,7 @@ import json
 import sys
 import os
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Header
 from pydantic import BaseModel, Field
 
 # ── Ensure the 'ml' directory is in sys.path ──────────────
@@ -24,6 +24,7 @@ if _ML_ROOT not in sys.path:
 from nlp.chatbot.agent import RAGChatbotAgent
 from nlp.retrieval.hybrid_search import HybridRetriever
 from core.db import get_db_cursor
+from core.config import settings
 
 # ── Logging ───────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
@@ -53,7 +54,7 @@ class ChatRequest(BaseModel):
     )
     user_id: int | None = Field(
         default=None,
-        description="Optional authenticated user ID for personalization."
+        description="Deprecated. Ignored unless ALLOW_UNVERIFIED_CHAT_USER_ID=true."
     )
     session_id: str | None = Field(
         default=None,
@@ -100,7 +101,11 @@ def log_interaction(
 
 
 @app.post("/chat")
-def chat(request: ChatRequest, background_tasks: BackgroundTasks):
+def chat(
+    request: ChatRequest,
+    background_tasks: BackgroundTasks,
+    x_ml_user_id: int | None = Header(default=None, alias="X-ML-User-Id"),
+):
     """
     RAG Chatbot endpoint.
     1. Hybrid retrieval (BM25 + Vector with RRF fusion)
@@ -109,8 +114,14 @@ def chat(request: ChatRequest, background_tasks: BackgroundTasks):
     """
     # Generate or reuse session ID
     session_id = request.session_id or str(uuid.uuid4())
+    effective_user_id = x_ml_user_id
+    if effective_user_id is None and settings.ALLOW_UNVERIFIED_CHAT_USER_ID:
+        effective_user_id = request.user_id
 
-    logger.info(f"[{session_id}] Chat request: '{request.query[:80]}...' (user_id={request.user_id})")
+    if request.user_id and effective_user_id != request.user_id:
+        logger.warning("[%s] Ignoring unverified body user_id for /chat.", session_id)
+
+    logger.info(f"[{session_id}] Chat request: '{request.query[:80]}...' (user_id={effective_user_id})")
 
     # 1. Retrieve Context via Hybrid Search (BM25 + Vector + RRF)
     context = retriever.search(request.query, top_k=5)
@@ -133,7 +144,7 @@ def chat(request: ChatRequest, background_tasks: BackgroundTasks):
         request.query,
         response,
         context,
-        request.user_id,
+        effective_user_id,
         full_prompt,
         session_id,
         algorithm
