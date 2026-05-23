@@ -8,7 +8,7 @@ import { sendResponse } from "../utils/apiResponse.js";
 
 const segmentSchema = z.object({
   user_id: z.number().int().positive(),
-  segment_id: z.number().int().min(0),
+  segment_id: z.number().int().min(-1),
   segment_label: z.string().min(1).max(100),
   model_name: z.string().min(1).max(120),
   model_version: z.string().min(1).max(50),
