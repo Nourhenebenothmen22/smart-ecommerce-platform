@@ -1,7 +1,6 @@
 from typing import List, Dict, Any
 import sys
 import os
-import re
 
 _ML_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _ML_ROOT not in sys.path:
@@ -19,13 +18,9 @@ class BM25Retriever:
     def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         results = []
         
-        # Clean query for pg_trgm and to_tsquery
-        words = [w for w in re.split(r'\s+', query.strip()) if w]
-        if not words:
+        clean_query = query.strip()
+        if not clean_query:
             return results
-            
-        # Use AND (&) for high precision by default
-        ts_query_str = " & ".join(words)
         
         try:
             with get_db_cursor() as cur:
@@ -33,14 +28,18 @@ class BM25Retriever:
                     SELECT p.id, p.title, p.brand, p.price, p.final_price,
                            LEFT(p.description, 1000) AS description_preview,
                            p.rating_avg, p.stock,
-                           ts_rank(to_tsvector('french', p.title || ' ' || p.description), to_tsquery('french', %s)) AS score 
+                           ts_rank(
+                               to_tsvector('french', COALESCE(p.title, '') || ' ' || COALESCE(p.description, '')),
+                               websearch_to_tsquery('french', %s)
+                           ) AS score
                     FROM products p
-                    WHERE to_tsvector('french', p.title || ' ' || p.description) @@ to_tsquery('french', %s)
+                    WHERE to_tsvector('french', COALESCE(p.title, '') || ' ' || COALESCE(p.description, ''))
+                          @@ websearch_to_tsquery('french', %s)
                       AND p.is_active = TRUE
                       AND p.stock > 0
                     ORDER BY score DESC
                     LIMIT %s
-                """, (ts_query_str, ts_query_str, top_k))
+                """, (clean_query, clean_query, top_k))
                 
                 for row in cur.fetchall():
                     results.append({
