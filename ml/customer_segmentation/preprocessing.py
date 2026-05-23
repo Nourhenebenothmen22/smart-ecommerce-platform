@@ -50,6 +50,8 @@ def remove_outliers_iqr(
             continue
         q1, q3 = df_clean[col].quantile(0.25), df_clean[col].quantile(0.75)
         iqr = q3 - q1
+        if pd.isna(iqr):
+            continue
         lower_bound = float(q1 - factor * iqr)
         upper_bound = float(q3 + factor * iqr)
         bounds[col] = {"lower": lower_bound, "upper": upper_bound}
@@ -62,6 +64,26 @@ def remove_outliers_iqr(
         logger.info("Winsorization bounds saved → %s", bounds_path)
 
     logger.info("IQR outlier handling: Extreme values capped (Winsorized, %d cols).", len(bounds))
+    return df_clean
+
+
+def apply_outlier_bounds(df: pd.DataFrame, bounds_path: Path, cols: list) -> pd.DataFrame:
+    """Apply training-time winsorization bounds during inference."""
+    df_clean = df.copy()
+    if not bounds_path.exists():
+        raise FileNotFoundError(f"Winsorization bounds not found: {bounds_path}")
+
+    with open(bounds_path) as f:
+        bounds = json.load(f)
+
+    for col in cols:
+        if col in df_clean.columns and col in bounds:
+            df_clean[col] = df_clean[col].clip(
+                lower=bounds[col]["lower"],
+                upper=bounds[col]["upper"],
+            )
+
+    logger.info("Applied saved winsorization bounds from %s", bounds_path)
     return df_clean
 
 def remove_outliers_zscore(df: pd.DataFrame, cols: list, threshold: float = 3.0) -> pd.DataFrame:
@@ -115,6 +137,9 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True) -> Tupl
 
     # 1. Select features
     required_cols = ["user_id"] + fc.feature_cols
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required preprocessing columns: {missing}")
     df_feat = df[[c for c in required_cols if c in df.columns]].copy()
 
     # 2. Impute
@@ -125,8 +150,11 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True) -> Tupl
 
     # 4. Outlier removal
     if fc.outlier_method == "iqr":
-        bounds_path = config.models_dir / "winsorization_bounds.json" if fit else None
-        df_clean = remove_outliers_iqr(df_feat, fc.feature_cols, bounds_path=bounds_path)
+        bounds_path = config.models_dir / "winsorization_bounds.json"
+        if fit:
+            df_clean = remove_outliers_iqr(df_feat, fc.feature_cols, bounds_path=bounds_path)
+        else:
+            df_clean = apply_outlier_bounds(df_feat, bounds_path, fc.feature_cols)
     elif fc.outlier_method == "zscore":
         df_clean = remove_outliers_zscore(df_feat, fc.feature_cols, fc.outlier_threshold)
     else:
