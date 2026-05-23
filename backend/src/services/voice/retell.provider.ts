@@ -1,17 +1,3 @@
-/**
- * retell.provider.ts
- * ───────────────────
- * Retell AI implementation of IVoiceProvider.
- *
- * Retell docs: https://docs.retellai.com/api-references/create-phone-call
- *
- * Required env vars:
- *   RETELL_API_KEY          – your Retell secret key
- *   RETELL_AGENT_ID         – pre-built phone agent ID from Retell dashboard
- *   RETELL_FROM_NUMBER      – caller phone number in E.164 format
- *   RETELL_WEBHOOK_SECRET   – optional HMAC secret set in Retell dashboard
- */
-
 import crypto from "crypto";
 import {
   IVoiceProvider,
@@ -20,6 +6,7 @@ import {
   WebhookResult,
   CallOutcome,
 } from "./voiceProvider.adapter.js";
+import { env } from "../../config/env.js";
 
 export class RetellProvider implements IVoiceProvider {
   readonly name = "retell";
@@ -27,18 +14,18 @@ export class RetellProvider implements IVoiceProvider {
   private readonly apiKey: string;
   private readonly agentId: string;
   private readonly fromNumber: string;
-  private readonly webhookSecret: string | undefined;
+  private readonly webhookSecret: string;
   private readonly baseUrl = "https://api.retellai.com";
 
   constructor() {
-    this.apiKey = process.env.RETELL_API_KEY ?? "";
-    this.agentId = process.env.RETELL_AGENT_ID ?? "";
-    this.fromNumber = process.env.RETELL_FROM_NUMBER ?? "";
-    this.webhookSecret = process.env.RETELL_WEBHOOK_SECRET;
+    this.apiKey = env.RETELL_API_KEY ?? "";
+    this.agentId = env.RETELL_AGENT_ID ?? "";
+    this.fromNumber = env.RETELL_FROM_NUMBER ?? "";
+    this.webhookSecret = env.RETELL_WEBHOOK_SECRET ?? "";
 
-    if (!this.apiKey || !this.agentId || !this.fromNumber) {
+    if (!this.apiKey || !this.agentId || !this.fromNumber || !this.webhookSecret) {
       throw new Error(
-        "RetellProvider: RETELL_API_KEY, RETELL_AGENT_ID, and RETELL_FROM_NUMBER must be set."
+        "RetellProvider: RETELL_API_KEY, RETELL_AGENT_ID, RETELL_FROM_NUMBER, and RETELL_WEBHOOK_SECRET must be set."
       );
     }
   }
@@ -78,16 +65,19 @@ export class RetellProvider implements IVoiceProvider {
   }
 
   parseWebhook(body: unknown, rawBody: Buffer, signature: string): WebhookResult | null {
-    // Validate HMAC signature if secret is configured
-    if (this.webhookSecret) {
-      const expected = crypto
-        .createHmac("sha256", this.webhookSecret)
-        .update(rawBody)
-        .digest("hex");
-      const trusted = `sha256=${expected}`;
-      if (!crypto.timingSafeEqual(Buffer.from(trusted), Buffer.from(signature))) {
-        return null; // signature mismatch → reject
-      }
+    const expected = crypto
+      .createHmac("sha256", this.webhookSecret)
+      .update(rawBody)
+      .digest("hex");
+    const trusted = `sha256=${expected}`;
+    const trustedBuffer = Buffer.from(trusted);
+    const signatureBuffer = Buffer.from(signature);
+
+    if (
+      signatureBuffer.length !== trustedBuffer.length ||
+      !crypto.timingSafeEqual(trustedBuffer, signatureBuffer)
+    ) {
+      return null;
     }
 
     const payload = body as Record<string, unknown>;
@@ -96,16 +86,11 @@ export class RetellProvider implements IVoiceProvider {
 
     const event = payload["event"] as string | undefined;
     const transcript = payload["transcript"] as string | undefined;
-
-    // Map Retell events → our normalised outcome
     let outcome: CallOutcome = "unclear";
 
     if (event === "call_ended") {
       const disconnectionReason = payload["disconnection_reason"] as string | undefined;
       const callAnalysis = payload["call_analysis"] as Record<string, unknown> | undefined;
-
-      // call_analysis.call_successful is set by the Retell agent when it
-      // explicitly captures a "yes/confirm" or "no/cancel" response.
       const successful = callAnalysis?.["call_successful"] as boolean | undefined;
       const userConfirmed = callAnalysis?.["custom_analysis_data"] as
         | { confirmed?: boolean; cancelled?: boolean }
@@ -121,7 +106,6 @@ export class RetellProvider implements IVoiceProvider {
         outcome = "unclear";
       }
     } else {
-      // Non-terminal events (call_started, etc.) – ignore
       return null;
     }
 
