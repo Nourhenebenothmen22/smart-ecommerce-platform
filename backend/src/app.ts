@@ -5,6 +5,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import lusca from "lusca";
 import { corsMiddleware } from "./middlewares/cors.middleware.js";
+import { csrfOriginMiddleware } from "./middlewares/csrf.middleware.js";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { healthRouter } from "./routes/health.route.js";
@@ -38,6 +39,7 @@ Performance & Parser
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json());
+app.use(csrfOriginMiddleware);
 
 /*
 Security Headers & CSRF (handled by lusca)
