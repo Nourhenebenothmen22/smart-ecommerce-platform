@@ -401,6 +401,16 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
     cleaned, cleaning_report = clean_price_data(df_raw, config=config, include_target=True)
     frame = build_feature_frame(cleaned, config=config, include_target=True)
     assert isinstance(frame, pd.DataFrame)
+    signal_availability = {
+        "products_with_sales_history": int((cleaned["order_line_count"] > 0).sum()),
+        "sales_history_coverage": float((cleaned["order_line_count"] > 0).mean()) if len(cleaned) else 0.0,
+        "products_with_historical_unit_price": int((cleaned["avg_historical_unit_price"] > 0).sum()),
+        "products_with_interactions": int((cleaned["interaction_count"] > 0).sum()),
+        "interaction_coverage": float((cleaned["interaction_count"] > 0).mean()) if len(cleaned) else 0.0,
+        "products_in_current_carts": int((cleaned["current_cart_quantity"] > 0).sum()),
+        "products_in_wishlists": int((cleaned["wishlist_count"] > 0).sum()),
+        "products_with_reviews": int((cleaned["review_rows_count"] > 0).sum()),
+    }
 
     product_ids = cleaned["product_id"].reset_index(drop=True).iloc[: len(frame)]
     columns = feature_columns(config, "improved")
@@ -469,9 +479,10 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
 
     leakage_forbidden = [col for col in ["price", "final_price", "category_id", "subcategory_id", "product_id"] if col in columns]
     result = {
-        "data_source": "PostgreSQL products joined to categories and subcategories",
+        "data_source": "PostgreSQL products joined to categories, subcategories, order_items/orders, user_interactions, reviews, cart_items, and wishlists",
         "raw_rows": int(len(df_raw)),
         "cleaning_report": cleaning_report,
+        "signal_availability": signal_availability,
         "rows_after_preprocessing": int(len(frame)),
         "train_rows": int(len(X_train)),
         "test_rows": int(len(X_test)),
@@ -503,6 +514,7 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
 
 def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
     price = report["price_prediction"]["models"]
+    baseline_test = price["price_prediction_baseline"]["test"]
     performant_test = price["price_prediction_performant"]["test"]
     segmentation = report["client_segmentation"]
     db_passed = report["database_consistency"]["passed"]
@@ -510,11 +522,18 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         report["client_segmentation"]["leakage_check"]["passed"]
         and report["price_prediction"]["leakage_check"]["passed"]
     )
+    performant_beats_baseline = (
+        performant_test["rmse"] < baseline_test["rmse"]
+        and performant_test["mae"] < baseline_test["mae"]
+        and performant_test["r2"] > baseline_test["r2"]
+    )
+    acceptable_price_performance = performant_test["r2"] >= 0.2
     ready = bool(
         db_passed
         and leakage_passed
+        and performant_beats_baseline
+        and acceptable_price_performance
         and performant_test["rmse"] > 0
-        and performant_test["r2"] >= 0
         and segmentation["current_rows"] > 0
         and segmentation["test_metrics"]["silhouette_score"] is not None
         and segmentation["test_metrics"]["silhouette_score"] >= 0.1
@@ -522,6 +541,10 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
     recommendations = []
     if performant_test["r2"] < 0:
         recommendations.append("Price R2 is negative; add richer product attributes or real market/sales price signals.")
+    if not performant_beats_baseline:
+        recommendations.append("Performant price model does not beat the baseline on MAE, RMSE, and R2.")
+    if not acceptable_price_performance:
+        recommendations.append("Price model test R2 is below the minimum acceptance threshold of 0.20.")
     if segmentation["test_metrics"]["silhouette_score"] is None or segmentation["test_metrics"]["silhouette_score"] < 0.1:
         recommendations.append("Segmentation separation is weak; enrich user_features with recency/frequency/session/device signals.")
     if not db_passed:
@@ -531,6 +554,11 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
     return {
         "production_ready": ready,
         "summary": "Validation completed with real PostgreSQL data only.",
+        "price_readiness_gate": {
+            "performant_beats_baseline": performant_beats_baseline,
+            "minimum_test_r2": 0.2,
+            "actual_test_r2": performant_test["r2"],
+        },
         "recommended_fixes": recommendations,
     }
 
@@ -548,7 +576,7 @@ def run_real_db_validation() -> dict[str, Any]:
         "data_source_verification": {
             "database_url": f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}",
             "segmentation_source": "user_features table",
-            "price_source": "products/categories/subcategories tables",
+            "price_source": "products/categories/subcategories plus sales, demand, reviews, cart, and wishlist tables",
             "cached_data_used": False,
             "hardcoded_datasets_used": False,
         },
