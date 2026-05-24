@@ -29,8 +29,8 @@ python -m ml.validation.real_db_validation
 It trains and validates:
 
 * client segmentation from `user_features`;
-* price prediction baseline from `products`, `categories`, and `subcategories`;
-* price prediction performant model from the same real product rows.
+* price prediction baseline from real product and pricing-signal rows;
+* price prediction performant model from the same real product and pricing-signal rows.
 
 The workflow:
 
@@ -38,7 +38,8 @@ The workflow:
 * clips invalid numeric ranges such as negative stock, negative review counts, discount values outside `0..100`, and ratings outside `0..5`;
 * removes extreme target outliers using configured quantile bounds;
 * avoids leaking or invalid features by excluding `final_price`, `product_id`, `category_id`, and `subcategory_id`;
-* creates discount, stock, review, text-richness, rating-review, category-combination, and bucket features;
+* creates discount, stock, review, text-richness, rating-review, sales-history, historical-unit-price, demand, cart, wishlist, category-combination, and bucket features;
+* adds brand/category/subcategory target mean price priors inside the sklearn training pipeline only after train/test split;
 * encodes categorical variables with unknown/rare-category handling;
 * scales numeric variables inside sklearn pipelines fitted only on the training split;
 * evaluates price models with MAE, RMSE, and R2 against real database prices;
@@ -64,6 +65,34 @@ Inside it:
 * `plots/price_prediction_model_metrics_<run_id>.png`
 
 Read price metrics in `price_prediction.models.*.test`, segmentation metrics in `client_segmentation.*_metrics`, and drift checks in each `drift_check` block.
+
+## Price Prediction Training
+
+```powershell
+python -m ml.price_prediction.run_pipeline
+```
+
+The training command uses only database data by default and writes active artifacts to `ml/artifacts/price_prediction/`. It also creates a new non-overwriting archive on every run:
+
+```text
+ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
+```
+
+Current available pricing signals:
+
+* `order_items` and `orders`: order lines, quantity sold, fulfilled quantity, revenue, distinct buyers, historical unit price min/max/mean/stddev.
+* `user_interactions`: views, clicks, add-to-cart, wishlist, purchase, share, search, distinct users, interaction recency.
+* `cart_items` and `wishlists`: current demand pressure.
+* `reviews`: review count, verified reviews, positive/negative reviews, average rating.
+* `products`, `categories`, and `subcategories`: catalog, stock, discount, text, brand, and category context.
+
+Missing production-grade price drivers:
+
+* supplier cost;
+* profit margin;
+* campaign/promotion history;
+* product specifications;
+* dedicated price history snapshots.
 
 ## FastAPI Inference
 
