@@ -9,7 +9,7 @@ import pandas as pd
 from ml.price_prediction.config import Config
 from ml.price_prediction.data_loader import _PRODUCT_FEATURE_QUERY, _PRODUCT_PRICE_QUERY
 from ml.price_prediction.prediction import predict_price
-from ml.price_prediction.preprocessing import build_feature_frame
+from ml.price_prediction.preprocessing import build_feature_frame, clean_price_data
 from ml.price_prediction.run_pipeline import train_price_prediction_models
 
 
@@ -92,6 +92,13 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertIn("title_length", frame.columns)
         self.assertIn("description_length", frame.columns)
         self.assertIn("tag_count", frame.columns)
+        self.assertIn("has_discount", frame.columns)
+        self.assertIn("log_stock", frame.columns)
+        self.assertIn("rating_review_score", frame.columns)
+        self.assertIn("brand_category", frame.columns)
+        self.assertIn("category_subcategory", frame.columns)
+        self.assertNotIn("category_id", frame.columns)
+        self.assertNotIn("subcategory_id", frame.columns)
         self.assertIn(config.features.target_col, frame.columns)
         self.assertGreater(frame["tag_count"].iloc[0], 0)
 
@@ -99,12 +106,50 @@ class PricePredictionPipelineTests(unittest.TestCase):
         optional_frame = build_feature_frame(without_optional, config=config, include_target=True)
         self.assertEqual(optional_frame["tag_count"].iloc[0], 0)
 
+    def test_cleaning_removes_invalid_rows_and_normalizes_ranges(self):
+        config = Config()
+        dirty = _sample_products().head(3)
+        dirty = pd.concat(
+            [
+                dirty,
+                dirty.head(1),
+                pd.DataFrame([
+                    {
+                        "product_id": 999,
+                        "title": "Broken",
+                        "description": None,
+                        "brand": "  ACME  ",
+                        "category_name": " Phones ",
+                        "subcategory_name": " Smartphones ",
+                        "price": -5,
+                        "discount_percent": 150,
+                        "rating_avg": 9,
+                        "review_count": -1,
+                        "stock": -3,
+                    }
+                ]),
+            ],
+            ignore_index=True,
+        )
+
+        cleaned, report = clean_price_data(dirty, config=config, include_target=True)
+
+        self.assertEqual(report["duplicate_product_rows_removed"], 1)
+        self.assertEqual(report["invalid_price_rows_removed"], 1)
+        self.assertLessEqual(cleaned["discount_percent"].max(), 100)
+        self.assertLessEqual(cleaned["rating_avg"].max(), 5)
+        self.assertGreaterEqual(cleaned["review_count"].min(), 0)
+        self.assertIn("nova", set(cleaned["brand"]))
+
     def test_training_comparison_artifacts_and_prediction_flow(self):
         with _workspace_tempdir() as tmp_dir:
             config = _config(tmp_dir)
             results = train_price_prediction_models(_sample_products(), config=config)
 
-            self.assertIn(results["best_model"], {config.model.baseline_name, config.model.performant_name})
+            self.assertIn(results["best_profile"], {"legacy", "improved"})
+            self.assertEqual(len(results["metrics_by_model"]), 4)
+            self.assertIn("legacy__median_baseline", results["metrics_by_model"])
+            self.assertIn("improved__random_forest_regressor", results["metrics_by_model"])
             for metrics in results["metrics_by_model"].values():
                 self.assertIn("mae", metrics)
                 self.assertIn("mse", metrics)
@@ -114,6 +159,7 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertTrue((config.models_dir / "best_model.pkl").exists())
             self.assertTrue((config.models_dir / "metadata.json").exists())
             self.assertTrue((config.reports_dir / "model_comparison.csv").exists())
+            self.assertTrue((config.reports_dir / "preprocessing_report.json").exists())
             self.assertTrue((config.plots_dir / "price_distribution.png").exists())
             self.assertTrue((config.plots_dir / "feature_correlation.png").exists())
             self.assertTrue((config.plots_dir / "actual_vs_predicted_price.png").exists())
@@ -126,6 +172,7 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertGreaterEqual(prediction["predicted_price"], 0)
             self.assertEqual(prediction["model_name"], config.price_model_name)
             self.assertEqual(prediction["model_version"], config.price_model_version)
+            self.assertIn(prediction["preprocessing_profile"], {"legacy", "improved"})
             self.assertIn("features_used", prediction)
 
 
