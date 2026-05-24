@@ -80,6 +80,55 @@ class FeatureConfig:
             "rating_review_score",
             "product_age_days",
             "is_active_int",
+            "order_line_count",
+            "total_quantity_sold",
+            "avg_order_quantity",
+            "max_order_quantity",
+            "fulfilled_order_lines",
+            "fulfilled_quantity_sold",
+            "total_order_revenue",
+            "avg_historical_unit_price",
+            "min_historical_unit_price",
+            "max_historical_unit_price",
+            "historical_unit_price_stddev",
+            "historical_price_range",
+            "historical_price_std_ratio",
+            "historical_discount_gap_pct",
+            "distinct_buyers",
+            "days_since_first_order",
+            "days_since_last_order",
+            "log_order_line_count",
+            "log_total_quantity_sold",
+            "log_total_order_revenue",
+            "sales_velocity",
+            "revenue_per_buyer",
+            "quantity_per_buyer",
+            "buyer_per_order_ratio",
+            "view_count",
+            "click_count",
+            "add_to_cart_count",
+            "wishlist_interaction_count",
+            "purchase_interaction_count",
+            "share_count",
+            "search_count",
+            "interaction_count",
+            "distinct_interaction_users",
+            "avg_interaction_value",
+            "days_since_last_interaction",
+            "current_cart_quantity",
+            "current_cart_users",
+            "wishlist_count",
+            "review_rows_count",
+            "verified_review_count",
+            "avg_review_rating",
+            "negative_review_count",
+            "positive_review_count",
+            "demand_score",
+            "conversion_rate",
+            "cart_to_view_rate",
+            "purchase_to_view_rate",
+            "wishlist_to_view_rate",
+            "stock_to_sales_ratio",
         ]
     )
     categorical_features: List[str] = field(
@@ -92,9 +141,24 @@ class FeatureConfig:
             "stock_bucket",
             "popularity_bucket",
             "discount_bucket",
+            "has_sales_history",
+            "has_interaction_history",
+            "has_cart_pressure",
+            "has_wishlist_pressure",
+            "demand_bucket",
+        ]
+    )
+    target_encoded_features: List[str] = field(
+        default_factory=lambda: [
+            "brand",
+            "category_name",
+            "subcategory_name",
+            "brand_category",
+            "category_subcategory",
         ]
     )
     rare_category_min_frequency: int = 3
+    target_encoding_smoothing: float = 20.0
     max_valid_price: float = 50000.0
     outlier_lower_quantile: float = 0.005
     outlier_upper_quantile: float = 0.995
