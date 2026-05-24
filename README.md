@@ -444,11 +444,35 @@ python -m ml.price_prediction.run_pipeline
 
 The price pipeline:
 - loads products dynamically from `products`, `categories`, and `subcategories`;
-- engineers numeric, categorical, text-length, tag-count, and product-age features;
+- compares the legacy preprocessing profile against the improved preprocessing profile;
+- cleans duplicates, invalid prices, invalid ranges, missing values, and extreme price outliers;
+- avoids leaking/invalid features by excluding `final_price`, `category_id`, and `subcategory_id` from the improved model;
+- engineers discount, stock, review, text-richness, rating-review, and category-combination features;
+- encodes categorical variables with rare-category handling and scales numeric variables inside train-only pipelines;
 - trains a median baseline and a RandomForest regressor;
-- reports MAE, MSE, RMSE, and R2;
-- writes plots for price distribution, feature correlation, actual vs predicted price, and model comparison;
+- applies `log1p` target transformation to the improved baseline, while keeping RandomForest on the raw target because that validates better on RMSE;
+- reports MAE, MSE, RMSE, and R2 for all four combinations;
+- writes plots for price distribution, feature correlation, actual vs predicted price, and model performance comparison;
 - registers the active model in `ml_models`.
+
+Price prediction artifacts:
+
+```text
+ml/artifacts/price_prediction/models/best_model.pkl
+ml/artifacts/price_prediction/models/metadata.json
+ml/artifacts/price_prediction/reports/model_comparison.csv
+ml/artifacts/price_prediction/reports/preprocessing_report.json
+ml/artifacts/price_prediction/plots/price_distribution.png
+ml/artifacts/price_prediction/plots/feature_correlation.png
+ml/artifacts/price_prediction/plots/actual_vs_predicted_price.png
+ml/artifacts/price_prediction/plots/model_performance_comparison.png
+```
+
+Plot meanings:
+- `price_distribution.png`: shows cleaned price skew and outliers after preprocessing.
+- `feature_correlation.png`: shows numeric feature correlation with the target.
+- `actual_vs_predicted_price.png`: compares held-out actual prices against the selected model predictions.
+- `model_performance_comparison.png`: compares baseline/performance models across legacy and improved preprocessing.
 
 Use the FastAPI service directly:
 
@@ -503,6 +527,7 @@ Backend:
 ```bash
 cd backend
 npm run build
+npm run lint
 npx jest --runInBand --passWithNoTests
 ```
 
@@ -511,6 +536,8 @@ ML:
 ```bash
 $env:PYTHONDONTWRITEBYTECODE='1'
 python -m unittest discover -s ml/tests -v
+python -m ml.price_prediction.run_pipeline
+pytest ml/test_chat.py -q
 ```
 
 The ML tests cover DB/env config, SQL contracts, preprocessing fit/inference parity, training guards, production prediction, embedding upsert safety, vector model/version filtering, BM25 query hardening, and chat user identity handling.

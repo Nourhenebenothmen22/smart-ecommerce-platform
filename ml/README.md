@@ -20,20 +20,36 @@ Outputs are stored under `ml/artifacts/customer_segmentation/`.
 
 ## Price Prediction
 
-The price prediction pipeline trains regression models from dynamic PostgreSQL product data.
+The price prediction pipeline trains regression models from dynamic PostgreSQL product data. It compares the original legacy preprocessing profile with the improved production preprocessing profile.
 
 ```powershell
 python -m ml.price_prediction.run_pipeline
 ```
 
-It loads rows from `products`, `categories`, and `subcategories`, engineers reusable product features, trains a median baseline and a RandomForest regressor, then compares them with MAE, MSE, RMSE, and R2.
+It loads rows from `products`, `categories`, and `subcategories`, then:
+
+* removes duplicate product rows and invalid prices;
+* clips invalid numeric ranges such as negative stock, negative review counts, discount values outside `0..100`, and ratings outside `0..5`;
+* removes extreme target outliers using configured quantile bounds;
+* avoids leaking or invalid features by excluding `final_price`, `category_id`, and `subcategory_id` from the improved profile;
+* creates discount, stock, review, text-richness, rating-review, category-combination, and bucket features;
+* encodes categorical variables with unknown/rare-category handling;
+* scales numeric variables inside sklearn pipelines fitted only on the training split;
+* compares a median baseline model and a RandomForest regressor with MAE, MSE, RMSE, and R2;
+* uses log target transformation for the improved baseline when helpful, while the performant RandomForest uses the raw target because it validated better.
+
+Evaluation outputs:
+
+* `ml/artifacts/price_prediction/reports/model_comparison.csv`
+* `ml/artifacts/price_prediction/reports/preprocessing_report.json`
+* `ml/artifacts/price_prediction/models/metadata.json`
 
 Generated plots are stored under `ml/artifacts/price_prediction/plots/`:
 
-* `price_distribution.png`
-* `feature_correlation.png`
-* `actual_vs_predicted_price.png`
-* `model_performance_comparison.png`
+* `price_distribution.png`: cleaned target distribution and skew.
+* `feature_correlation.png`: numeric feature correlation with price.
+* `actual_vs_predicted_price.png`: held-out actual prices versus selected model predictions.
+* `model_performance_comparison.png`: legacy vs improved baseline and RandomForest metrics.
 
 ## FastAPI Inference
 
@@ -84,6 +100,7 @@ python -m ml.scripts.health_check_db
 ```powershell
 python -m unittest discover -s ml/tests -v
 pytest ml/test_chat.py -q
+python -m ml.price_prediction.run_pipeline
 ```
 
 ## Folder Map
