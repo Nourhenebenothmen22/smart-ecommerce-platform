@@ -4,8 +4,10 @@ Main orchestrator for the product price prediction pipeline.
 
 import json
 import logging
+import shutil
 import sys
 from typing import Any
+from datetime import datetime, timezone
 
 import joblib
 from sklearn.model_selection import train_test_split
@@ -31,6 +33,32 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("price_prediction_pipeline")
+
+
+def _timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+
+
+def _create_versioned_training_artifact(config: Config) -> tuple[str, Any]:
+    run_id = f"price_prediction_{config.price_model_name}_{_timestamp()}_v{config.price_model_version}"
+    root = config.models_dir.parent / "training_runs" / run_id
+    root.mkdir(parents=True, exist_ok=False)
+    for name in ["models", "reports", "plots", "data"]:
+        (root / name).mkdir(parents=True, exist_ok=False)
+    return run_id, root
+
+
+def _copy_training_outputs(config: Config, artifact_root) -> None:
+    for source_dir, target_name in [
+        (config.models_dir, "models"),
+        (config.reports_dir, "reports"),
+        (config.plots_dir, "plots"),
+        (config.data_dir, "data"),
+    ]:
+        target_dir = artifact_root / target_name
+        for source in source_dir.glob("*"):
+            if source.is_file():
+                shutil.copy2(source, target_dir / source.name)
 
 
 def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cfg) -> tuple[dict[str, dict[str, Any]], Any, dict[str, Any]]:
@@ -98,6 +126,7 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
 
 def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
     """Train, evaluate, compare, and persist final baseline/performance models."""
+    training_run_id, training_artifact_root = _create_versioned_training_artifact(config)
     improved_results, improved_prepared, improved_report = _train_profile_models(df, "improved", config=config)
     results = improved_results
 
@@ -136,10 +165,22 @@ def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
         "metrics": metrics_by_model,
         "feature_columns": feature_columns(config, results[best_name]["profile"]),
         "target": config.features.target_col,
+        "training_run_id": training_run_id,
+        "training_artifact_root": str(training_artifact_root),
+        "pricing_signal_sources": {
+            "sales_history": "order_items joined to orders",
+            "historical_price_proxy": "order_items.unit_price",
+            "stock_movement": "order quantities and current product stock",
+            "product_demand": "user_interactions, cart_items, wishlists, reviews",
+            "category_price_priors": "train-only target mean encoding inside sklearn pipeline",
+        },
         "preprocessing_report": preprocessing_report,
         "comparison": comparison.to_dict(orient="records"),
     }
     with open(config.models_dir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+    _copy_training_outputs(config, training_artifact_root)
+    with open(training_artifact_root / "metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
     return {
@@ -148,6 +189,7 @@ def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
         "metrics_by_model": metrics_by_model,
         "comparison": comparison,
         "artifact_path": str(config.models_dir / "best_model.pkl"),
+        "training_artifact_root": str(training_artifact_root),
         "metadata": metadata,
     }
 
