@@ -30,11 +30,48 @@ class RealDbValidationContractTests(unittest.TestCase):
         self.assertIn("train_test_overlap_count", source)
         self.assertIn("forbidden_features_present", source)
         self.assertIn("drift_check", source)
+        self.assertIn("overfitting_check", source)
         self.assertIn("real_database_price", source)
         self.assertIn("products.price", source)
         self.assertIn("user_features", source)
+        self.assertIn("price_prediction_baseline", source)
+        self.assertIn("price_prediction_performant", source)
+        self.assertIn("signal_availability", source)
+
+    def test_price_readiness_requires_model_quality_gates(self):
+        report = {
+            "database_consistency": {"passed": True},
+            "client_segmentation": {
+                "current_rows": 100,
+                "test_metrics": {"silhouette_score": 0.3},
+                "leakage_check": {"passed": True},
+            },
+            "price_prediction": {
+                "leakage_check": {"passed": True},
+                "models": {
+                    "price_prediction_baseline": {
+                        "test": {"mae": 100.0, "rmse": 150.0, "r2": 0.1},
+                    },
+                    "price_prediction_performant": {
+                        "test": {"mae": 90.0, "rmse": 120.0, "r2": 0.15},
+                    },
+                },
+            },
+        }
+
+        not_ready = real_db_validation.build_readiness_conclusion(report)
+        self.assertFalse(not_ready["production_ready"])
+        self.assertFalse(not_ready["price_readiness_gate"]["minimum_test_r2"] <= not_ready["price_readiness_gate"]["actual_test_r2"])
+
+        report["price_prediction"]["models"]["price_prediction_performant"]["test"] = {
+            "mae": 80.0,
+            "rmse": 100.0,
+            "r2": 0.35,
+        }
+        ready = real_db_validation.build_readiness_conclusion(report)
+        self.assertTrue(ready["price_readiness_gate"]["performant_beats_baseline"])
+        self.assertTrue(ready["production_ready"])
 
 
 if __name__ == "__main__":
     unittest.main()
-
