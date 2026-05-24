@@ -61,8 +61,10 @@ def plot_model_performance(metrics_by_model: dict[str, dict[str, float]], config
     """Plot MAE, RMSE, MSE, and R2 for the compared models."""
     rows = []
     for model_name, metrics in metrics_by_model.items():
+        profile, _, model = model_name.partition("__")
+        display_name = f"{profile}: {model}" if model else model_name
         for metric, value in metrics.items():
-            rows.append({"Model": model_name, "Metric": metric.upper(), "Value": value})
+            rows.append({"Model": display_name, "Metric": metric.upper(), "Value": value})
 
     df = pd.DataFrame(rows)
     fig, ax = plt.subplots(figsize=config.viz.figsize_default)
@@ -70,4 +72,3 @@ def plot_model_performance(metrics_by_model: dict[str, dict[str, float]], config
     ax.set_title("Price Prediction Model Performance", fontsize=14, fontweight="bold")
     ax.grid(axis="y", alpha=0.25)
     _save(fig, config.plots_dir / "model_performance_comparison.png", config)
-

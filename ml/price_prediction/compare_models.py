@@ -39,11 +39,15 @@ def comparison_frame(results: dict[str, dict[str, Any]], config: Config = cfg) -
     """Create and persist a model-comparison dataframe."""
     rows = []
     for name, data in results.items():
-        row = {"model": name}
+        row = {
+            "result_key": name,
+            "profile": data.get("profile", "unknown"),
+            "model": data.get("model_name", name),
+            "use_log_target": bool(data.get("use_log_target", False)),
+        }
         row.update(data["metrics"])
         rows.append(row)
 
     df = pd.DataFrame(rows).sort_values(["rmse", "mae"]).reset_index(drop=True)
     df.to_csv(config.reports_dir / "model_comparison.csv", index=False)
     return df
-

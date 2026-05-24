@@ -40,7 +40,7 @@ class DBConfig:
 @dataclass
 class FeatureConfig:
     target_col: str = "price"
-    numeric_features: List[str] = field(
+    legacy_numeric_features: List[str] = field(
         default_factory=lambda: [
             "category_id",
             "subcategory_id",
@@ -55,13 +55,49 @@ class FeatureConfig:
             "is_active_int",
         ]
     )
-    categorical_features: List[str] = field(
+    legacy_categorical_features: List[str] = field(
         default_factory=lambda: [
             "brand",
             "category_name",
             "subcategory_name",
         ]
     )
+    numeric_features: List[str] = field(
+        default_factory=lambda: [
+            "discount_percent",
+            "discount_ratio",
+            "has_discount",
+            "rating_avg",
+            "review_count",
+            "log_review_count",
+            "stock",
+            "log_stock",
+            "title_length",
+            "description_length",
+            "description_to_title_ratio",
+            "tag_count",
+            "text_richness_score",
+            "rating_review_score",
+            "product_age_days",
+            "is_active_int",
+        ]
+    )
+    categorical_features: List[str] = field(
+        default_factory=lambda: [
+            "brand",
+            "category_name",
+            "subcategory_name",
+            "brand_category",
+            "category_subcategory",
+            "stock_bucket",
+            "popularity_bucket",
+            "discount_bucket",
+        ]
+    )
+    rare_category_min_frequency: int = 3
+    max_valid_price: float = 50000.0
+    outlier_lower_quantile: float = 0.005
+    outlier_upper_quantile: float = 0.995
 
 
 @dataclass
@@ -74,6 +110,8 @@ class ModelConfig:
     n_estimators: int = 120
     max_depth: int | None = 14
     min_samples_leaf: int = 2
+    baseline_use_log_target: bool = True
+    performant_use_log_target: bool = False
 
 
 @dataclass

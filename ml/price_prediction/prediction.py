@@ -10,7 +10,7 @@ import pandas as pd
 
 from .config import Config, cfg
 from .data_loader import load_product_features
-from .preprocessing import build_feature_frame
+from .preprocessing import build_feature_frame_for_profile, feature_columns
 
 
 def _load_metadata(config: Config) -> dict[str, Any]:
@@ -47,14 +47,17 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
     Predict a product price from either a product_id or explicit product fields.
     """
     merged_payload = _merge_product_payload(dict(payload), config=config)
-    df = pd.DataFrame([merged_payload])
-    feature_frame = build_feature_frame(df, config=config, include_target=False)
-    X = feature_frame[config.features.numeric_features + config.features.categorical_features]
-
     model = _load_best_model(config)
+    metadata = _load_metadata(config)
+    profile = metadata.get("best_profile", "improved")
+
+    df = pd.DataFrame([merged_payload])
+    feature_frame = build_feature_frame_for_profile(df, config=config, profile=profile, include_target=False)
+    assert isinstance(feature_frame, pd.DataFrame)
+    X = feature_frame[feature_columns(config, profile)]
+
     prediction = float(model.predict(X)[0])
     prediction = max(prediction, 0.0)
-    metadata = _load_metadata(config)
 
     return {
         "product_id": merged_payload.get("product_id"),
@@ -62,8 +65,8 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
         "currency": "EUR",
         "model_name": config.price_model_name,
         "model_version": config.price_model_version,
-        "model_algorithm": metadata.get("best_model", "unknown"),
+        "model_algorithm": metadata.get("best_result_key", metadata.get("best_model", "unknown")),
+        "preprocessing_profile": profile,
         "metrics": metadata.get("metrics", {}),
-        "features_used": config.features.numeric_features + config.features.categorical_features,
+        "features_used": feature_columns(config, profile),
     }
-
