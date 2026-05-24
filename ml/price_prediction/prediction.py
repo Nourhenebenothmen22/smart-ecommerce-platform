@@ -31,6 +31,31 @@ def _load_best_model(config: Config):
     return model
 
 
+def _public_algorithm_name(name: Any) -> str:
+    value = str(name or "unknown")
+    for prefix in ("legacy__", "improved__"):
+        if value.startswith(prefix):
+            return value.removeprefix(prefix)
+    return value
+
+
+def _active_metrics(metadata: dict[str, Any]) -> dict[str, Any]:
+    metrics = metadata.get("metrics")
+    if not isinstance(metrics, dict):
+        return {}
+
+    best_key = metadata.get("best_result_key") or metadata.get("best_model")
+    public_key = _public_algorithm_name(best_key)
+    for candidate in (best_key, public_key, f"improved__{public_key}"):
+        if candidate in metrics and isinstance(metrics[candidate], dict):
+            return {public_key: metrics[candidate]}
+
+    metric_names = {"mae", "mse", "rmse", "r2"}
+    if metric_names.intersection(metrics.keys()):
+        return {public_key: metrics}
+    return {}
+
+
 def _merge_product_payload(payload: dict[str, Any], config: Config) -> dict[str, Any]:
     product_id = payload.get("product_id")
     if not product_id:
@@ -65,8 +90,8 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
         "currency": "EUR",
         "model_name": config.price_model_name,
         "model_version": config.price_model_version,
-        "model_algorithm": metadata.get("best_result_key", metadata.get("best_model", "unknown")),
+        "model_algorithm": _public_algorithm_name(metadata.get("best_result_key", metadata.get("best_model", "unknown"))),
         "preprocessing_profile": profile,
-        "metrics": metadata.get("metrics", {}),
+        "metrics": _active_metrics(metadata),
         "features_used": feature_columns(config, profile),
     }
