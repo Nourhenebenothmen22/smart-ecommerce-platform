@@ -4,17 +4,39 @@ This module trains a backend-compatible product price prediction model from Post
 
 ## Workflow
 
-1. Load dynamic product rows from `products`, `categories`, and `subcategories`.
+1. Load dynamic product rows from `products`, `categories`, `subcategories`, `orders`, `order_items`, `user_interactions`, `reviews`, `cart_items`, and `wishlists`.
 2. Clean missing values, duplicates, invalid types, invalid ranges, and extreme target outliers.
 3. Avoid leaking/invalid fields such as `final_price`, `product_id`, `category_id`, and `subcategory_id`.
 4. Use real database `products.price` values as the validation target.
-5. Engineer discount, stock, review, text-richness, rating-review, category-combination, and bucket features.
+5. Engineer discount, stock, review, text-richness, rating-review, sales-history, historical-price, demand, cart, wishlist, category-combination, and bucket features.
 6. Encode categorical variables with unknown/rare-category handling.
-7. Scale numeric variables inside sklearn pipelines fitted only on the training split.
-8. Train a median baseline and a RandomForest regressor.
-9. Evaluate both final models with MAE, RMSE, and R2.
-10. Save comparison reports, plots, model artifacts, and model metadata.
-11. Serve predictions through the FastAPI `/price/predict` endpoint.
+7. Add train-only target mean price priors for brand/category/subcategory without leaking holdout targets.
+8. Scale numeric variables inside sklearn pipelines fitted only on the training split.
+9. Train a median baseline and a RandomForest regressor.
+10. Evaluate both final models with MAE, RMSE, and R2.
+11. Save active artifacts plus a new versioned training artifact folder.
+12. Serve predictions through the FastAPI `/price/predict` endpoint.
+
+## Real Pricing Signals
+
+Available in the current PostgreSQL schema:
+
+* Sales history: `order_items` joined to `orders`.
+* Historical price proxy: `order_items.unit_price`, with min/max/average/stddev.
+* Order quantity and demand: order line count, total quantity sold, fulfilled quantity, distinct buyers, revenue, sales velocity.
+* Stock movement: current `products.stock` combined with quantity sold and demand ratios.
+* Product demand: `user_interactions` counts for views, clicks, add-to-cart, wishlist, purchase, share, and search.
+* Cart and wishlist pressure: `cart_items` and `wishlists`.
+* Customer/review behavior: review count, verified reviews, positive/negative review counts, average review rating.
+* Category price priors: brand/category/subcategory target mean encodings fitted only on the training split.
+
+Not available yet in the database:
+
+* Supplier cost.
+* Profit margin.
+* Dedicated campaign or promotion tables.
+* Product specification tables.
+* Dedicated product price history table.
 
 ## Models
 
@@ -22,7 +44,7 @@ Baseline model:
 `DummyRegressor(strategy="median")`, used to prove the ML model is better than predicting a typical catalog price.
 
 Performant model:
-`RandomForestRegressor`, used for nonlinear interactions between category, brand, stock, discount, review, and text features.
+`RandomForestRegressor`, used for nonlinear interactions between category, brand, stock, discount, reviews, text, sales history, historical unit prices, and demand features.
 
 Target handling:
 The improved baseline uses `log1p(price)` with inverse `expm1` predictions. RandomForest keeps the raw target because this produced better RMSE during validation on the current seeded catalog.
@@ -35,6 +57,17 @@ python -m ml.validation.real_db_validation
 ```
 
 Generated artifacts are written to `ml/artifacts/price_prediction/`.
+
+Every `python -m ml.price_prediction.run_pipeline` run also creates a non-overwriting training artifact folder:
+
+```text
+ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
+  data/
+  models/
+  plots/
+  reports/
+  metadata.json
+```
 
 Real database validation artifacts are written to a new non-overwriting folder:
 
