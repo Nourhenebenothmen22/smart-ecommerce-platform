@@ -436,43 +436,51 @@ result = predict_segment(user_feature_payload)
 
 The prediction payload must match the backend `user_features` columns used by training. K-Means artifacts support production prediction. DBSCAN can still be trained and persisted for batch segmentation, including noise segment `-1`.
 
-For product price prediction, train the DB-backed regression pipeline:
+For real database ML validation and training artifacts, run:
 
 ```bash
-python -m ml.price_prediction.run_pipeline
+python -m ml.validation.real_db_validation
 ```
 
-The price pipeline:
+The validation workflow:
+- loads client segmentation data dynamically from `user_features`;
 - loads products dynamically from `products`, `categories`, and `subcategories`;
-- compares the legacy preprocessing profile against the improved preprocessing profile;
+- uses real database prices as the price prediction validation target;
 - cleans duplicates, invalid prices, invalid ranges, missing values, and extreme price outliers;
-- avoids leaking/invalid features by excluding `final_price`, `category_id`, and `subcategory_id` from the improved model;
+- avoids leaking/invalid features such as `final_price`, `product_id`, `category_id`, and `subcategory_id`;
 - engineers discount, stock, review, text-richness, rating-review, and category-combination features;
 - encodes categorical variables with rare-category handling and scales numeric variables inside train-only pipelines;
-- trains a median baseline and a RandomForest regressor;
-- applies `log1p` target transformation to the improved baseline, while keeping RandomForest on the raw target because that validates better on RMSE;
-- reports MAE, MSE, RMSE, and R2 for all four combinations;
-- writes plots for price distribution, feature correlation, actual vs predicted price, and model performance comparison;
-- registers the active model in `ml_models`.
+- trains and validates client segmentation, price baseline, and price performant models;
+- checks train/test split overlap, leakage, overfitting/underfitting, outliers, invalid production records, and data drift;
+- writes a new versioned artifact folder every run and never overwrites previous validation artifacts.
 
-Price prediction artifacts:
+Versioned validation artifact structure:
 
 ```text
-ml/artifacts/price_prediction/models/best_model.pkl
-ml/artifacts/price_prediction/models/metadata.json
-ml/artifacts/price_prediction/reports/model_comparison.csv
-ml/artifacts/price_prediction/reports/preprocessing_report.json
-ml/artifacts/price_prediction/plots/price_distribution.png
-ml/artifacts/price_prediction/plots/feature_correlation.png
-ml/artifacts/price_prediction/plots/actual_vs_predicted_price.png
-ml/artifacts/price_prediction/plots/model_performance_comparison.png
+ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
+  client_segmentation/
+    client_segmentation_kmeans_<run_id>.pkl
+    client_segmentation_preprocessing_<run_id>.pkl
+    client_segmentation_metrics_<run_id>.json
+  price_prediction/
+    price_prediction_baseline_<run_id>.pkl
+    price_prediction_performant_<run_id>.pkl
+    price_prediction_metrics_<run_id>.json
+    price_prediction_holdout_predictions_<run_id>.csv
+  reports/
+    ml_validation_report_<run_id>.json
+  plots/
+    client_segmentation_pca_<run_id>.png
+    price_prediction_actual_vs_predicted_<run_id>.png
+    price_prediction_model_metrics_<run_id>.png
 ```
 
 Plot meanings:
-- `price_distribution.png`: shows cleaned price skew and outliers after preprocessing.
-- `feature_correlation.png`: shows numeric feature correlation with the target.
-- `actual_vs_predicted_price.png`: compares held-out actual prices against the selected model predictions.
-- `model_performance_comparison.png`: compares baseline/performance models across legacy and improved preprocessing.
+- `client_segmentation_pca_<run_id>.png`: shows current database users projected into 2D with assigned segments.
+- `price_prediction_actual_vs_predicted_<run_id>.png`: compares held-out real database prices against baseline and performant predictions.
+- `price_prediction_model_metrics_<run_id>.png`: compares MAE, RMSE, and R2 for the baseline and performant price models.
+
+Read metrics from `reports/ml_validation_report_<run_id>.json`. Price prediction quality is under `price_prediction.models.*.test`; segmentation quality is under `client_segmentation.train_metrics`, `test_metrics`, and `current_metrics`. Drift checks are under each model family's `drift_check`.
 
 Use the FastAPI service directly:
 
@@ -536,7 +544,7 @@ ML:
 ```bash
 $env:PYTHONDONTWRITEBYTECODE='1'
 python -m unittest discover -s ml/tests -v
-python -m ml.price_prediction.run_pipeline
+python -m ml.validation.real_db_validation
 pytest ml/test_chat.py -q
 ```
 
@@ -555,18 +563,17 @@ docker-compose logs -f
 2. Run `npm run db:init` from `backend`.
 3. Seed data with `npm run ml:seed:reset` if needed.
 4. Compute `user_features` with `npm run ml:upsert-features`.
-5. Train segmentation with `python -m ml.customer_segmentation.run_pipeline`.
-6. Train price prediction with `python -m ml.price_prediction.run_pipeline`.
-7. Confirm `ml_models`, `user_segments`, and optional `product_price_predictions` contain fresh outputs.
-8. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
-9. Start the backend API and optional ML FastAPI service.
-10. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.
+5. Run real DB ML validation with `python -m ml.validation.real_db_validation`.
+6. Review `ml_validation_report_<run_id>.json`, model metrics, drift checks, and generated plots.
+7. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
+8. Start the backend API and optional ML FastAPI service.
+9. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.
 
 ### Troubleshooting
 - If ML cannot connect to PostgreSQL, check `DATABASE_URL` or the shared `DB_*` / `POSTGRES_*` variables.
 - If vector search returns no results, confirm embeddings exist for the configured `EMBEDDING_MODEL_NAME` and `EMBEDDING_MODEL_VERSION`.
 - If segmentation training fails, refresh `user_features` and ensure at least three users exist.
-- If price prediction returns 503, train the model first with `python -m ml.price_prediction.run_pipeline`.
+- If price prediction returns 503, train or validate the model first with `python -m ml.validation.real_db_validation`.
 - If backend price prediction fails, verify `ML_SERVICE_URL` and `ML_SERVICE_TOKEN` match the FastAPI service.
 - If Python tests cannot create temporary files in a restricted sandbox, run them with normal filesystem permissions.
 - If `npm test` fails with worker spawn permissions, run `npx jest --runInBand --passWithNoTests`.

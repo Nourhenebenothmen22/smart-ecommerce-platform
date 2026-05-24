@@ -18,38 +18,52 @@ python -m ml.customer_segmentation.run_pipeline
 
 Outputs are stored under `ml/artifacts/customer_segmentation/`.
 
-## Price Prediction
+## Real Database ML Validation
 
-The price prediction pipeline trains regression models from dynamic PostgreSQL product data. It compares the original legacy preprocessing profile with the improved production preprocessing profile.
+Use the real database validation workflow before promoting segmentation or price models:
 
 ```powershell
-python -m ml.price_prediction.run_pipeline
+python -m ml.validation.real_db_validation
 ```
 
-It loads rows from `products`, `categories`, and `subcategories`, then:
+It trains and validates:
+
+* client segmentation from `user_features`;
+* price prediction baseline from `products`, `categories`, and `subcategories`;
+* price prediction performant model from the same real product rows.
+
+The workflow:
 
 * removes duplicate product rows and invalid prices;
 * clips invalid numeric ranges such as negative stock, negative review counts, discount values outside `0..100`, and ratings outside `0..5`;
 * removes extreme target outliers using configured quantile bounds;
-* avoids leaking or invalid features by excluding `final_price`, `category_id`, and `subcategory_id` from the improved profile;
+* avoids leaking or invalid features by excluding `final_price`, `product_id`, `category_id`, and `subcategory_id`;
 * creates discount, stock, review, text-richness, rating-review, category-combination, and bucket features;
 * encodes categorical variables with unknown/rare-category handling;
 * scales numeric variables inside sklearn pipelines fitted only on the training split;
-* compares a median baseline model and a RandomForest regressor with MAE, MSE, RMSE, and R2;
-* uses log target transformation for the improved baseline when helpful, while the performant RandomForest uses the raw target because it validated better.
+* evaluates price models with MAE, RMSE, and R2 against real database prices;
+* evaluates segmentation with train/test/current clustering metrics;
+* checks leakage, overfitting/underfitting, outliers, invalid records, and train/test/current data drift.
 
-Evaluation outputs:
+Every run creates a new non-overwriting folder:
 
-* `ml/artifacts/price_prediction/reports/model_comparison.csv`
-* `ml/artifacts/price_prediction/reports/preprocessing_report.json`
-* `ml/artifacts/price_prediction/models/metadata.json`
+```text
+ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
+```
 
-Generated plots are stored under `ml/artifacts/price_prediction/plots/`:
+Inside it:
 
-* `price_distribution.png`: cleaned target distribution and skew.
-* `feature_correlation.png`: numeric feature correlation with price.
-* `actual_vs_predicted_price.png`: held-out actual prices versus selected model predictions.
-* `model_performance_comparison.png`: legacy vs improved baseline and RandomForest metrics.
+* `reports/ml_validation_report_<run_id>.json`
+* `client_segmentation/client_segmentation_kmeans_<run_id>.pkl`
+* `client_segmentation/client_segmentation_preprocessing_<run_id>.pkl`
+* `price_prediction/price_prediction_baseline_<run_id>.pkl`
+* `price_prediction/price_prediction_performant_<run_id>.pkl`
+* `price_prediction/price_prediction_holdout_predictions_<run_id>.csv`
+* `plots/client_segmentation_pca_<run_id>.png`
+* `plots/price_prediction_actual_vs_predicted_<run_id>.png`
+* `plots/price_prediction_model_metrics_<run_id>.png`
+
+Read price metrics in `price_prediction.models.*.test`, segmentation metrics in `client_segmentation.*_metrics`, and drift checks in each `drift_check` block.
 
 ## FastAPI Inference
 
@@ -100,13 +114,14 @@ python -m ml.scripts.health_check_db
 ```powershell
 python -m unittest discover -s ml/tests -v
 pytest ml/test_chat.py -q
-python -m ml.price_prediction.run_pipeline
+python -m ml.validation.real_db_validation
 ```
 
 ## Folder Map
 
 * `ml/customer_segmentation/`
 * `ml/price_prediction/`
+* `ml/validation/`
 * `ml/nlp/chatbot/`
 * `ml/nlp/retrieval/`
 * `ml/scripts/`
