@@ -146,10 +146,10 @@ class PricePredictionPipelineTests(unittest.TestCase):
             config = _config(tmp_dir)
             results = train_price_prediction_models(_sample_products(), config=config)
 
-            self.assertIn(results["best_profile"], {"legacy", "improved"})
-            self.assertEqual(len(results["metrics_by_model"]), 4)
-            self.assertIn("legacy__median_baseline", results["metrics_by_model"])
-            self.assertIn("improved__random_forest_regressor", results["metrics_by_model"])
+            self.assertEqual(results["best_profile"], "improved")
+            self.assertEqual(len(results["metrics_by_model"]), 2)
+            self.assertIn(config.model.baseline_name, results["metrics_by_model"])
+            self.assertIn(config.model.performant_name, results["metrics_by_model"])
             for metrics in results["metrics_by_model"].values():
                 self.assertIn("mae", metrics)
                 self.assertIn("mse", metrics)
@@ -172,7 +172,7 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertGreaterEqual(prediction["predicted_price"], 0)
             self.assertEqual(prediction["model_name"], config.price_model_name)
             self.assertEqual(prediction["model_version"], config.price_model_version)
-            self.assertIn(prediction["preprocessing_profile"], {"legacy", "improved"})
+            self.assertEqual(prediction["preprocessing_profile"], "improved")
             self.assertIn("features_used", prediction)
 
 
