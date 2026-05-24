@@ -1,10 +1,48 @@
 import { pool } from "../db/pool.js";
 import fs from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { StatusCodes } from "http-status-codes";
+import { env } from "../config/env.js";
+import { AppError } from "../utils/AppError.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function resolveUserFeaturesSqlPath(): string {
+  const candidates = [
+    path.resolve(process.cwd(), "..", "ml", "data", "sql", "upsert_user_features.sql"),
+    path.resolve(process.cwd(), "ml", "data", "sql", "upsert_user_features.sql"),
+  ];
+
+  const found = candidates.find((candidate) => existsSync(candidate));
+  return found ?? candidates[0];
+}
+
+export interface PricePredictionInput {
+  product_id?: number;
+  title?: string;
+  description?: string;
+  brand?: string;
+  category_id?: number;
+  subcategory_id?: number;
+  category_name?: string;
+  subcategory_name?: string;
+  discount_percent?: number;
+  rating_avg?: number;
+  review_count?: number;
+  stock?: number;
+  tags?: string[];
+  is_active?: boolean;
+}
+
+export interface PricePredictionResult {
+  product_id?: number | null;
+  predicted_price: number;
+  currency: string;
+  model_name: string;
+  model_version: string;
+  model_algorithm: string;
+  metrics?: Record<string, unknown>;
+  features_used?: string[];
+}
 
 export class MLService {
   /**
@@ -14,8 +52,8 @@ export class MLService {
   async recalculateUserFeatures(): Promise<void> {
     const client = await pool.connect();
     try {
-      // Path relative to this source file — works regardless of process.cwd()
-      const sqlPath = path.resolve(__dirname, "..", "..", "..", "ml", "data", "sql", "upsert_user_features.sql");
+      // Resolve from backend or repository root working directories.
+      const sqlPath = resolveUserFeaturesSqlPath();
       const sql = await fs.readFile(sqlPath, "utf-8");
 
       await client.query("BEGIN");
@@ -113,6 +151,76 @@ export class MLService {
       modelData.parameters ?? {},
       modelData.artifact_path ?? null
     ]);
+  }
+
+  /**
+   * Calls the trusted FastAPI ML service for product price prediction and stores
+   * the result for traceability.
+   */
+  async predictProductPrice(input: PricePredictionInput): Promise<PricePredictionResult> {
+    if (!env.ML_SERVICE_TOKEN) {
+      throw new AppError("ML service token is not configured", StatusCodes.SERVICE_UNAVAILABLE);
+    }
+
+    const endpoint = new URL("/price/predict", env.ML_SERVICE_URL);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), env.ML_REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-ML-Service-Token": env.ML_SERVICE_TOKEN,
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new AppError(
+          `ML price prediction failed: ${message || response.statusText}`,
+          response.status >= 400 && response.status < 500
+            ? StatusCodes.BAD_GATEWAY
+            : StatusCodes.SERVICE_UNAVAILABLE
+        );
+      }
+
+      const result = (await response.json()) as PricePredictionResult;
+      await this.recordPricePrediction(input, result);
+      return result;
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new AppError("ML price prediction timed out", StatusCodes.GATEWAY_TIMEOUT);
+      }
+      throw new AppError("ML price prediction service is unavailable", StatusCodes.SERVICE_UNAVAILABLE);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async recordPricePrediction(input: PricePredictionInput, result: PricePredictionResult): Promise<void> {
+    const productId = result.product_id ?? input.product_id ?? null;
+    await pool.query(
+      `
+      INSERT INTO product_price_predictions (
+        product_id, predicted_price, currency, model_name, model_version, input_features, metrics_snapshot, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      `,
+      [
+        productId,
+        result.predicted_price,
+        result.currency,
+        result.model_name,
+        result.model_version,
+        input,
+        result.metrics ?? {},
+      ]
+    );
   }
 }
 

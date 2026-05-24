@@ -57,12 +57,15 @@ class ConfigAndSqlContractTests(unittest.TestCase):
     def test_ml_model_schema_matches_training_persistence(self):
         sql_path = os.path.join(os.getcwd(), "backend", "src", "sql", "006_ml_schema.sql")
         persistence_path = os.path.join(os.getcwd(), "ml", "customer_segmentation", "persistence.py")
+        price_persistence_path = os.path.join(os.getcwd(), "ml", "price_prediction", "persistence.py")
         embeddings_path = os.path.join(os.getcwd(), "ml", "scripts", "generate_embeddings.py")
 
         with open(sql_path, encoding="utf-8") as f:
             sql = f.read()
         with open(persistence_path, encoding="utf-8") as f:
             persistence = f.read()
+        with open(price_persistence_path, encoding="utf-8") as f:
+            price_persistence = f.read()
         with open(embeddings_path, encoding="utf-8") as f:
             embeddings = f.read()
 
@@ -74,6 +77,24 @@ class ConfigAndSqlContractTests(unittest.TestCase):
         self.assertIn("computed_at = NOW()", persistence)
         self.assertNotIn("assigned_at", persistence)
         self.assertIn("trained_at = NOW()", embeddings)
+        self.assertIn("product_price_predictions", sql)
+        self.assertIn("'price_prediction'", price_persistence)
+        self.assertIn("artifact_path = EXCLUDED.artifact_path", price_persistence)
+
+    def test_price_prediction_config_and_api_contract(self):
+        config_path = os.path.join(os.getcwd(), "ml", "core", "config.py")
+        api_path = os.path.join(os.getcwd(), "ml", "api", "main.py")
+
+        with open(config_path, encoding="utf-8") as f:
+            config = f.read()
+        with open(api_path, encoding="utf-8") as f:
+            api = f.read()
+
+        self.assertIn("PRICE_MODEL_NAME", config)
+        self.assertIn("PRICE_MODEL_VERSION", config)
+        self.assertIn("/price/predict", api)
+        self.assertIn("PricePredictionRequest", api)
+        self.assertIn("verify_ml_service_token", api)
 
     def test_vector_search_filters_embedding_model_version(self):
         script_path = os.path.join(os.getcwd(), "ml", "nlp", "retrieval", "vector_search.py")
@@ -82,6 +103,9 @@ class ConfigAndSqlContractTests(unittest.TestCase):
 
         self.assertIn("pe.model_name = %s", content)
         self.assertIn("pe.model_version = %s", content)
+        self.assertIn("_ensure_model", content)
+        self.assertIn("ML_ALLOW_MODEL_DOWNLOADS", content)
+        self.assertIn("falling back to BM25-only retrieval", content)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,9 @@ _ML_ROOT = os.path.dirname(os.path.abspath(__file__))
 if _ML_ROOT not in sys.path:
     sys.path.insert(0, _ML_ROOT)
 
+os.environ.setdefault("ML_ALLOW_MODEL_DOWNLOADS", "false")
+os.environ.setdefault("ML_ENABLE_LLM_CALLS", "false")
+
 from api.main import app
 from fastapi.testclient import TestClient
 

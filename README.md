@@ -404,7 +404,7 @@ npm test
 npx jest --runInBand --passWithNoTests
 ```
 
-There is currently no `npm run lint` script in `backend/package.json`.
+Use `npm run lint` for the TypeScript no-emit lint check.
 
 ### ML Preprocessing And Training
 The segmentation pipeline reads from `user_features`, not the older behavior view. Run feature upsert first, then train:
@@ -435,6 +435,38 @@ result = predict_segment(user_feature_payload)
 ```
 
 The prediction payload must match the backend `user_features` columns used by training. K-Means artifacts support production prediction. DBSCAN can still be trained and persisted for batch segmentation, including noise segment `-1`.
+
+For product price prediction, train the DB-backed regression pipeline:
+
+```bash
+python -m ml.price_prediction.run_pipeline
+```
+
+The price pipeline:
+- loads products dynamically from `products`, `categories`, and `subcategories`;
+- engineers numeric, categorical, text-length, tag-count, and product-age features;
+- trains a median baseline and a RandomForest regressor;
+- reports MAE, MSE, RMSE, and R2;
+- writes plots for price distribution, feature correlation, actual vs predicted price, and model comparison;
+- registers the active model in `ml_models`.
+
+Use the FastAPI service directly:
+
+```bash
+curl -X POST http://127.0.0.1:8000/price/predict \
+  -H "Content-Type: application/json" \
+  -H "X-ML-Service-Token: $ML_SERVICE_TOKEN" \
+  -d '{"product_id": 10}'
+```
+
+Or call it through the protected backend gateway:
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/ml/price/predict \
+  -H "Authorization: Bearer <admin_jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Wireless Headphones","brand":"Nova","category_name":"Electronics","subcategory_name":"Audio","stock":40,"rating_avg":4.4,"review_count":120,"discount_percent":10,"tags":["audio","wireless"]}'
+```
 
 Run the FastAPI chatbot service:
 
@@ -497,23 +529,28 @@ docker-compose logs -f
 3. Seed data with `npm run ml:seed:reset` if needed.
 4. Compute `user_features` with `npm run ml:upsert-features`.
 5. Train segmentation with `python -m ml.customer_segmentation.run_pipeline`.
-6. Confirm `ml_models` and `user_segments` contain the new model version and assignments.
-7. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
-8. Start the backend API and optional ML FastAPI service.
-9. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.
+6. Train price prediction with `python -m ml.price_prediction.run_pipeline`.
+7. Confirm `ml_models`, `user_segments`, and optional `product_price_predictions` contain fresh outputs.
+8. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
+9. Start the backend API and optional ML FastAPI service.
+10. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.
 
 ### Troubleshooting
 - If ML cannot connect to PostgreSQL, check `DATABASE_URL` or the shared `DB_*` / `POSTGRES_*` variables.
 - If vector search returns no results, confirm embeddings exist for the configured `EMBEDDING_MODEL_NAME` and `EMBEDDING_MODEL_VERSION`.
 - If segmentation training fails, refresh `user_features` and ensure at least three users exist.
+- If price prediction returns 503, train the model first with `python -m ml.price_prediction.run_pipeline`.
+- If backend price prediction fails, verify `ML_SERVICE_URL` and `ML_SERVICE_TOKEN` match the FastAPI service.
 - If Python tests cannot create temporary files in a restricted sandbox, run them with normal filesystem permissions.
 - If `npm test` fails with worker spawn permissions, run `npx jest --runInBand --passWithNoTests`.
-- If `npm run lint` fails, add a lint script first; it is not currently configured.
+- If `npm run lint` fails, fix the TypeScript diagnostics reported by `tsc --noEmit`.
 
 ### Security Notes
 - Keep JWT secrets strong and environment-specific.
 - Never enable `ALLOW_UNVERIFIED_CHAT_USER_ID` in production.
 - Restrict CORS to trusted frontend origins.
 - Keep embedding and segmentation model versions explicit.
+- Keep price prediction model names and versions explicit with `PRICE_MODEL_NAME` and `PRICE_MODEL_VERSION`.
+- Call `/price/predict` through the backend gateway in production so the ML service token stays server-side.
 - Do not truncate production ML tables during refreshes; use versioned upserts.
 - Treat cached CSVs as local development artifacts, not production training input.

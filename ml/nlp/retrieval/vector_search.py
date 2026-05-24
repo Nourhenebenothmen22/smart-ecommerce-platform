@@ -31,14 +31,38 @@ class DenseVectorRetriever:
     """
 
     def __init__(self, embedding_model: str = DEFAULT_MODEL, model_version: str = DEFAULT_MODEL_VERSION):
-        logger.info(f"Loading SentenceTransformer: {embedding_model}...")
         self.model_name = embedding_model
         self.model_version = model_version
-        self.model = SentenceTransformer(embedding_model)
-        logger.info(f"SentenceTransformer loaded: {embedding_model}")
+        self.model = None
+        self._model_load_failed = False
+        logger.info("DenseVectorRetriever initialized lazily for model: %s", embedding_model)
+
+    def _ensure_model(self) -> bool:
+        """Load the embedding model lazily and fail closed to lexical search."""
+        if self.model is not None:
+            return True
+        if self._model_load_failed:
+            return False
+
+        allow_downloads = os.getenv("ML_ALLOW_MODEL_DOWNLOADS", "false").lower() == "true"
+        try:
+            logger.info("Loading SentenceTransformer: %s", self.model_name)
+            self.model = SentenceTransformer(self.model_name, local_files_only=not allow_downloads)
+            logger.info("SentenceTransformer loaded: %s", self.model_name)
+            return True
+        except Exception as exc:
+            self._model_load_failed = True
+            logger.warning(
+                "Dense vector model unavailable; falling back to BM25-only retrieval. "
+                "Set ML_ALLOW_MODEL_DOWNLOADS=true or pre-cache the model. Error: %s",
+                exc,
+            )
+            return False
 
     def _get_embedding(self, text: str) -> List[float]:
         """Convert text query to dense vector."""
+        if not self._ensure_model():
+            return []
         return self.model.encode(text).tolist()
 
     def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -52,6 +76,8 @@ class DenseVectorRetriever:
             return []
 
         vector = self._get_embedding(clean_query)
+        if not vector:
+            return []
         results = []
 
         try:

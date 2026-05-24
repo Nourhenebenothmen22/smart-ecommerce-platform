@@ -4,6 +4,7 @@ FastAPI application for the e-commerce ML Intelligence service.
 Provides:
 - /health: Health check
 - /chat: RAG chatbot endpoint using Hybrid search (BM25 + Vector + RRF)
+- /price/predict: Product price prediction endpoint
 
 Includes input validation, session tracking, and full interaction logging.
 """
@@ -14,7 +15,7 @@ import sys
 import os
 
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Ensure the 'ml' directory is in sys.path.
 _ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +24,7 @@ if _ML_ROOT not in sys.path:
 
 from nlp.chatbot.agent import RAGChatbotAgent
 from nlp.retrieval.hybrid_search import HybridRetriever
+from price_prediction.prediction import predict_price
 from core.db import get_db_cursor
 from core.config import settings
 
@@ -68,6 +70,46 @@ class ChatRequest(BaseModel):
         if not query:
             raise ValueError("Query must not be empty or whitespace.")
         return query
+
+
+class PricePredictionRequest(BaseModel):
+    product_id: int | None = Field(default=None, gt=0, description="Existing product id to load from PostgreSQL.")
+    title: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=5000)
+    brand: str | None = Field(default=None, max_length=120)
+    category_id: int | None = Field(default=None, ge=0)
+    subcategory_id: int | None = Field(default=None, ge=0)
+    category_name: str | None = Field(default=None, max_length=120)
+    subcategory_name: str | None = Field(default=None, max_length=120)
+    discount_percent: float | None = Field(default=None, ge=0, le=100)
+    rating_avg: float | None = Field(default=None, ge=0, le=5)
+    review_count: int | None = Field(default=None, ge=0)
+    stock: int | None = Field(default=None, ge=0)
+    tags: list[str] | None = Field(default=None, max_length=50)
+    is_active: bool | None = None
+
+    @field_validator("title", "description", "brand", "category_name", "subcategory_name")
+    @classmethod
+    def strip_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        clean = value.strip()
+        return clean or None
+
+    @field_validator("tags")
+    @classmethod
+    def strip_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        clean = [item.strip() for item in value if item and item.strip()]
+        return clean or None
+
+    @model_validator(mode="after")
+    def require_product_id_or_features(self):
+        payload = self.model_dump(exclude_none=True)
+        if not payload:
+            raise ValueError("Provide product_id or product feature fields for price prediction.")
+        return self
 
 
 # Endpoints
@@ -172,6 +214,42 @@ def chat(
         "algorithm": algorithm,
         "session_id": session_id
     }
+
+
+@app.post("/price/predict")
+def predict_product_price(
+    request: PricePredictionRequest,
+    x_ml_service_token: str | None = Header(default=None, alias="X-ML-Service-Token"),
+):
+    """
+    Predict product price from an existing product_id or explicit product features.
+    Intended to be called by the trusted backend gateway.
+    """
+    if not settings.verify_ml_service_token(x_ml_service_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid ML service token",
+        )
+
+    try:
+        return predict_price(request.model_dump(exclude_none=True))
+    except FileNotFoundError as exc:
+        logger.error("Price prediction model is not trained: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Price prediction model is not trained.",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.error("Price prediction failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Price prediction failed.",
+        ) from exc
 
 
 if __name__ == "__main__":

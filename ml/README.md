@@ -1,55 +1,97 @@
-# 🚀 Machine Learning Project Workspace
+# Machine Learning Workspace
 
-Ce dossier contient l'ensemble des modules d'Intelligence Artificielle de la plateforme Smart E-Commerce.
+This folder contains the Python ML services and pipelines for the e-commerce platform.
 
-## 📦 Installation des dépendances
-Avant de lancer les scripts, assurez-vous d'avoir installé les bibliothèques nécessaires :
+## Installation
+
 ```powershell
 pip install -r requirements.txt
 ```
 
-## 🎯 Segmentation Client (Customer Segmentation)
-Ce module analyse le comportement des utilisateurs pour créer des segments marketing.
+## Customer Segmentation
 
-### Commande d'exécution
-Pour lancer l'entraînement complet (Nettoyage + Preprocessing + Modèles + Graphiques) :
+The customer segmentation pipeline trains clustering models from backend-generated `user_features`.
+
 ```powershell
 python -m ml.customer_segmentation.run_pipeline
 ```
 
----
+Outputs are stored under `ml/artifacts/customer_segmentation/`.
 
-## 🤖 Chatbot & Assistant Intelligent
-Ce module gère l'assistant virtuel basé sur le NLP et la recherche sémantique.
+## Price Prediction
 
-### 1. Préparation des Données (Seeding)
-Pour insérer les données de base (FAQ, produits) dans la base de données :
+The price prediction pipeline trains regression models from dynamic PostgreSQL product data.
+
 ```powershell
-python -m ml.seeder.seed
+python -m ml.price_prediction.run_pipeline
 ```
 
-### 2. Génération des Embeddings (RAG)
-Pour générer les vecteurs sémantiques nécessaires à la recherche :
+It loads rows from `products`, `categories`, and `subcategories`, engineers reusable product features, trains a median baseline and a RandomForest regressor, then compares them with MAE, MSE, RMSE, and R2.
+
+Generated plots are stored under `ml/artifacts/price_prediction/plots/`:
+
+* `price_distribution.png`
+* `feature_correlation.png`
+* `actual_vs_predicted_price.png`
+* `model_performance_comparison.png`
+
+## FastAPI Inference
+
+```powershell
+python ml/api/main.py
+```
+
+Chatbot endpoint:
+
+```http
+POST /chat
+```
+
+Price prediction endpoint:
+
+```http
+POST /price/predict
+X-ML-Service-Token: <ML_SERVICE_TOKEN>
+```
+
+Example price payload:
+
+```json
+{
+  "product_id": 10
+}
+```
+
+The backend gateway calls this service through `POST /api/ml/price/predict`.
+
+## Embeddings And Search
+
 ```powershell
 python -m ml.scripts.generate_embeddings
 ```
 
-### 3. Test du Chatbot
-Pour tester l'agent conversationnel directement en ligne de commande :
+Embeddings are versioned by `(product_id, model_name, model_version)`.
+
+## Seeder And Health Checks
+
 ```powershell
-python -m ml.test_chat
+python -m ml.scripts.seed --mode reset
+python -m ml.scripts.health_check_db
 ```
 
----
+## Tests
 
-## 🛠️ Maintenance & Santé
-*   **Nettoyage Auto** : Le pipeline de segmentation nettoie ses propres fichiers à chaque lancement.
-*   **Vérification DB** : Pour vérifier la connexion et l'état des tables ML :
-    ```powershell
-    python -m ml.scripts.health_check_db
-    ```
+```powershell
+python -m unittest discover -s ml/tests -v
+pytest ml/test_chat.py -q
+```
 
-## 📁 Localisation des Dossiers
-*   **Segmentation** : `ml/customer_segmentation/`
-*   **NLP / Chatbot** : `ml/nlp/chatbot/`
-*   **Résultats (Artifacts)** : `ml/artifacts/`
+## Folder Map
+
+* `ml/customer_segmentation/`
+* `ml/price_prediction/`
+* `ml/nlp/chatbot/`
+* `ml/nlp/retrieval/`
+* `ml/scripts/`
+* `ml/seeder/`
+* `ml/artifacts/`

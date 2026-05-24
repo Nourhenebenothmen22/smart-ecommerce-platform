@@ -78,6 +78,28 @@ CREATE TABLE IF NOT EXISTS user_segments (
 
 ALTER TABLE user_segments ADD COLUMN IF NOT EXISTS computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
+-- 4. Table for Product Price Prediction Results
+CREATE TABLE IF NOT EXISTS product_price_predictions (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER,
+    predicted_price NUMERIC(10,2) NOT NULL CHECK (predicted_price >= 0),
+    currency VARCHAR(10) NOT NULL DEFAULT 'EUR',
+    model_name VARCHAR(120) NOT NULL,
+    model_version VARCHAR(50) NOT NULL,
+    input_features JSONB NOT NULL DEFAULT '{}'::jsonb,
+    metrics_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS product_id INTEGER;
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS predicted_price NUMERIC(10,2) NOT NULL DEFAULT 0;
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS currency VARCHAR(10) NOT NULL DEFAULT 'EUR';
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS model_name VARCHAR(120) NOT NULL DEFAULT 'product_price_prediction';
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS model_version VARCHAR(50) NOT NULL DEFAULT '1.0';
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS input_features JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS metrics_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE product_price_predictions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 -- Bonus: User Sessions Table
 -- Purpose: Tracking session duration, entry points, and device types allows for much finer segmentation
 -- (e.g., separating "mobile browsers" from "desktop power users", or "high-intent search traffic" from "social media window shoppers").

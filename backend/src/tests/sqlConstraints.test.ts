@@ -53,6 +53,20 @@ describe("SQL constraint alignment", () => {
     expect(sql).toContain("algorithm VARCHAR");
   });
 
+  test("price prediction schema stores model outputs with traceability", () => {
+    const schema = fs.readFileSync(path.join(sqlDir, "006_ml_schema.sql"), "utf-8");
+    const constraints = fs.readFileSync(path.join(sqlDir, "006b_ml_constraints.sql"), "utf-8");
+    const indexes = fs.readFileSync(path.join(sqlDir, "008_ml_indexes.sql"), "utf-8");
+
+    expect(schema).toContain("CREATE TABLE IF NOT EXISTS product_price_predictions");
+    expect(schema).toContain("predicted_price NUMERIC");
+    expect(schema).toContain("input_features JSONB");
+    expect(schema).toContain("metrics_snapshot JSONB");
+    expect(constraints).toContain("fk_pricepred_product");
+    expect(constraints).toContain("fk_pricepred_ml_model");
+    expect(indexes).toContain("idx_price_predictions_product_created");
+  });
+
   test("users table supports token version based session revocation", () => {
     const sql = fs.readFileSync(path.join(sqlDir, "001_tables.sql"), "utf-8");
 

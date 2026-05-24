@@ -47,10 +47,11 @@ class RAGChatbotAgent:
 
         # API Key: injected > env variable
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+        enable_llm_calls = os.getenv("ML_ENABLE_LLM_CALLS", "true").lower() == "true"
         self.client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=self.api_key
-        ) if OpenAI and self.api_key else None
+        ) if OpenAI and self.api_key and enable_llm_calls else None
 
         if not self.client:
             logger.warning("OpenAI client not initialized — chatbot will operate in DEMO mode.")

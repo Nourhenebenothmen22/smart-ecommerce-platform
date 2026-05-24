@@ -66,6 +66,11 @@ const envSchema = z.object({
   RETELL_FROM_NUMBER: z.string().optional(),
   RETELL_WEBHOOK_SECRET: z.string().optional(),
   ML_SERVICE_TOKEN: z.string().optional(),
+  ML_SERVICE_URL: z.string().url().default("http://127.0.0.1:8000"),
+  ML_REQUEST_TIMEOUT_MS: z.preprocess(
+    (val) => (val === undefined ? undefined : Number(val)),
+    z.number().int().positive().default(5000)
+  ),
   TRUST_PROXY: z.string().default("false"),
   COOKIE_SECRET: z.string().optional(), // Added for CSRF/Session if needed
 }).superRefine((data, ctx) => {

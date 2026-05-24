@@ -42,6 +42,8 @@ class Settings:
     EMBEDDING_MODEL_VERSION = os.getenv("EMBEDDING_MODEL_VERSION", "1.0")
     SEGMENTATION_MODEL_NAME = os.getenv("SEGMENTATION_MODEL_NAME", "customer_segmentation")
     SEGMENTATION_MODEL_VERSION = os.getenv("SEGMENTATION_MODEL_VERSION", "1.0")
+    PRICE_MODEL_NAME = os.getenv("PRICE_MODEL_NAME", "product_price_prediction")
+    PRICE_MODEL_VERSION = os.getenv("PRICE_MODEL_VERSION", "1.0")
     ALLOW_UNVERIFIED_CHAT_USER_ID = os.getenv("ALLOW_UNVERIFIED_CHAT_USER_ID", "false").lower() == "true"
     ML_SERVICE_TOKEN = os.getenv("ML_SERVICE_TOKEN", "")
 

@@ -35,6 +35,24 @@ BEGIN
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
     END IF;
 
+    -- product_price_predictions -> products
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_pricepred_product') THEN
+        ALTER TABLE product_price_predictions ADD CONSTRAINT fk_pricepred_product
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL;
+    END IF;
+
+    -- product_price_predictions -> ml_models
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_pricepred_ml_model') THEN
+        ALTER TABLE product_price_predictions ADD CONSTRAINT fk_pricepred_ml_model
+            FOREIGN KEY (model_name, model_version) REFERENCES ml_models(model_name, model_version) ON DELETE RESTRICT;
+    END IF;
+
+    -- product_price_predictions non-negative output
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_pricepred_non_negative') THEN
+        ALTER TABLE product_price_predictions ADD CONSTRAINT chk_pricepred_non_negative
+            CHECK (predicted_price >= 0);
+    END IF;
+
     -- user_sessions -> users
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_usess_user') THEN
         ALTER TABLE user_sessions ADD CONSTRAINT fk_usess_user
