@@ -33,6 +33,7 @@ describe("ML price prediction backend integration", () => {
       model_name: "product_price_prediction",
       model_version: "1.0",
       model_algorithm: "random_forest_regressor",
+      preprocessing_profile: "improved",
       metrics: { rmse: 12.5 },
       features_used: ["brand", "stock"],
     };
@@ -76,4 +77,3 @@ describe("ML price prediction backend integration", () => {
       .rejects.toThrow("ML price prediction failed");
   });
 });
-

@@ -40,6 +40,7 @@ export interface PricePredictionResult {
   model_name: string;
   model_version: string;
   model_algorithm: string;
+  preprocessing_profile?: string;
   metrics?: Record<string, unknown>;
   features_used?: string[];
 }
