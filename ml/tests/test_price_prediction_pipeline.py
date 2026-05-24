@@ -1,3 +1,4 @@
+import json
 import shutil
 import unittest
 import uuid
@@ -174,6 +175,29 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertEqual(prediction["model_version"], config.price_model_version)
             self.assertEqual(prediction["preprocessing_profile"], "improved")
             self.assertIn("features_used", prediction)
+
+    def test_prediction_hides_legacy_metadata_metrics(self):
+        with _workspace_tempdir() as tmp_dir:
+            config = _config(tmp_dir)
+            results = train_price_prediction_models(_sample_products(), config=config)
+            metadata_path = config.models_dir / "metadata.json"
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            best_key = results["best_model"]
+            metadata["best_result_key"] = f"improved__{best_key}"
+            metadata["metrics"] = {
+                "legacy__median_baseline": {"mae": 999, "mse": 999, "rmse": 999, "r2": -99},
+                f"improved__{best_key}": results["metrics_by_model"][best_key],
+            }
+            metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+            payload = _sample_products().iloc[0].drop(labels=["price", "product_id"]).to_dict()
+            prediction = predict_price(payload, config=config)
+
+            self.assertEqual(prediction["model_algorithm"], best_key)
+            self.assertEqual(set(prediction["metrics"].keys()), {best_key})
+            for metric_key in prediction["metrics"]:
+                self.assertNotIn("legacy__", metric_key)
+                self.assertNotIn("improved__", metric_key)
 
 
 if __name__ == "__main__":
