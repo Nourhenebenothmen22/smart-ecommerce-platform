@@ -444,12 +444,12 @@ python -m ml.validation.real_db_validation
 
 The validation workflow:
 - loads client segmentation data dynamically from `user_features`;
-- loads products dynamically from `products`, `categories`, and `subcategories`;
+- loads products dynamically from `products`, `categories`, `subcategories`, `orders`, `order_items`, `user_interactions`, `reviews`, `cart_items`, and `wishlists`;
 - uses real database prices as the price prediction validation target;
 - cleans duplicates, invalid prices, invalid ranges, missing values, and extreme price outliers;
 - avoids leaking/invalid features such as `final_price`, `product_id`, `category_id`, and `subcategory_id`;
-- engineers discount, stock, review, text-richness, rating-review, and category-combination features;
-- encodes categorical variables with rare-category handling and scales numeric variables inside train-only pipelines;
+- engineers discount, stock, review, text-richness, rating-review, sales-history, historical-unit-price, demand, cart, wishlist, and category-combination features;
+- encodes categorical variables with rare-category handling, train-only target mean price priors, and numeric scaling inside train-only pipelines;
 - trains and validates client segmentation, price baseline, and price performant models;
 - checks train/test split overlap, leakage, overfitting/underfitting, outliers, invalid production records, and data drift;
 - writes a new versioned artifact folder every run and never overwrites previous validation artifacts.
@@ -481,6 +481,20 @@ Plot meanings:
 - `price_prediction_model_metrics_<run_id>.png`: compares MAE, RMSE, and R2 for the baseline and performant price models.
 
 Read metrics from `reports/ml_validation_report_<run_id>.json`. Price prediction quality is under `price_prediction.models.*.test`; segmentation quality is under `client_segmentation.train_metrics`, `test_metrics`, and `current_metrics`. Drift checks are under each model family's `drift_check`.
+
+Price prediction training can also be run directly:
+
+```bash
+python -m ml.price_prediction.run_pipeline
+```
+
+This command writes active artifacts to `ml/artifacts/price_prediction/` and archives every run under:
+
+```text
+ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
+```
+
+Current real database pricing signals include sales history from `order_items/orders`, historical unit prices, order quantity, revenue, distinct buyers, product demand from `user_interactions`, cart and wishlist pressure, review behavior, stock, discount, brand, category, and subcategory. Missing production-grade pricing fields are supplier cost, margin, campaign/promotion history, product specs, and dedicated price history snapshots.
 
 Use the FastAPI service directly:
 
