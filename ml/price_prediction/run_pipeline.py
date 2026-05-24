@@ -74,7 +74,7 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
         logger.info("Training price prediction model: %s (%s preprocessing)", name, profile)
         pipeline.fit(X_train, y_train)
         predictions = pipeline.predict(X_test)
-        result_key = f"{profile}__{name}"
+        result_key = name if profile == "improved" else f"{profile}__{name}"
         results[result_key] = {
             "pipeline": pipeline,
             "predictions": predictions,
@@ -97,10 +97,9 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
 
 
 def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
-    """Train, evaluate, compare, and persist legacy and improved models."""
-    legacy_results, legacy_prepared, legacy_report = _train_profile_models(df, "legacy", config=config)
+    """Train, evaluate, compare, and persist final baseline/performance models."""
     improved_results, improved_prepared, improved_report = _train_profile_models(df, "improved", config=config)
-    results = {**legacy_results, **improved_results}
+    results = improved_results
 
     best_name = select_best_model(results)
     best_pipeline = results[best_name]["pipeline"]
@@ -108,7 +107,6 @@ def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
 
     metrics_by_model = {name: data["metrics"] for name, data in results.items()}
     comparison = comparison_frame(results, config=config)
-    legacy_prepared.to_csv(config.data_dir / "products_price_legacy_preprocessed.csv", index=False)
     improved_prepared.to_csv(config.data_dir / "products_price_preprocessed.csv", index=False)
 
     plot_price_distribution(improved_prepared, config=config)
@@ -117,7 +115,6 @@ def train_price_prediction_models(df, config: Config = cfg) -> dict[str, Any]:
     plot_model_performance(metrics_by_model, config=config)
 
     preprocessing_report = {
-        "legacy": legacy_report,
         "improved": improved_report,
         "leakage_controls": [
             "category_id and subcategory_id are excluded from the improved model features",
