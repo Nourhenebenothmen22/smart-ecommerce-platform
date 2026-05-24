@@ -72,6 +72,39 @@ def _sample_products() -> pd.DataFrame:
                 "tags": ["quality", "value", category_name.lower()],
                 "is_active": True,
                 "created_at": "2025-01-01T00:00:00+00:00",
+                "order_line_count": 2 + idx % 4,
+                "total_quantity_sold": 3 + idx,
+                "avg_order_quantity": 1.5 + (idx % 3) * 0.5,
+                "max_order_quantity": 4 + idx % 3,
+                "fulfilled_order_lines": 1 + idx % 2,
+                "fulfilled_quantity_sold": 2 + idx,
+                "total_order_revenue": round((base + stock * 0.4) * (2 + idx % 5), 2),
+                "avg_historical_unit_price": round(base + stock * 0.4, 2),
+                "min_historical_unit_price": round((base + stock * 0.4) * 0.9, 2),
+                "max_historical_unit_price": round((base + stock * 0.4) * 1.05, 2),
+                "historical_unit_price_stddev": 3.5 + idx % 5,
+                "distinct_buyers": 1 + idx % 7,
+                "first_order_at": "2025-02-01T00:00:00+00:00",
+                "last_order_at": "2025-04-01T00:00:00+00:00",
+                "interaction_count": 10 + idx,
+                "distinct_interaction_users": 4 + idx % 5,
+                "avg_interaction_value": 1.0 + (idx % 4) * 0.2,
+                "view_count": 20 + idx,
+                "click_count": 8 + idx % 8,
+                "add_to_cart_count": 3 + idx % 4,
+                "wishlist_interaction_count": 2 + idx % 3,
+                "purchase_interaction_count": 1 + idx % 2,
+                "share_count": idx % 4,
+                "search_count": idx % 5,
+                "last_interaction_at": "2025-05-01T00:00:00+00:00",
+                "current_cart_quantity": idx % 6,
+                "current_cart_users": idx % 4,
+                "wishlist_count": idx % 9,
+                "review_rows_count": review_count,
+                "verified_review_count": review_count // 2,
+                "avg_review_rating": rating,
+                "negative_review_count": idx % 3,
+                "positive_review_count": idx % 6,
             }
         )
     return pd.DataFrame(rows)
@@ -82,8 +115,15 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertIn("FROM products p", _PRODUCT_PRICE_QUERY)
         self.assertIn("JOIN categories c", _PRODUCT_PRICE_QUERY)
         self.assertIn("JOIN subcategories sc", _PRODUCT_PRICE_QUERY)
+        self.assertIn("FROM order_items oi", _PRODUCT_PRICE_QUERY)
+        self.assertIn("FROM user_interactions ui", _PRODUCT_PRICE_QUERY)
+        self.assertIn("FROM reviews r", _PRODUCT_PRICE_QUERY)
+        self.assertIn("FROM cart_items ci", _PRODUCT_PRICE_QUERY)
+        self.assertIn("FROM wishlists w", _PRODUCT_PRICE_QUERY)
+        self.assertIn("avg_historical_unit_price", _PRODUCT_PRICE_QUERY)
         self.assertIn("WHERE p.price > 0", _PRODUCT_PRICE_QUERY)
         self.assertIn("WHERE p.id = :product_id", _PRODUCT_FEATURE_QUERY)
+        self.assertNotIn("p.price::float AS price", _PRODUCT_FEATURE_QUERY)
         self.assertNotIn("hardcoded", _PRODUCT_PRICE_QUERY.lower())
 
     def test_feature_engineering_creates_backend_compatible_features(self):
@@ -96,6 +136,12 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertIn("has_discount", frame.columns)
         self.assertIn("log_stock", frame.columns)
         self.assertIn("rating_review_score", frame.columns)
+        self.assertIn("avg_historical_unit_price", frame.columns)
+        self.assertIn("log_total_quantity_sold", frame.columns)
+        self.assertIn("demand_score", frame.columns)
+        self.assertIn("conversion_rate", frame.columns)
+        self.assertIn("has_sales_history", frame.columns)
+        self.assertIn("demand_bucket", frame.columns)
         self.assertIn("brand_category", frame.columns)
         self.assertIn("category_subcategory", frame.columns)
         self.assertNotIn("category_id", frame.columns)
@@ -159,6 +205,8 @@ class PricePredictionPipelineTests(unittest.TestCase):
 
             self.assertTrue((config.models_dir / "best_model.pkl").exists())
             self.assertTrue((config.models_dir / "metadata.json").exists())
+            self.assertTrue(Path(results["training_artifact_root"]).exists())
+            self.assertTrue((Path(results["training_artifact_root"]) / "models" / "best_model.pkl").exists())
             self.assertTrue((config.reports_dir / "model_comparison.csv").exists())
             self.assertTrue((config.reports_dir / "preprocessing_report.json").exists())
             self.assertTrue((config.plots_dir / "price_distribution.png").exists())
