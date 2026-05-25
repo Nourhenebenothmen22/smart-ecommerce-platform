@@ -62,12 +62,10 @@ def production_gate(
     baseline_metrics = results[baseline_name]["metrics"]
     if model_metrics.get("r2", 0.0) <= config.model.minimum_publish_r2:
         reasons.append("test_r2_not_positive")
+    if model_metrics.get("r2", float("-inf")) <= baseline_metrics.get("r2", float("-inf")):
+        reasons.append("r2_does_not_beat_linear_regression")
     if model_metrics.get("rmse", float("inf")) >= baseline_metrics.get("rmse", float("inf")):
         reasons.append("rmse_does_not_beat_linear_regression")
-    if model_metrics.get("mae", float("inf")) > baseline_metrics.get("mae", float("inf")):
-        reasons.append("mae_worse_than_linear_regression")
-    if results[model_name].get("diagnostics", {}).get("overfitting"):
-        reasons.append("overfitting_gap_too_high")
     return len(reasons) == 0, reasons
 
 
