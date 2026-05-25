@@ -197,6 +197,7 @@ def discard_staged_artifact(config, run: ArtifactRun) -> None:
     if run.staging_root.exists():
         _remove_tree(run.staging_root, ignore_errors=True)
     apply_artifact_layout(config, run.final_root)
+    cleanup_empty_staging(run.final_root.parent)
 
 
 def cleanup_empty_staging(root: Path) -> None:
