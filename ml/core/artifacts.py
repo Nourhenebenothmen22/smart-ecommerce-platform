@@ -55,6 +55,38 @@ def _remove_tree(path: Path, ignore_errors: bool = False) -> None:
             time.sleep(0.25)
 
 
+def _remove_path(path: Path, ignore_errors: bool = False) -> None:
+    try:
+        if path.is_dir():
+            _remove_tree(path, ignore_errors=ignore_errors)
+            return
+        try:
+            os.chmod(path, stat.S_IWRITE)
+        except OSError:
+            pass
+        path.unlink()
+    except FileNotFoundError:
+        return
+    except Exception:
+        if not ignore_errors:
+            raise
+
+
+def _sync_tree(source: Path, target: Path) -> None:
+    target.mkdir(parents=True, exist_ok=True)
+    source_names = {child.name for child in source.iterdir()}
+    for child in list(target.iterdir()):
+        if child.name not in source_names:
+            _remove_path(child)
+
+    for child in source.iterdir():
+        destination = target / child.name
+        if child.is_dir():
+            _sync_tree(child, destination)
+        else:
+            shutil.copy2(child, destination)
+
+
 def apply_artifact_layout(config, root: Path) -> None:
     config.artifacts_dir = root
     config.models_dir = root / "model"
@@ -118,35 +150,25 @@ def publish_latest_artifact(config, run: ArtifactRun) -> None:
     if previous.exists():
         _remove_tree(previous)
 
+    published = False
     try:
         shutil.copytree(staging, replacement)
         _remove_tree(staging, ignore_errors=True)
         if final.exists():
-            if not any(path.is_file() for path in final.rglob("*")):
-                shutil.copytree(replacement, final, dirs_exist_ok=True)
-                _remove_tree(replacement, ignore_errors=True)
-                apply_artifact_layout(config, final)
-                cleanup_empty_staging(final.parent)
-                return
-            final.rename(previous)
-        replacement.rename(final)
+            shutil.copytree(final, previous)
 
-        if previous.exists():
-            try:
-                _remove_tree(previous)
-            except Exception:
-                if final.exists():
-                    _remove_tree(final, ignore_errors=True)
-                if previous.exists():
-                    previous.rename(final)
-                raise
-    except Exception:
-        if not final.exists() and previous.exists():
-            previous.rename(final)
+        try:
+            _sync_tree(replacement, final)
+            published = True
+        except Exception:
+            if previous.exists():
+                _sync_tree(previous, final)
+            raise
+    finally:
         if replacement.exists():
             _remove_tree(replacement, ignore_errors=True)
-        raise
-    finally:
+        if previous.exists() and published:
+            _remove_tree(previous, ignore_errors=True)
         apply_artifact_layout(config, final)
         cleanup_empty_staging(final.parent)
 
