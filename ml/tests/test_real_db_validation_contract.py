@@ -87,6 +87,18 @@ class RealDbValidationContractTests(unittest.TestCase):
         self.assertTrue(ready["price_readiness_gate"]["performant_beats_baseline"])
         self.assertTrue(ready["production_ready"])
 
+        report["price_prediction"]["historical_proxy_ablation"] = {
+            "removed_features": ["avg_historical_unit_price"],
+            "performant_without_historical_price_proxies": {"mae": 90.0, "rmse": 120.0, "r2": 0.05},
+        }
+        proxy_dependent = real_db_validation.build_readiness_conclusion(report)
+        self.assertFalse(proxy_dependent["production_ready"])
+        self.assertFalse(proxy_dependent["price_readiness_gate"]["proxy_ablation_passed"])
+
+        report["price_prediction"]["historical_proxy_ablation"]["performant_without_historical_price_proxies"]["r2"] = 0.35
+        proxy_free = real_db_validation.build_readiness_conclusion(report)
+        self.assertTrue(proxy_free["price_readiness_gate"]["proxy_ablation_passed"])
+
 
 if __name__ == "__main__":
     unittest.main()
