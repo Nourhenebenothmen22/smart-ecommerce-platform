@@ -103,7 +103,7 @@ def _sync_tree(source: Path, target: Path) -> None:
             shutil.copy2(child, destination)
 
 
-def apply_artifact_layout(config, root: Path) -> None:
+def apply_artifact_layout(config, root: Path, create: bool = True) -> None:
     config.artifacts_dir = root
     config.models_dir = root / "model"
     config.plots_dir = root / "plots"
@@ -112,7 +112,8 @@ def apply_artifact_layout(config, root: Path) -> None:
     config.raw_data_dir = root / "data" / "raw"
     config.processed_data_dir = root / "data" / "processed"
     config.metadata_dir = root / "metadata"
-    ensure_artifact_layout(root)
+    if create:
+        ensure_artifact_layout(root)
 
 
 def begin_latest_artifact_run(config, final_root: Path | None = None) -> tuple[ArtifactRun, object]:
@@ -196,7 +197,7 @@ def publish_latest_artifact(config, run: ArtifactRun) -> None:
 def discard_staged_artifact(config, run: ArtifactRun) -> None:
     if run.staging_root.exists():
         _remove_tree(run.staging_root, ignore_errors=True)
-    apply_artifact_layout(config, run.final_root)
+    apply_artifact_layout(config, run.final_root, create=run.final_root.exists())
     cleanup_empty_staging(run.final_root.parent)
 
 
