@@ -30,7 +30,7 @@ def get_connection():
 
 def run():
     logger.info("1. Loading embedding model (%s v%s).", MODEL_NAME, MODEL_VERSION)
-    model = SentenceTransformer(MODEL_NAME)
+    model = SentenceTransformer(MODEL_NAME, local_files_only=not settings.ML_ALLOW_MODEL_DOWNLOADS)
 
     conn = get_connection()
     cur = conn.cursor()
