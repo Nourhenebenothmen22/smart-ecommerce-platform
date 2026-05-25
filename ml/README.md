@@ -38,7 +38,8 @@ The workflow:
 * clips invalid numeric ranges such as negative stock, negative review counts, discount values outside `0..100`, and ratings outside `0..5`;
 * removes extreme target outliers using configured quantile bounds;
 * avoids leaking or invalid features by excluding `final_price`, `product_id`, `category_id`, and `subcategory_id`;
-* creates discount, stock, review, text-richness, rating-review, sales-history, historical-unit-price, demand, cart, wishlist, category-combination, and bucket features;
+* creates discount, stock, review, text-richness, rating-review, sales-history, demand, cart, wishlist, category-combination, and bucket features;
+* extracts historical unit-price and revenue proxies for diagnostics/ablation only; production feature columns exclude those direct price proxies;
 * adds brand/category/subcategory target mean price priors inside the sklearn training pipeline only after train/test split;
 * encodes categorical variables with unknown/rare-category handling;
 * scales numeric variables inside sklearn pipelines fitted only on the training split;
@@ -81,7 +82,8 @@ ml/artifacts/price_prediction/
 
 Current available pricing signals:
 
-* `order_items` and `orders`: order lines, quantity sold, fulfilled quantity, revenue, distinct buyers, historical unit price min/max/mean/stddev.
+* `order_items` and `orders`: order lines, quantity sold, fulfilled quantity, distinct buyers, and non-price demand signals.
+* Historical unit price and revenue aggregates are extracted for validation/ablation reports only, not used as production model features.
 * `user_interactions`: views, clicks, add-to-cart, wishlist, purchase, share, search, distinct users, interaction recency.
 * `cart_items` and `wishlists`: current demand pressure.
 * `reviews`: review count, verified reviews, positive/negative reviews, average rating.
