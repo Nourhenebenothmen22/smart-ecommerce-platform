@@ -13,8 +13,10 @@ import uuid
 import json
 import sys
 import os
+from collections import defaultdict, deque
+from time import monotonic
 
-from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, status
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Ensure the 'ml' directory is in sys.path.
@@ -42,6 +44,7 @@ app = FastAPI(
 # Initialize engines. Hybrid retriever uses both BM25 + Vector internally.
 retriever = HybridRetriever()
 agent = RAGChatbotAgent()
+_RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
 
 
 # Request/Response Models
@@ -119,6 +122,37 @@ def health_check():
     return {"status": "online", "message": "ML Intelligence Service is running.", "version": "2.0.0"}
 
 
+def _client_key(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limit(bucket: str, limit: int, window_seconds: float = 60.0) -> None:
+    if limit <= 0:
+        return
+    now = monotonic()
+    hits = _RATE_BUCKETS[bucket]
+    while hits and now - hits[0] > window_seconds:
+        hits.popleft()
+    if len(hits) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="ML API rate limit exceeded.",
+        )
+    hits.append(now)
+
+
+def _production_config_guard() -> None:
+    errors = settings.production_config_errors()
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ML service production configuration is invalid.",
+        )
+
+
 def log_interaction(
     req_query: str,
     resp_text: str,
@@ -154,6 +188,7 @@ def log_interaction(
 def chat(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
+    http_request: Request,
     x_ml_user_id: int | None = Header(default=None, alias="X-ML-User-Id"),
     x_ml_service_token: str | None = Header(default=None, alias="X-ML-Service-Token"),
 ):
@@ -164,9 +199,17 @@ def chat(
     3. Background logging for traceability
     """
     # Generate or reuse session ID
+    _production_config_guard()
+    _check_rate_limit(f"chat:{_client_key(http_request)}", settings.ML_CHAT_RATE_LIMIT_PER_MINUTE)
     session_id = request.session_id or str(uuid.uuid4())
     effective_user_id = x_ml_user_id
-    if x_ml_user_id is not None and not settings.verify_ml_service_token(x_ml_service_token):
+    service_token_valid = settings.verify_ml_service_token(x_ml_service_token)
+    if settings.ML_REQUIRE_SERVICE_TOKEN and not service_token_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid ML service token",
+        )
+    if x_ml_user_id is not None and not service_token_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid ML service token",
@@ -219,12 +262,15 @@ def chat(
 @app.post("/price/predict")
 def predict_product_price(
     request: PricePredictionRequest,
+    http_request: Request,
     x_ml_service_token: str | None = Header(default=None, alias="X-ML-Service-Token"),
 ):
     """
     Predict product price from an existing product_id or explicit product features.
     Intended to be called by the trusted backend gateway.
     """
+    _production_config_guard()
+    _check_rate_limit(f"price:{_client_key(http_request)}", settings.ML_PRICE_RATE_LIMIT_PER_MINUTE)
     if not settings.verify_ml_service_token(x_ml_service_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -254,17 +300,6 @@ def predict_product_price(
 
 if __name__ == "__main__":
     import uvicorn
-    import webbrowser
-    from threading import Timer
-
-    # Use 127.0.0.1 which is more reliable than 0.0.0.0 for local access on Windows
-    url = "http://127.0.0.1:8000/docs"
-
-    def open_browser():
-        webbrowser.open(url)
-
-    # Launch browser after a short delay
-    Timer(1.5, open_browser).start()
     
     # Passing the app object directly is more robust when running from different CWDs
     uvicorn.run(app, host="127.0.0.1", port=8000)
