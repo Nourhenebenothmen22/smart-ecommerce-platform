@@ -31,6 +31,14 @@ def _load_best_model(config: Config):
     return model
 
 
+def _pipeline_from_model(model):
+    if hasattr(model, "regressor_"):
+        return model.regressor_
+    if hasattr(model, "regressor"):
+        return model.regressor
+    return model
+
+
 def _validate_artifact_compatibility(model, metadata: dict[str, Any], profile: str, config: Config) -> list[str]:
     expected_features = feature_columns(config, profile)
     metadata_features = metadata.get("feature_columns")
@@ -39,14 +47,16 @@ def _validate_artifact_compatibility(model, metadata: dict[str, Any], profile: s
             "Price prediction artifact is stale or incompatible with the current preprocessing feature order."
         )
 
-    preprocessor = getattr(model, "named_steps", {}).get("preprocessor")
+    pipeline = _pipeline_from_model(model)
+    preprocessor = getattr(pipeline, "named_steps", {}).get("preprocessor")
     if preprocessor is None:
         raise RuntimeError("Price prediction artifact is missing the preprocessing pipeline.")
 
     transformer_features: list[str] = []
-    for _name, _transformer, columns in getattr(preprocessor, "transformers", []):
-        if isinstance(columns, list):
-            transformer_features.extend(columns)
+    transformers = getattr(preprocessor, "transformers_", getattr(preprocessor, "transformers", []))
+    for _name, _transformer, columns in transformers:
+        if isinstance(columns, (list, tuple)):
+            transformer_features.extend(list(columns))
 
     missing = sorted(set(transformer_features) - set(expected_features))
     if missing:
