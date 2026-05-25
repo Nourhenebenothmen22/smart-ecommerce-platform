@@ -14,7 +14,7 @@ This module trains a backend-compatible product price prediction model from Post
 8. Scale numeric variables inside sklearn pipelines fitted only on the training split.
 9. Train a median baseline and a RandomForest regressor.
 10. Evaluate both final models with MAE, RMSE, and R2.
-11. Save active artifacts plus a new versioned training artifact folder.
+11. Save artifacts only after validation succeeds, replacing the previous valid artifact.
 12. Serve predictions through the FastAPI `/price/predict` endpoint.
 
 ## Real Pricing Signals
@@ -58,21 +58,23 @@ python -m ml.validation.real_db_validation
 
 Generated artifacts are written to `ml/artifacts/price_prediction/`.
 
-Every `python -m ml.price_prediction.run_pipeline` run also creates a non-overwriting training artifact folder:
+The project keeps only the latest valid price prediction artifact. Training writes to a temporary staging folder first. If model files, reports, plots, raw data, processed data, and metadata validate successfully, the old artifact folder is replaced. If validation fails, the previous valid artifact remains.
 
 ```text
-ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
-  data/
-  models/
+ml/artifacts/price_prediction/
+  model/
   plots/
   reports/
-  metadata.json
+  data/
+    raw/
+    processed/
+  metadata/
 ```
 
-Real database validation artifacts are written to a new non-overwriting folder:
+Real database validation artifacts are latest-only:
 
 ```text
-ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
+ml/artifacts/validation/
 ```
 
 ## Evaluation Outputs
@@ -80,7 +82,7 @@ ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
 ```text
 ml/artifacts/price_prediction/reports/model_comparison.csv
 ml/artifacts/price_prediction/reports/preprocessing_report.json
-ml/artifacts/price_prediction/models/metadata.json
+ml/artifacts/price_prediction/metadata/metadata.json
 ```
 
 ## Plots
@@ -101,10 +103,10 @@ Plot explanations:
 
 The real DB validation workflow also writes:
 
-* `plots/price_prediction_actual_vs_predicted_<run_id>.png`
-* `plots/price_prediction_model_metrics_<run_id>.png`
-* `price_prediction/price_prediction_holdout_predictions_<run_id>.csv`
-* `reports/ml_validation_report_<run_id>.json`
+* `ml/artifacts/validation/plots/price_prediction_actual_vs_predicted_latest_validation.png`
+* `ml/artifacts/validation/plots/price_prediction_model_metrics_latest_validation.png`
+* `ml/artifacts/validation/price_prediction/data/processed/price_prediction_holdout_predictions.csv`
+* `ml/artifacts/validation/reports/ml_validation_report_latest_validation.json`
 
 ## API Usage
 

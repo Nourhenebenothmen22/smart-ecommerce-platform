@@ -108,7 +108,7 @@ def interpret_and_save(df_raw: pd.DataFrame, df_clean: pd.DataFrame, labels: np.
     logger.info("Segment map saved -> %s", map_path)
     
     # 4. Save final labelled users
-    out_path = config.data_dir / "best_model_users_labelled.csv"
+    out_path = config.processed_data_dir / "best_model_users_labelled.csv"
     df_results.to_csv(out_path, index=False)
     logger.info("Final labelled users saved -> %s", out_path)
     

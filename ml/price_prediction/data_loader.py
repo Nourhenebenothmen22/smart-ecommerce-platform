@@ -189,7 +189,7 @@ def load_product_training_data(config: Config = cfg, force_reload: bool = False)
     A local CSV cache is only used when ML_USE_PRICE_CACHE=true. This keeps
     training aligned with the live backend catalog by default.
     """
-    cache_path: Path = config.data_dir / "products_price_raw.csv"
+    cache_path: Path = config.raw_data_dir / "products_price_raw.csv"
     use_cache = os.getenv("ML_USE_PRICE_CACHE", "false").lower() == "true"
 
     if use_cache and cache_path.exists() and not force_reload:

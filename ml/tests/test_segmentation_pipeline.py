@@ -30,11 +30,22 @@ def _workspace_tempdir():
 
 def _config(tmp: Path) -> Config:
     config = Config()
+    config.artifacts_dir = tmp
     config.data_dir = tmp / "data"
-    config.models_dir = tmp / "models"
+    config.raw_data_dir = config.data_dir / "raw"
+    config.processed_data_dir = config.data_dir / "processed"
+    config.models_dir = tmp / "model"
     config.plots_dir = tmp / "plots"
     config.reports_dir = tmp / "reports"
-    for path in [config.data_dir, config.models_dir, config.plots_dir, config.reports_dir]:
+    config.metadata_dir = tmp / "metadata"
+    for path in [
+        config.raw_data_dir,
+        config.processed_data_dir,
+        config.models_dir,
+        config.plots_dir,
+        config.reports_dir,
+        config.metadata_dir,
+    ]:
         path.mkdir(parents=True, exist_ok=True)
     config.kmeans.k_range = [2, 3, 4, 5]
     config.dbscan.min_samples = 3

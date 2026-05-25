@@ -28,11 +28,22 @@ def _workspace_tempdir():
 
 def _config(tmp: Path) -> Config:
     config = Config()
+    config.artifacts_dir = tmp
     config.data_dir = tmp / "data"
-    config.models_dir = tmp / "models"
+    config.raw_data_dir = config.data_dir / "raw"
+    config.processed_data_dir = config.data_dir / "processed"
+    config.models_dir = tmp / "model"
     config.plots_dir = tmp / "plots"
     config.reports_dir = tmp / "reports"
-    for path in [config.data_dir, config.models_dir, config.plots_dir, config.reports_dir]:
+    config.metadata_dir = tmp / "metadata"
+    for path in [
+        config.raw_data_dir,
+        config.processed_data_dir,
+        config.models_dir,
+        config.plots_dir,
+        config.reports_dir,
+        config.metadata_dir,
+    ]:
         path.mkdir(parents=True, exist_ok=True)
     config.model.min_training_rows = 10
     config.model.test_size = 0.25
@@ -204,9 +215,9 @@ class PricePredictionPipelineTests(unittest.TestCase):
                 self.assertIn("r2", metrics)
 
             self.assertTrue((config.models_dir / "best_model.pkl").exists())
-            self.assertTrue((config.models_dir / "metadata.json").exists())
-            self.assertTrue(Path(results["training_artifact_root"]).exists())
-            self.assertTrue((Path(results["training_artifact_root"]) / "models" / "best_model.pkl").exists())
+            self.assertTrue((config.metadata_dir / "metadata.json").exists())
+            self.assertTrue((config.raw_data_dir / "products_price_raw.csv").exists())
+            self.assertTrue((config.processed_data_dir / "products_price_preprocessed.csv").exists())
             self.assertTrue((config.reports_dir / "model_comparison.csv").exists())
             self.assertTrue((config.reports_dir / "preprocessing_report.json").exists())
             self.assertTrue((config.plots_dir / "price_distribution.png").exists())
@@ -228,7 +239,7 @@ class PricePredictionPipelineTests(unittest.TestCase):
         with _workspace_tempdir() as tmp_dir:
             config = _config(tmp_dir)
             results = train_price_prediction_models(_sample_products(), config=config)
-            metadata_path = config.models_dir / "metadata.json"
+            metadata_path = config.metadata_dir / "metadata.json"
             metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
             best_key = results["best_model"]
             metadata["best_result_key"] = f"improved__{best_key}"

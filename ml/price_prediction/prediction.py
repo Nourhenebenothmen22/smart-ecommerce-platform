@@ -14,7 +14,7 @@ from .preprocessing import build_feature_frame_for_profile, feature_columns
 
 
 def _load_metadata(config: Config) -> dict[str, Any]:
-    path = config.models_dir / "metadata.json"
+    path = config.metadata_dir / "metadata.json"
     if not path.exists():
         return {}
     with open(path, encoding="utf-8") as f:

@@ -14,15 +14,15 @@ class RealDbValidationContractTests(unittest.TestCase):
         self.assertIn('"cached_data_used": False', source)
         self.assertNotIn("pd.DataFrame([", source)
 
-    def test_validation_artifacts_are_versioned_and_non_destructive(self):
+    def test_validation_artifacts_are_latest_only(self):
         source = inspect.getsource(real_db_validation.create_validation_artifacts)
 
         self.assertIn("artifacts", source)
         self.assertIn("validation", source)
-        self.assertIn("_timestamp()", source)
-        self.assertIn("exist_ok=False", source)
-        self.assertIn("SEGMENTATION_MODEL_NAME", source)
-        self.assertIn("PRICE_MODEL_NAME", source)
+        self.assertIn("latest_validation", source)
+        self.assertIn("_remove_tree", source)
+        self.assertIn("data\" / \"raw", source)
+        self.assertIn("data\" / \"processed", source)
 
     def test_validation_checks_leakage_drift_and_real_targets(self):
         source = inspect.getsource(real_db_validation)
@@ -37,6 +37,9 @@ class RealDbValidationContractTests(unittest.TestCase):
         self.assertIn("price_prediction_baseline", source)
         self.assertIn("price_prediction_performant", source)
         self.assertIn("signal_availability", source)
+        self.assertIn("time_aware_product_created_at", source)
+        self.assertIn("historical_proxy_ablation", source)
+        self.assertIn("cold_start_no_sales_history", source)
 
     def test_price_readiness_requires_model_quality_gates(self):
         report = {
@@ -51,9 +54,17 @@ class RealDbValidationContractTests(unittest.TestCase):
                 "models": {
                     "price_prediction_baseline": {
                         "test": {"mae": 100.0, "rmse": 150.0, "r2": 0.1},
+                        "test_by_sales_history": {
+                            "with_sales_history": {"rows": 50, "metrics": {"r2": 0.1}},
+                            "cold_start_no_sales_history": {"rows": 50, "metrics": {"r2": 0.1}},
+                        },
                     },
                     "price_prediction_performant": {
                         "test": {"mae": 90.0, "rmse": 120.0, "r2": 0.15},
+                        "test_by_sales_history": {
+                            "with_sales_history": {"rows": 50, "metrics": {"r2": 0.15}},
+                            "cold_start_no_sales_history": {"rows": 50, "metrics": {"r2": 0.15}},
+                        },
                     },
                 },
             },
@@ -67,6 +78,10 @@ class RealDbValidationContractTests(unittest.TestCase):
             "mae": 80.0,
             "rmse": 100.0,
             "r2": 0.35,
+        }
+        report["price_prediction"]["models"]["price_prediction_performant"]["test_by_sales_history"] = {
+            "with_sales_history": {"rows": 50, "metrics": {"r2": 0.35}},
+            "cold_start_no_sales_history": {"rows": 50, "metrics": {"r2": 0.35}},
         }
         ready = real_db_validation.build_readiness_conclusion(report)
         self.assertTrue(ready["price_readiness_gate"]["performant_beats_baseline"])

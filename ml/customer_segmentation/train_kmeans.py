@@ -98,7 +98,7 @@ def run_kmeans_pipeline(X: np.ndarray, df_clean: pd.DataFrame, config: Config = 
     # Save labels
     df_out = df_clean[["user_id"]].copy()
     df_out["kmeans_cluster"] = model.labels_.astype(int)
-    df_out.to_csv(config.data_dir / "kmeans_labels.csv", index=False)
+    df_out.to_csv(config.processed_data_dir / "kmeans_labels.csv", index=False)
     
     return {
         "model": model, 

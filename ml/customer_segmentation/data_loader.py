@@ -58,7 +58,7 @@ def load_raw_data(config: Config = cfg, force_reload: bool = False) -> pd.DataFr
     ML_USE_FEATURE_CACHE=true for local experiments that intentionally reuse the
     cached CSV.
     """
-    cache_path: Path = config.data_dir / "users_raw.csv"
+    cache_path: Path = config.raw_data_dir / "users_raw.csv"
     use_cache = os.getenv("ML_USE_FEATURE_CACHE", "false").lower() == "true"
 
     if use_cache and cache_path.exists() and not force_reload:
@@ -79,6 +79,7 @@ def load_raw_data(config: Config = cfg, force_reload: bool = False) -> pd.DataFr
 
 def _save_raw(df: pd.DataFrame, path: Path) -> None:
     """Persist raw dataframe to CSV."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
     logger.info("Raw data saved -> %s", path)
 

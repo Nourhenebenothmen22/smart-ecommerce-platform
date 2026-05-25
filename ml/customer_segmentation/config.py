@@ -19,11 +19,14 @@ ML_ROOT       = Path(__file__).resolve().parent.parent          # ml/
 ARTIFACTS_DIR = ML_ROOT / "artifacts" / "customer_segmentation"
 PLOTS_DIR     = ARTIFACTS_DIR / "plots"
 REPORTS_DIR   = ARTIFACTS_DIR / "reports"
-MODELS_DIR    = ARTIFACTS_DIR / "models"
+MODELS_DIR    = ARTIFACTS_DIR / "model"
 DATA_DIR      = ARTIFACTS_DIR / "data"
+RAW_DATA_DIR  = DATA_DIR / "raw"
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
+METADATA_DIR  = ARTIFACTS_DIR / "metadata"
 
 # Ensure directories exist at import time
-for _dir in [PLOTS_DIR, REPORTS_DIR, MODELS_DIR, DATA_DIR]:
+for _dir in [PLOTS_DIR, REPORTS_DIR, MODELS_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, METADATA_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -117,10 +120,14 @@ class Config:
     viz:      VizConfig     = field(default_factory=VizConfig)
 
     # Convenience path shortcuts
+    artifacts_dir: Path = ARTIFACTS_DIR
     plots_dir:   Path = PLOTS_DIR
     reports_dir: Path = REPORTS_DIR
     models_dir:  Path = MODELS_DIR
     data_dir:    Path = DATA_DIR
+    raw_data_dir: Path = RAW_DATA_DIR
+    processed_data_dir: Path = PROCESSED_DATA_DIR
+    metadata_dir: Path = METADATA_DIR
 
     random_state: int = 42
     n_jobs: int = -1

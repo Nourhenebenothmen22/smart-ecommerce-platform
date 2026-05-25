@@ -452,35 +452,29 @@ The validation workflow:
 - encodes categorical variables with rare-category handling, train-only target mean price priors, and numeric scaling inside train-only pipelines;
 - trains and validates client segmentation, price baseline, and price performant models;
 - checks train/test split overlap, leakage, overfitting/underfitting, outliers, invalid production records, and data drift;
-- writes a new versioned artifact folder every run and never overwrites previous validation artifacts.
+- writes into a staging folder first, then replaces only the latest valid artifact after validation succeeds.
 
-Versioned validation artifact structure:
+Latest-valid ML artifact structure:
 
 ```text
-ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
-  client_segmentation/
-    client_segmentation_kmeans_<run_id>.pkl
-    client_segmentation_preprocessing_<run_id>.pkl
-    client_segmentation_metrics_<run_id>.json
-  price_prediction/
-    price_prediction_baseline_<run_id>.pkl
-    price_prediction_performant_<run_id>.pkl
-    price_prediction_metrics_<run_id>.json
-    price_prediction_holdout_predictions_<run_id>.csv
-  reports/
-    ml_validation_report_<run_id>.json
+ml/artifacts/<model_name>/
+  model/
   plots/
-    client_segmentation_pca_<run_id>.png
-    price_prediction_actual_vs_predicted_<run_id>.png
-    price_prediction_model_metrics_<run_id>.png
+  reports/
+  data/
+    raw/
+    processed/
+  metadata/
 ```
+
+Historical training runs are not kept. If a new training run fails validation, the previous valid artifact remains in place.
 
 Plot meanings:
 - `client_segmentation_pca_<run_id>.png`: shows current database users projected into 2D with assigned segments.
 - `price_prediction_actual_vs_predicted_<run_id>.png`: compares held-out real database prices against baseline and performant predictions.
 - `price_prediction_model_metrics_<run_id>.png`: compares MAE, RMSE, and R2 for the baseline and performant price models.
 
-Read metrics from `reports/ml_validation_report_<run_id>.json`. Price prediction quality is under `price_prediction.models.*.test`; segmentation quality is under `client_segmentation.train_metrics`, `test_metrics`, and `current_metrics`. Drift checks are under each model family's `drift_check`.
+Read validation metrics from `ml/artifacts/validation/reports/ml_validation_report_latest_validation.json`. Price prediction quality is under `price_prediction.models.*.test`; segmentation quality is under `client_segmentation.train_metrics`, `test_metrics`, and `current_metrics`. Drift checks are under each model family's `drift_check`.
 
 Price prediction training can also be run directly:
 
@@ -488,10 +482,10 @@ Price prediction training can also be run directly:
 python -m ml.price_prediction.run_pipeline
 ```
 
-This command writes active artifacts to `ml/artifacts/price_prediction/` and archives every run under:
+This command writes only the latest valid active artifact:
 
 ```text
-ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
+ml/artifacts/price_prediction/
 ```
 
 Current real database pricing signals include sales history from `order_items/orders`, historical unit prices, order quantity, revenue, distinct buyers, product demand from `user_interactions`, cart and wishlist pressure, review behavior, stock, discount, brand, category, and subcategory. Missing production-grade pricing fields are supplier cost, margin, campaign/promotion history, product specs, and dedicated price history snapshots.
@@ -578,7 +572,7 @@ docker-compose logs -f
 3. Seed data with `npm run ml:seed:reset` if needed.
 4. Compute `user_features` with `npm run ml:upsert-features`.
 5. Run real DB ML validation with `python -m ml.validation.real_db_validation`.
-6. Review `ml_validation_report_<run_id>.json`, model metrics, drift checks, and generated plots.
+6. Review `ml/artifacts/validation/reports/ml_validation_report_latest_validation.json`, model metrics, drift checks, and generated plots.
 7. Generate product embeddings with `python -m ml.scripts.generate_embeddings`.
 8. Start the backend API and optional ML FastAPI service.
 9. Use backend protected APIs for application traffic and ML endpoints for inference/search workflows.

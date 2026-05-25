@@ -1,9 +1,12 @@
 import os
 import unittest
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 def _read(path: str) -> str:
-    with open(os.path.join(os.getcwd(), path), encoding="utf-8") as f:
+    with open(_BASE_DIR / path, encoding="utf-8") as f:
         return f.read()
 
 

@@ -46,23 +46,24 @@ The workflow:
 * evaluates segmentation with train/test/current clustering metrics;
 * checks leakage, overfitting/underfitting, outliers, invalid records, and train/test/current data drift.
 
-Every run creates a new non-overwriting folder:
+ML training artifacts are latest-valid only. Each training command writes into a temporary staging folder, validates model files, plots, reports, data, and metadata, then replaces the previous valid artifact. If validation fails, the previous valid artifact remains and the failed staging folder is discarded.
 
 ```text
-ml/artifacts/validation/ml_validation_<models>_<yyyymmdd_hhmmss>_v<versions>/
+ml/artifacts/<model_name>/
+  model/
+  plots/
+  reports/
+  data/
+    raw/
+    processed/
+  metadata/
 ```
 
-Inside it:
+Real DB validation is also latest-only:
 
-* `reports/ml_validation_report_<run_id>.json`
-* `client_segmentation/client_segmentation_kmeans_<run_id>.pkl`
-* `client_segmentation/client_segmentation_preprocessing_<run_id>.pkl`
-* `price_prediction/price_prediction_baseline_<run_id>.pkl`
-* `price_prediction/price_prediction_performant_<run_id>.pkl`
-* `price_prediction/price_prediction_holdout_predictions_<run_id>.csv`
-* `plots/client_segmentation_pca_<run_id>.png`
-* `plots/price_prediction_actual_vs_predicted_<run_id>.png`
-* `plots/price_prediction_model_metrics_<run_id>.png`
+```text
+ml/artifacts/validation/
+```
 
 Read price metrics in `price_prediction.models.*.test`, segmentation metrics in `client_segmentation.*_metrics`, and drift checks in each `drift_check` block.
 
@@ -72,10 +73,10 @@ Read price metrics in `price_prediction.models.*.test`, segmentation metrics in 
 python -m ml.price_prediction.run_pipeline
 ```
 
-The training command uses only database data by default and writes active artifacts to `ml/artifacts/price_prediction/`. It also creates a new non-overwriting archive on every run:
+The training command uses only database data by default and writes the latest valid artifact to:
 
 ```text
-ml/artifacts/price_prediction/training_runs/price_prediction_<model>_<yyyymmdd_hhmmss_microseconds>_v<version>/
+ml/artifacts/price_prediction/
 ```
 
 Current available pricing signals:
