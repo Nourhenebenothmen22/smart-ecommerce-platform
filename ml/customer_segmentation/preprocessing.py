@@ -175,7 +175,9 @@ def preprocess(df: pd.DataFrame, config: Config = cfg, fit: bool = True) -> Tupl
 
     X_scaled = scaler.transform(X)
 
-    # Persist cleaned data
-    df_clean.to_csv(config.data_dir / "users_preprocessed.csv", index=False)
+    # Persist cleaned data only during training (fit mode)
+    if fit:
+        config.processed_data_dir.mkdir(parents=True, exist_ok=True)
+        df_clean.to_csv(config.processed_data_dir / "users_preprocessed.csv", index=False)
     
     return X_scaled, df_clean, scaler, fc.feature_cols
