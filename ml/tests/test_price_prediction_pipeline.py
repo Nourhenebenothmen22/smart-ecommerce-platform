@@ -147,7 +147,6 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertIn("has_discount", frame.columns)
         self.assertIn("log_stock", frame.columns)
         self.assertIn("rating_review_score", frame.columns)
-        self.assertIn("avg_historical_unit_price", frame.columns)
         self.assertIn("log_total_quantity_sold", frame.columns)
         self.assertIn("demand_score", frame.columns)
         self.assertIn("conversion_rate", frame.columns)
@@ -159,6 +158,9 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertNotIn("subcategory_id", frame.columns)
         self.assertIn(config.features.target_col, frame.columns)
         self.assertGreater(frame["tag_count"].iloc[0], 0)
+        for proxy_feature in config.features.historical_price_proxy_features:
+            self.assertNotIn(proxy_feature, frame.columns)
+            self.assertNotIn(proxy_feature, config.features.numeric_features)
 
         without_optional = _sample_products().head(1).drop(columns=["tags", "created_at"])
         optional_frame = build_feature_frame(without_optional, config=config, include_target=True)
@@ -224,6 +226,12 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertTrue((config.plots_dir / "feature_correlation.png").exists())
             self.assertTrue((config.plots_dir / "actual_vs_predicted_price.png").exists())
             self.assertTrue((config.plots_dir / "model_performance_comparison.png").exists())
+
+            metadata = json.loads((config.metadata_dir / "metadata.json").read_text(encoding="utf-8"))
+            self.assertIn("train_metrics", metadata)
+            self.assertEqual(metadata["split_strategy"]["type"], "time_aware_product_created_at")
+            for proxy_feature in config.features.historical_price_proxy_features:
+                self.assertNotIn(proxy_feature, metadata["feature_columns"])
 
             payload = _sample_products().iloc[0].drop(labels=["price"]).to_dict()
             payload.pop("product_id")
