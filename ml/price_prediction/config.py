@@ -23,9 +23,6 @@ RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 METADATA_DIR = ARTIFACTS_DIR / "metadata"
 
-for _dir in [PLOTS_DIR, REPORTS_DIR, MODELS_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, METADATA_DIR]:
-    _dir.mkdir(parents=True, exist_ok=True)
-
 
 @dataclass
 class DBConfig:
