@@ -31,6 +31,32 @@ def _load_best_model(config: Config):
     return model
 
 
+def _validate_artifact_compatibility(model, metadata: dict[str, Any], profile: str, config: Config) -> list[str]:
+    expected_features = feature_columns(config, profile)
+    metadata_features = metadata.get("feature_columns")
+    if metadata_features != expected_features:
+        raise RuntimeError(
+            "Price prediction artifact is stale or incompatible with the current preprocessing feature order."
+        )
+
+    preprocessor = getattr(model, "named_steps", {}).get("preprocessor")
+    if preprocessor is None:
+        raise RuntimeError("Price prediction artifact is missing the preprocessing pipeline.")
+
+    transformer_features: list[str] = []
+    for _name, _transformer, columns in getattr(preprocessor, "transformers", []):
+        if isinstance(columns, list):
+            transformer_features.extend(columns)
+
+    missing = sorted(set(transformer_features) - set(expected_features))
+    if missing:
+        raise RuntimeError(
+            "Price prediction artifact expects features not produced by current preprocessing: "
+            + ", ".join(missing)
+        )
+    return expected_features
+
+
 def _public_algorithm_name(name: Any) -> str:
     value = str(name or "unknown")
     for prefix in ("legacy__", "improved__"):
@@ -75,11 +101,12 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
     model = _load_best_model(config)
     metadata = _load_metadata(config)
     profile = metadata.get("best_profile", "improved")
+    features = _validate_artifact_compatibility(model, metadata, profile, config)
 
     df = pd.DataFrame([merged_payload])
     feature_frame = build_feature_frame_for_profile(df, config=config, profile=profile, include_target=False)
     assert isinstance(feature_frame, pd.DataFrame)
-    X = feature_frame[feature_columns(config, profile)]
+    X = feature_frame[features]
 
     prediction = float(model.predict(X)[0])
     prediction = max(prediction, 0.0)
@@ -93,5 +120,5 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
         "model_algorithm": _public_algorithm_name(metadata.get("best_result_key", metadata.get("best_model", "unknown"))),
         "preprocessing_profile": profile,
         "metrics": _active_metrics(metadata),
-        "features_used": feature_columns(config, profile),
+        "features_used": features,
     }
