@@ -5,7 +5,7 @@ Centralized configuration for product price prediction.
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 try:
     from ml.core.config import settings
@@ -173,7 +173,9 @@ class FeatureConfig:
 
 @dataclass
 class ModelConfig:
-    baseline_name: str = "median_baseline"
+    baseline_name: str = "linear_regression"
+    medium_name: str = "random_forest_regressor"
+    strong_name: str = "xgboost_regressor"
     performant_name: str = "random_forest_regressor"
     test_size: float = 0.2
     min_training_rows: int = 10
@@ -182,7 +184,39 @@ class ModelConfig:
     max_depth: int | None = 14
     min_samples_leaf: int = 2
     baseline_use_log_target: bool = True
-    performant_use_log_target: bool = False
+    medium_use_log_target: bool = True
+    strong_use_log_target: bool = True
+    performant_use_log_target: bool = True
+    log_target_options: tuple[bool, ...] = (False, True)
+    minimum_publish_r2: float = 0.0
+    max_overfit_r2_gap: float = 0.35
+    random_forest_grid: list[dict[str, Any]] = field(
+        default_factory=lambda: [
+            {"n_estimators": 80, "max_depth": 8, "min_samples_leaf": 4},
+            {"n_estimators": 120, "max_depth": 12, "min_samples_leaf": 3},
+            {"n_estimators": 160, "max_depth": 14, "min_samples_leaf": 2},
+        ]
+    )
+    xgboost_grid: list[dict[str, Any]] = field(
+        default_factory=lambda: [
+            {
+                "n_estimators": 220,
+                "max_depth": 3,
+                "learning_rate": 0.05,
+                "subsample": 0.85,
+                "colsample_bytree": 0.85,
+                "reg_lambda": 5.0,
+            },
+            {
+                "n_estimators": 320,
+                "max_depth": 4,
+                "learning_rate": 0.03,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+                "reg_lambda": 10.0,
+            },
+        ]
+    )
 
 
 @dataclass
