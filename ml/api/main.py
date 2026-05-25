@@ -19,10 +19,12 @@ from time import monotonic
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-# Ensure the 'ml' directory is in sys.path.
+# Ensure both project root and the 'ml' directory are importable.
 _ML_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _ML_ROOT not in sys.path:
-    sys.path.insert(0, _ML_ROOT)
+_PROJECT_ROOT = os.path.dirname(_ML_ROOT)
+for _path in (_PROJECT_ROOT, _ML_ROOT):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 from nlp.chatbot.agent import RAGChatbotAgent
 from nlp.retrieval.hybrid_search import HybridRetriever
