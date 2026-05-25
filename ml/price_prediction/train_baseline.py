@@ -1,11 +1,7 @@
-"""
-Baseline model for product price prediction.
-"""
-
-from sklearn.dummy import DummyRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.compose import TransformedTargetRegressor
 import numpy as np
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import Pipeline
 
 from .config import Config, cfg
 from .preprocessing import PreprocessingProfile, build_preprocessor
@@ -16,11 +12,11 @@ def build_baseline_pipeline(
     profile: PreprocessingProfile = "improved",
     use_log_target: bool | None = None,
 ):
-    """Median-price baseline used as the minimum acceptable benchmark."""
+    """Linear regression baseline used as a simple, real reference model."""
     pipeline = Pipeline(
         steps=[
             ("preprocessor", build_preprocessor(config, profile=profile)),
-            ("model", DummyRegressor(strategy="median")),
+            ("model", LinearRegression()),
         ]
     )
     should_log_target = config.model.baseline_use_log_target if use_log_target is None else use_log_target
