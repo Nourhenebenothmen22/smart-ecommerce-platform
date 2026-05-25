@@ -371,6 +371,11 @@ Required:
 
 ML-specific:
 - `OPENAI_API_KEY` for chatbot generation.
+- `ML_ENABLE_LLM_CALLS=false` disables external LLM calls for local tests and CI.
+- `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_TIMEOUT_SECONDS` configure the chatbot provider centrally.
+- `ML_REQUIRE_SERVICE_TOKEN=true` requires `X-ML-Service-Token` on ML endpoints.
+- `ML_CHAT_RATE_LIMIT_PER_MINUTE` and `ML_PRICE_RATE_LIMIT_PER_MINUTE` control in-memory FastAPI rate limits.
+- `ML_ALLOW_MODEL_DOWNLOADS=false` prevents runtime embedding model downloads in production/offline runs.
 - `EMBEDDING_MODEL_NAME`, default `paraphrase-multilingual-MiniLM-L12-v2`.
 - `EMBEDDING_MODEL_VERSION`, default `1.0`.
 - `SEGMENTATION_MODEL_NAME`, default `customer_segmentation`.
@@ -488,7 +493,7 @@ This command writes only the latest valid active artifact:
 ml/artifacts/price_prediction/
 ```
 
-Current real database pricing signals include sales history from `order_items/orders`, historical unit prices, order quantity, revenue, distinct buyers, product demand from `user_interactions`, cart and wishlist pressure, review behavior, stock, discount, brand, category, and subcategory. Missing production-grade pricing fields are supplier cost, margin, campaign/promotion history, product specs, and dedicated price history snapshots.
+Current real database pricing signals include sales history from `order_items/orders`, order quantity, fulfilled quantity, distinct buyers, product demand from `user_interactions`, cart and wishlist pressure, review behavior, stock, discount, brand, category, and subcategory. Historical unit price and revenue aggregates are extracted for validation/ablation only and are excluded from production model features because they directly proxy the target price. Missing production-grade pricing fields are supplier cost, margin, campaign/promotion history, product specs, and dedicated price history snapshots.
 
 Use the FastAPI service directly:
 
