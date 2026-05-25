@@ -5,11 +5,15 @@ Main orchestrator for the Customer Segmentation ML pipeline.
 """
 
 import logging
-import os
+import json
 import sys
-import shutil
-import pandas as pd
-from .config import cfg, ARTIFACTS_DIR
+from .config import cfg
+from ml.core.artifacts import (
+    begin_latest_artifact_run,
+    discard_staged_artifact,
+    publish_latest_artifact,
+    validate_artifact_files,
+)
 from .data_loader import load_and_prepare
 from .preprocessing import preprocess
 from .train_kmeans import run_kmeans_pipeline
@@ -27,72 +31,82 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pipeline")
 
-def cleanup_artifacts():
-    """Delete model/plot/report artifacts but preserve the raw data snapshot.
-    
-    The raw CSV (users_raw.csv) is intentionally kept so that:
-    1. Re-runs use the same DB snapshot -> consistent recency features.
-    2. Database is not hammered on every training run.
-    Use force_reload=True in load_raw_data() to explicitly refresh.
-    """
-    if os.getenv("ML_CLEAN_ARTIFACTS", "false").lower() != "true":
-        logger.info("Skipping artifact cleanup. Set ML_CLEAN_ARTIFACTS=true to delete old outputs.")
-        for sub_dir in ["plots", "reports", "models", "data"]:
-            (ARTIFACTS_DIR / sub_dir).mkdir(parents=True, exist_ok=True)
-        return
-
-    logger.info("Cleaning up old artifacts...")
-    for sub_dir in ["plots", "reports", "models"]:  # data excluded intentionally
-        target = ARTIFACTS_DIR / sub_dir
-        if target.exists():
-            for item in target.iterdir():
-                try:
-                    if item.is_file():
-                        item.unlink()
-                    elif item.is_dir():
-                        shutil.rmtree(item)
-                except Exception as e:
-                    logger.warning(f"Could not delete {item}: {e}")
-    logger.info("Cleanup complete.")
+def _required_segmentation_artifact_files(model_file: str) -> list[str]:
+    return [
+        f"model/{model_file}",
+        "model/kmeans_model.pkl",
+        "model/dbscan_model.pkl",
+        "model/scaler.pkl",
+        "model/winsorization_bounds.json",
+        "model/segment_map.json",
+        "metadata/training_metadata.json",
+        "reports/model_comparison.csv",
+        "data/raw/users_raw.csv",
+        "data/processed/users_preprocessed.csv",
+        "data/processed/kmeans_labels.csv",
+        "data/processed/dbscan_labels.csv",
+        "data/processed/best_model_users_labelled.csv",
+        "plots/kmeans_elbow.png",
+        "plots/kmeans_silhouette.png",
+        "plots/dbscan_k_distance.png",
+        "plots/kmeans_vs_dbscan_comparison.png",
+        "plots/final_best_model_segments.png",
+    ]
 
 def run_segmentation_pipeline():
     logger.info("STARTING MACHINE LEARNING PIPELINE")
-    
-    # 0. Force cleanup
-    cleanup_artifacts()
-    
-    # 1. Load data
-    df_raw = load_and_prepare(cfg)
-    
-    # 2. Preprocess
-    X_scaled, df_clean, scaler, features = preprocess(df_raw, cfg)
-    
-    # 3. Train K-Means
-    kmeans_results = run_kmeans_pipeline(X_scaled, df_clean, cfg)
-    
-    # 4. Train DBSCAN
-    dbscan_results = run_dbscan_pipeline(X_scaled, df_clean, cfg)
-    
-    # 5. Compare & Select Best Model
-    winner_name, winner_data, reason, comp_df = compare_models(kmeans_results, dbscan_results, cfg)
-    
-    # 6. Business Interpretation
-    df_labelled = interpret_and_save(df_raw, df_clean, winner_data["labels"], features, cfg)
-    
-    # 7. Persist selected model metadata and user segment assignments
-    model_file = "kmeans_model.pkl" if winner_name.lower().startswith("k") else "dbscan_model.pkl"
-    register_segmentation_model(
-        algorithm=winner_name,
-        metrics=winner_data["metrics"],
-        artifact_path=str(cfg.models_dir / model_file),
-        config=cfg,
-    )
-    persisted_count = persist_user_segments(df_labelled, cfg)
-    logger.info("Persisted %d user segment assignments.", persisted_count)
+    artifact_run, local_cfg = begin_latest_artifact_run(cfg)
+    try:
+        # 1. Load fresh DB data. Training never reuses cached CSVs.
+        df_raw = load_and_prepare(local_cfg, force_reload=True)
 
-    # 8. Final Plot
-    plot_final_segment_distribution(df_labelled, cfg)
-    
+        # 2. Preprocess
+        X_scaled, df_clean, scaler, features = preprocess(df_raw, local_cfg)
+
+        # 3. Train K-Means
+        kmeans_results = run_kmeans_pipeline(X_scaled, df_clean, local_cfg)
+
+        # 4. Train DBSCAN
+        dbscan_results = run_dbscan_pipeline(X_scaled, df_clean, local_cfg)
+
+        # 5. Compare & Select Best Model
+        winner_name, winner_data, reason, comp_df = compare_models(kmeans_results, dbscan_results, local_cfg)
+
+        # 6. Business Interpretation
+        df_labelled = interpret_and_save(df_raw, df_clean, winner_data["labels"], features, local_cfg)
+
+        # 7. Final Plot
+        plot_final_segment_distribution(df_labelled, local_cfg)
+
+        model_file = "kmeans_model.pkl" if winner_name.lower().startswith("k") else "dbscan_model.pkl"
+        metadata = {
+            "model_name": local_cfg.segmentation_model_name,
+            "model_version": local_cfg.segmentation_model_version,
+            "winner": winner_name,
+            "metrics": winner_data["metrics"],
+            "features": features,
+            "artifact_policy": "latest_valid_only",
+            "reason": reason,
+        }
+        with open(local_cfg.metadata_dir / "training_metadata.json", "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2)
+
+        validate_artifact_files(artifact_run.staging_root, _required_segmentation_artifact_files(model_file))
+        publish_latest_artifact(cfg, artifact_run)
+
+        # 8. Persist selected model metadata and user segment assignments
+        register_segmentation_model(
+            algorithm=winner_name,
+            metrics=winner_data["metrics"],
+            artifact_path=str(cfg.models_dir / model_file),
+            config=cfg,
+        )
+        persisted_count = persist_user_segments(df_labelled, cfg)
+        logger.info("Persisted %d user segment assignments.", persisted_count)
+    except Exception:
+        discard_staged_artifact(cfg, artifact_run)
+        raise
+
     # 9. Print Final Result
     print("\n" + "="*50)
     print("FINAL MACHINE LEARNING PIPELINE RESULT")
