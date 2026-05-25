@@ -1,9 +1,8 @@
 """
 Run production-style ML validation using live PostgreSQL data only.
 
-This workflow trains fresh validation models into a new timestamped artifact
-folder on every run. It does not use cached CSVs, hardcoded data, or synthetic
-metrics.
+This workflow trains fresh validation models into a latest-only artifact
+folder. It does not use cached CSVs, hardcoded data, or synthetic metrics.
 """
 
 from __future__ import annotations
@@ -18,6 +17,8 @@ from pathlib import Path
 from typing import Any
 
 import joblib
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -36,6 +37,7 @@ from sklearn.preprocessing import RobustScaler
 
 from ml.core.config import settings
 from ml.core.db import get_db_cursor
+from ml.core.artifacts import _remove_tree
 from ml.customer_segmentation.config import Config as SegmentationConfig
 from ml.customer_segmentation.data_loader import load_and_prepare
 from ml.price_prediction.config import Config as PriceConfig
@@ -56,26 +58,33 @@ class ValidationArtifacts:
     reports_dir: Path
     plots_dir: Path
 
-
-def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-
-
 def create_validation_artifacts() -> ValidationArtifacts:
-    version = f"{settings.SEGMENTATION_MODEL_VERSION}_{settings.PRICE_MODEL_VERSION}"
-    run_id = (
-        f"ml_validation_{settings.SEGMENTATION_MODEL_NAME}_{settings.PRICE_MODEL_NAME}_"
-        f"{_timestamp()}_v{version}"
-    )
-    root = Path(__file__).resolve().parents[1] / "artifacts" / "validation" / run_id
+    run_id = "latest_validation"
+    root = Path(__file__).resolve().parents[1] / "artifacts" / "validation"
+    if root.exists():
+        _remove_tree(root, ignore_errors=True)
     paths = {
         "segmentation": root / "client_segmentation",
         "price": root / "price_prediction",
         "reports": root / "reports",
         "plots": root / "plots",
     }
-    for path in [root, *paths.values()]:
-        path.mkdir(parents=True, exist_ok=False)
+    for path in [
+        root,
+        paths["segmentation"] / "model",
+        paths["segmentation"] / "data" / "raw",
+        paths["segmentation"] / "data" / "processed",
+        paths["segmentation"] / "reports",
+        paths["segmentation"] / "metadata",
+        paths["price"] / "model",
+        paths["price"] / "data" / "raw",
+        paths["price"] / "data" / "processed",
+        paths["price"] / "reports",
+        paths["price"] / "metadata",
+        paths["reports"],
+        paths["plots"],
+    ]:
+        path.mkdir(parents=True, exist_ok=True)
     return ValidationArtifacts(
         run_id=run_id,
         root_dir=root,
@@ -264,10 +273,20 @@ def _plot_segmentation_pca(path: Path, X: np.ndarray, labels: np.ndarray) -> Non
 def validate_client_segmentation(artifacts: ValidationArtifacts) -> dict[str, Any]:
     config = SegmentationConfig()
     config.data_dir = artifacts.segmentation_dir / "data"
-    config.models_dir = artifacts.segmentation_dir / "models"
+    config.raw_data_dir = config.data_dir / "raw"
+    config.processed_data_dir = config.data_dir / "processed"
+    config.models_dir = artifacts.segmentation_dir / "model"
     config.reports_dir = artifacts.segmentation_dir / "reports"
     config.plots_dir = artifacts.segmentation_dir / "plots"
-    for path in [config.data_dir, config.models_dir, config.reports_dir, config.plots_dir]:
+    config.metadata_dir = artifacts.segmentation_dir / "metadata"
+    for path in [
+        config.raw_data_dir,
+        config.processed_data_dir,
+        config.models_dir,
+        config.reports_dir,
+        config.plots_dir,
+        config.metadata_dir,
+    ]:
         path.mkdir(parents=True, exist_ok=True)
     df_raw = load_and_prepare(config, force_reload=True)
     before = len(df_raw)
@@ -338,10 +357,10 @@ def validate_client_segmentation(artifacts: ValidationArtifacts) -> dict[str, An
     outliers = _outlier_summary(feature_frame, features)
 
     run_suffix = artifacts.run_id
-    model_path = artifacts.segmentation_dir / f"client_segmentation_kmeans_{run_suffix}.pkl"
-    preprocessor_path = artifacts.segmentation_dir / f"client_segmentation_preprocessing_{run_suffix}.pkl"
-    labels_path = artifacts.segmentation_dir / f"client_segmentation_assignments_{run_suffix}.csv"
-    metrics_path = artifacts.segmentation_dir / f"client_segmentation_metrics_{run_suffix}.json"
+    model_path = config.models_dir / "kmeans_model.pkl"
+    preprocessor_path = config.models_dir / "preprocessing.pkl"
+    labels_path = config.processed_data_dir / "client_segmentation_assignments.csv"
+    metrics_path = config.reports_dir / "client_segmentation_metrics.json"
 
     joblib.dump(model, model_path)
     joblib.dump({"scaler": scaler, "features": features, "log_transform_cols": config.features.log_transform_cols, "bounds": bounds}, preprocessor_path)
@@ -389,13 +408,84 @@ def validate_client_segmentation(artifacts: ValidationArtifacts) -> dict[str, An
     return result
 
 
+HISTORICAL_PRICE_PROXY_FEATURES = {
+    "avg_historical_unit_price",
+    "min_historical_unit_price",
+    "max_historical_unit_price",
+    "historical_unit_price_stddev",
+    "historical_price_range",
+    "historical_price_std_ratio",
+    "historical_discount_gap_pct",
+    "total_order_revenue",
+    "log_total_order_revenue",
+    "revenue_per_buyer",
+}
+
+
+def _time_aware_price_split(cleaned: pd.DataFrame, frame: pd.DataFrame, config: PriceConfig):
+    product_ids = cleaned["product_id"].reset_index(drop=True).iloc[: len(frame)]
+    created_at = pd.to_datetime(cleaned["created_at"].reset_index(drop=True).iloc[: len(frame)], errors="coerce")
+    split_frame = pd.DataFrame({
+        "row_index": np.arange(len(frame)),
+        "product_id": product_ids.to_numpy(),
+        "created_at": created_at,
+        "has_sales_history": (cleaned["order_line_count"].reset_index(drop=True).iloc[: len(frame)] > 0).to_numpy(),
+    })
+    split_frame = split_frame.sort_values(["created_at", "product_id"], na_position="first").reset_index(drop=True)
+    split_at = int(len(split_frame) * (1 - config.model.test_size))
+    if split_at <= 0 or split_at >= len(split_frame):
+        raise ValueError("Not enough price rows for time-aware train/test split.")
+    train_meta = split_frame.iloc[:split_at].copy()
+    test_meta = split_frame.iloc[split_at:].copy()
+    return train_meta, test_meta
+
+
+def _subset_regression_metrics(y_true: pd.Series, y_pred: np.ndarray, mask: pd.Series) -> dict[str, Any]:
+    mask_values = mask.to_numpy(dtype=bool)
+    rows = int(mask_values.sum())
+    if rows < 2:
+        return {"rows": rows, "metrics": None}
+    return {
+        "rows": rows,
+        "metrics": _regression_metrics(y_true[mask_values], y_pred[mask_values]),
+    }
+
+
+def _price_config_without_historical_proxies(config: PriceConfig) -> PriceConfig:
+    ablation_config = PriceConfig()
+    ablation_config.data_dir = config.data_dir
+    ablation_config.raw_data_dir = config.raw_data_dir
+    ablation_config.processed_data_dir = config.processed_data_dir
+    ablation_config.models_dir = config.models_dir
+    ablation_config.reports_dir = config.reports_dir
+    ablation_config.plots_dir = config.plots_dir
+    ablation_config.metadata_dir = config.metadata_dir
+    ablation_config.model = config.model
+    ablation_config.n_jobs = config.n_jobs
+    ablation_config.features.numeric_features = [
+        col for col in config.features.numeric_features
+        if col not in HISTORICAL_PRICE_PROXY_FEATURES
+    ]
+    return ablation_config
+
+
 def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
     config = PriceConfig()
     config.data_dir = artifacts.price_dir / "data"
-    config.models_dir = artifacts.price_dir / "models"
+    config.raw_data_dir = config.data_dir / "raw"
+    config.processed_data_dir = config.data_dir / "processed"
+    config.models_dir = artifacts.price_dir / "model"
     config.reports_dir = artifacts.price_dir / "reports"
     config.plots_dir = artifacts.price_dir / "plots"
-    for path in [config.data_dir, config.models_dir, config.reports_dir, config.plots_dir]:
+    config.metadata_dir = artifacts.price_dir / "metadata"
+    for path in [
+        config.raw_data_dir,
+        config.processed_data_dir,
+        config.models_dir,
+        config.reports_dir,
+        config.plots_dir,
+        config.metadata_dir,
+    ]:
         path.mkdir(parents=True, exist_ok=True)
     df_raw = load_product_training_data(config, force_reload=True)
     cleaned, cleaning_report = clean_price_data(df_raw, config=config, include_target=True)
@@ -412,18 +502,17 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         "products_with_reviews": int((cleaned["review_rows_count"] > 0).sum()),
     }
 
-    product_ids = cleaned["product_id"].reset_index(drop=True).iloc[: len(frame)]
     columns = feature_columns(config, "improved")
     X = frame[columns]
     y = frame[config.features.target_col].astype(float)
-    X_train, X_test, y_train, y_test, id_train, id_test = train_test_split(
-        X,
-        y,
-        product_ids,
-        test_size=config.model.test_size,
-        random_state=config.model.random_state,
-        shuffle=True,
-    )
+    train_meta, test_meta = _time_aware_price_split(cleaned, frame, config)
+    X_train = X.iloc[train_meta["row_index"].to_numpy()].reset_index(drop=True)
+    X_test = X.iloc[test_meta["row_index"].to_numpy()].reset_index(drop=True)
+    y_train = y.iloc[train_meta["row_index"].to_numpy()].reset_index(drop=True)
+    y_test = y.iloc[test_meta["row_index"].to_numpy()].reset_index(drop=True)
+    id_train = train_meta["product_id"]
+    id_test = test_meta["product_id"]
+    test_has_sales_history = test_meta["has_sales_history"].reset_index(drop=True)
     leakage_overlap = sorted(set(id_train).intersection(set(id_test)))
 
     baseline = build_baseline_pipeline(config, profile="improved", use_log_target=config.model.baseline_use_log_target)
@@ -444,12 +533,27 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         metrics[name] = {
             "train": _regression_metrics(y_train, train_pred),
             "test": _regression_metrics(y_test, test_pred),
+            "test_by_sales_history": {
+                "with_sales_history": _subset_regression_metrics(y_test, test_pred, test_has_sales_history),
+                "cold_start_no_sales_history": _subset_regression_metrics(y_test, test_pred, ~test_has_sales_history),
+            },
             "overfitting_check": {
                 "rmse_gap_train_to_test": _regression_metrics(y_test, test_pred)["rmse"] - _regression_metrics(y_train, train_pred)["rmse"],
                 "r2_gap_train_to_test": _regression_metrics(y_train, train_pred)["r2"] - _regression_metrics(y_test, test_pred)["r2"],
             },
         }
-        joblib.dump(model, artifacts.price_dir / f"{name}_{run_suffix}.pkl")
+        joblib.dump(model, config.models_dir / f"{name}.pkl")
+
+    ablation_config = _price_config_without_historical_proxies(config)
+    ablation_columns = feature_columns(ablation_config, "improved")
+    ablation_model = build_performant_pipeline(
+        ablation_config,
+        profile="improved",
+        use_log_target=ablation_config.model.performant_use_log_target,
+    )
+    ablation_model.fit(X_train[ablation_columns], y_train)
+    ablation_pred = ablation_model.predict(X_test[ablation_columns])
+    ablation_metrics = _regression_metrics(y_test, ablation_pred)
 
     predictions_df = pd.DataFrame(
         {
@@ -457,9 +561,10 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
             "real_database_price": list(y_test),
             "baseline_predicted_price": predictions["price_prediction_baseline"],
             "performant_predicted_price": predictions["price_prediction_performant"],
+            "has_sales_history": list(test_has_sales_history),
         }
     )
-    predictions_path = artifacts.price_dir / f"price_prediction_holdout_predictions_{run_suffix}.csv"
+    predictions_path = config.processed_data_dir / "price_prediction_holdout_predictions.csv"
     predictions_df.to_csv(predictions_path, index=False)
 
     drift_train_test = _numeric_drift(X_train, X_test, config.features.numeric_features)
@@ -486,7 +591,16 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         "rows_after_preprocessing": int(len(frame)),
         "train_rows": int(len(X_train)),
         "test_rows": int(len(X_test)),
+        "split_strategy": {
+            "type": "time_aware_product_created_at",
+            "train_max_created_at": str(train_meta["created_at"].max()),
+            "test_min_created_at": str(test_meta["created_at"].min()),
+        },
         "models": metrics,
+        "historical_proxy_ablation": {
+            "removed_features": sorted(HISTORICAL_PRICE_PROXY_FEATURES.intersection(columns)),
+            "performant_without_historical_price_proxies": ablation_metrics,
+        },
         "real_database_validation": {
             "prediction_file": predictions_path,
             "target": "products.price",
@@ -503,12 +617,12 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         },
         "outlier_check": outliers,
         "artifacts": {
-            "baseline_model": artifacts.price_dir / f"price_prediction_baseline_{run_suffix}.pkl",
-            "performant_model": artifacts.price_dir / f"price_prediction_performant_{run_suffix}.pkl",
+            "baseline_model": config.models_dir / "price_prediction_baseline.pkl",
+            "performant_model": config.models_dir / "price_prediction_performant.pkl",
             "predictions": predictions_path,
         },
     }
-    _save_json(artifacts.price_dir / f"price_prediction_metrics_{run_suffix}.json", result)
+    _save_json(config.reports_dir / "price_prediction_metrics.json", result)
     return result
 
 
@@ -528,11 +642,25 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         and performant_test["r2"] > baseline_test["r2"]
     )
     acceptable_price_performance = performant_test["r2"] >= 0.2
+    sales_history_metrics = price["price_prediction_performant"]["test_by_sales_history"]["with_sales_history"]
+    cold_start_metrics = price["price_prediction_performant"]["test_by_sales_history"]["cold_start_no_sales_history"]
+    existing_product_ready = bool(
+        performant_beats_baseline
+        and acceptable_price_performance
+        and sales_history_metrics["rows"] >= 30
+        and sales_history_metrics["metrics"] is not None
+        and sales_history_metrics["metrics"]["r2"] >= 0.2
+    )
+    cold_start_ready = bool(
+        cold_start_metrics["rows"] >= 30
+        and cold_start_metrics["metrics"] is not None
+        and cold_start_metrics["metrics"]["r2"] >= 0.2
+    )
     ready = bool(
         db_passed
         and leakage_passed
-        and performant_beats_baseline
-        and acceptable_price_performance
+        and existing_product_ready
+        and cold_start_ready
         and performant_test["rmse"] > 0
         and segmentation["current_rows"] > 0
         and segmentation["test_metrics"]["silhouette_score"] is not None
@@ -545,6 +673,10 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         recommendations.append("Performant price model does not beat the baseline on MAE, RMSE, and R2.")
     if not acceptable_price_performance:
         recommendations.append("Price model test R2 is below the minimum acceptance threshold of 0.20.")
+    if not existing_product_ready:
+        recommendations.append("Existing-product price readiness failed for products with sales history.")
+    if not cold_start_ready:
+        recommendations.append("Cold-start price readiness is not proven for products without sales history.")
     if segmentation["test_metrics"]["silhouette_score"] is None or segmentation["test_metrics"]["silhouette_score"] < 0.1:
         recommendations.append("Segmentation separation is weak; enrich user_features with recency/frequency/session/device signals.")
     if not db_passed:
@@ -558,6 +690,12 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
             "performant_beats_baseline": performant_beats_baseline,
             "minimum_test_r2": 0.2,
             "actual_test_r2": performant_test["r2"],
+            "existing_product_ready": existing_product_ready,
+            "cold_start_ready": cold_start_ready,
+        },
+        "production_readiness_scope": {
+            "existing_products_with_sales_history": existing_product_ready,
+            "cold_start_products_without_sales_history": cold_start_ready,
         },
         "recommended_fixes": recommendations,
     }
