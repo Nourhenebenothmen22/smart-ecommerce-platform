@@ -169,7 +169,6 @@ Le pipeline calcule automatiquement des indicateurs **RFM (Récence, Fréquence,
 
 ### 2. Algorithmes disponibles :
 - **K-Means** : Clustering basé sur la distance Euclidienne (avec méthode Elbow/Silhouette).
-- **GMM (Gaussian Mixture Model)** : Clustering probabiliste pour des segments aux formes complexes.
 - **DBSCAN** : Détection de clusters basée sur la densité (idéal pour identifier les outliers).
 
 ### 3. Exécution du Pipeline :
