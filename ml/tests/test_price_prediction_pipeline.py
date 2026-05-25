@@ -346,6 +346,18 @@ class PricePredictionPipelineTests(unittest.TestCase):
         self.assertFalse(passed)
         self.assertIn("test_r2_not_positive", reasons)
 
+    def test_rejected_training_without_previous_artifact_does_not_create_empty_artifact(self):
+        with _workspace_tempdir() as tmp_dir:
+            config = _config(tmp_dir)
+            shutil.rmtree(tmp_dir)
+            config.model.minimum_publish_r2 = 999.0
+
+            results = train_price_prediction_models(_sample_products(), config=config)
+
+            self.assertFalse(results["published"])
+            self.assertFalse(tmp_dir.exists())
+            self.assertFalse((tmp_dir.parent / ".staging").exists())
+
     def test_price_prediction_request_requires_complete_payload_without_product_id(self):
         from pydantic import ValidationError
         from ml.api.schemas import PricePredictionRequest
