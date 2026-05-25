@@ -32,6 +32,7 @@ if _ML_ROOT not in sys.path:
 
 os.environ.setdefault("ML_ALLOW_MODEL_DOWNLOADS", "false")
 os.environ.setdefault("ML_ENABLE_LLM_CALLS", "false")
+os.environ["ML_REQUIRE_SERVICE_TOKEN"] = "false"
 
 from api.main import app
 from fastapi.testclient import TestClient
