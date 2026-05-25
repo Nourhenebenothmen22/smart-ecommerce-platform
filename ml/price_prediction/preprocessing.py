@@ -447,14 +447,12 @@ def build_legacy_feature_frame(df: pd.DataFrame, config: Config = cfg, include_t
     return work[selected].reset_index(drop=True)
 
 
-def build_feature_frame(
-    df: pd.DataFrame,
+def build_feature_frame_from_cleaned(
+    cleaned: pd.DataFrame,
     config: Config = cfg,
     include_target: bool = True,
-    return_report: bool = False,
-) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
-    """Create the improved backend-compatible regression feature frame."""
-    cleaned, report = clean_price_data(df, config=config, include_target=include_target)
+) -> pd.DataFrame:
+    """Create the improved feature frame from already-cleaned product rows."""
     work = _add_advanced_features(cleaned)
 
     for column in config.features.numeric_features:
@@ -466,7 +464,18 @@ def build_feature_frame(
     if include_target:
         selected = selected + [config.features.target_col]
 
-    frame = work[selected].reset_index(drop=True)
+    return work[selected].reset_index(drop=True)
+
+
+def build_feature_frame(
+    df: pd.DataFrame,
+    config: Config = cfg,
+    include_target: bool = True,
+    return_report: bool = False,
+) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, Any]]:
+    """Create the improved backend-compatible regression feature frame."""
+    cleaned, report = clean_price_data(df, config=config, include_target=include_target)
+    frame = build_feature_frame_from_cleaned(cleaned, config=config, include_target=include_target)
     if return_report:
         return frame, report
     return frame
