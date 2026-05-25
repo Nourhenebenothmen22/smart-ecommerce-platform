@@ -111,33 +111,44 @@ def publish_latest_artifact(config, run: ArtifactRun) -> None:
     if final in staging.parents or staging in final.parents:
         raise ValueError("Refusing to publish nested ML artifact paths.")
 
-    allowed_top_level = {"model", "plots", "reports", "data", "metadata"}
-    if final.exists():
-        has_existing_files = any(path.is_file() for path in final.rglob("*"))
-        if not has_existing_files:
-            shutil.copytree(staging, final, dirs_exist_ok=True)
-            _remove_tree(staging, ignore_errors=True)
-            apply_artifact_layout(config, final)
-            return
-        try:
-            _remove_tree(final)
-        except PermissionError:
-            shutil.copytree(staging, final, dirs_exist_ok=True)
-            _remove_tree(staging, ignore_errors=True)
-            for child in final.iterdir():
-                if child.name not in allowed_top_level:
-                    if child.is_dir():
-                        _remove_tree(child, ignore_errors=True)
-                    else:
-                        child.unlink(missing_ok=True)
-            apply_artifact_layout(config, final)
-            return
+    replacement = final.with_name(f".{final.name}.replacement-{uuid.uuid4().hex}")
+    previous = final.with_name(f".{final.name}.previous-{uuid.uuid4().hex}")
+    if replacement.exists():
+        _remove_tree(replacement)
+    if previous.exists():
+        _remove_tree(previous)
+
     try:
-        shutil.move(str(staging), str(final))
+        shutil.copytree(staging, replacement)
+        _remove_tree(staging, ignore_errors=True)
+        if final.exists():
+            if not any(path.is_file() for path in final.rglob("*")):
+                shutil.copytree(replacement, final, dirs_exist_ok=True)
+                _remove_tree(replacement, ignore_errors=True)
+                apply_artifact_layout(config, final)
+                cleanup_empty_staging(final.parent)
+                return
+            final.rename(previous)
+        replacement.rename(final)
+
+        if previous.exists():
+            try:
+                _remove_tree(previous)
+            except Exception:
+                if final.exists():
+                    _remove_tree(final, ignore_errors=True)
+                if previous.exists():
+                    previous.rename(final)
+                raise
     except Exception:
+        if not final.exists() and previous.exists():
+            previous.rename(final)
+        if replacement.exists():
+            _remove_tree(replacement, ignore_errors=True)
         raise
     finally:
         apply_artifact_layout(config, final)
+        cleanup_empty_staging(final.parent)
 
 
 def discard_staged_artifact(config, run: ArtifactRun) -> None:
