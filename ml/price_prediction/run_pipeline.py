@@ -5,6 +5,8 @@ Main orchestrator for the product price prediction pipeline.
 import json
 import logging
 import sys
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 import joblib
@@ -196,6 +198,7 @@ def train_price_prediction_models(
     run = artifact_run
     lcfg = local_config or config
     try:
+        training_run_id = f"{lcfg.price_model_name}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}_{uuid.uuid4().hex[:8]}"
         lcfg.raw_data_dir.mkdir(parents=True, exist_ok=True)
         df.to_csv(lcfg.raw_data_dir / "products_price_raw.csv", index=False)
         improved_results, improved_prepared, improved_report = _train_profile_models(df, "improved", config=lcfg)
@@ -206,6 +209,14 @@ def train_price_prediction_models(
         joblib.dump(best_pipeline, lcfg.models_dir / "best_model.pkl")
 
         metrics_by_model = {name: data["metrics"] for name, data in results.items()}
+        baseline_metrics = metrics_by_model.get(lcfg.model.baseline_name, {})
+        best_metrics = metrics_by_model[best_name]
+        production_ready = bool(
+            best_name == lcfg.model.performant_name
+            and best_metrics.get("r2", -999.0) >= 0.2
+            and best_metrics.get("rmse", float("inf")) < baseline_metrics.get("rmse", float("inf"))
+            and best_metrics.get("mae", float("inf")) < baseline_metrics.get("mae", float("inf"))
+        )
         comparison = comparison_frame(results, config=lcfg)
         lcfg.processed_data_dir.mkdir(parents=True, exist_ok=True)
         improved_prepared.to_csv(lcfg.processed_data_dir / "products_price_preprocessed.csv", index=False)
@@ -231,12 +242,21 @@ def train_price_prediction_models(
         metadata = {
             "model_name": lcfg.price_model_name,
             "model_version": lcfg.price_model_version,
+            "training_run_id": training_run_id,
+            "trained_at": datetime.now(timezone.utc).isoformat(),
+            "artifact_schema_version": "latest-valid-v2",
             "best_model": results[best_name]["model_name"],
             "best_profile": results[best_name]["profile"],
             "best_result_key": best_name,
             "metrics": metrics_by_model,
             "train_metrics": {name: data["train_metrics"] for name, data in results.items()},
+            "production_ready": production_ready,
             "split_strategy": results[best_name]["split_strategy"],
+            "data_rows": {
+                "raw": int(len(df)),
+                "prepared": int(len(improved_prepared)),
+                "removed_by_preprocessing": int(len(df) - len(improved_prepared)),
+            },
             "feature_columns": feature_columns(lcfg, results[best_name]["profile"]),
             "target": lcfg.features.target_col,
             "artifact_policy": "latest_valid_only",
