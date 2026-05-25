@@ -43,12 +43,14 @@ def _remove_tree(path: Path, ignore_errors: bool = False) -> None:
             if not ignore_errors:
                 raise
 
-    for attempt in range(5):
+    for attempt in range(20):
         try:
-            shutil.rmtree(path, ignore_errors=ignore_errors, onexc=_make_writable_and_retry)
+            shutil.rmtree(path, ignore_errors=False, onexc=_make_writable_and_retry)
             return
-        except PermissionError:
-            if attempt == 4:
+        except FileNotFoundError:
+            return
+        except (OSError, PermissionError):
+            if attempt == 19:
                 if ignore_errors:
                     return
                 raise
@@ -56,20 +58,30 @@ def _remove_tree(path: Path, ignore_errors: bool = False) -> None:
 
 
 def _remove_path(path: Path, ignore_errors: bool = False) -> None:
-    try:
-        if path.is_dir():
-            _remove_tree(path, ignore_errors=ignore_errors)
-            return
-        try:
-            os.chmod(path, stat.S_IWRITE)
-        except OSError:
-            pass
-        path.unlink()
-    except FileNotFoundError:
+    if path.is_dir():
+        _remove_tree(path, ignore_errors=ignore_errors)
         return
-    except Exception:
-        if not ignore_errors:
-            raise
+
+    for attempt in range(20):
+        try:
+            try:
+                os.chmod(path, stat.S_IWRITE)
+            except OSError:
+                pass
+            path.unlink()
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            if attempt == 19:
+                if ignore_errors:
+                    return
+                raise
+            time.sleep(0.25)
+        except Exception:
+            if not ignore_errors:
+                raise
+            return
 
 
 def _sync_tree(source: Path, target: Path) -> None:
@@ -82,8 +94,12 @@ def _sync_tree(source: Path, target: Path) -> None:
     for child in source.iterdir():
         destination = target / child.name
         if child.is_dir():
+            if destination.exists() and not destination.is_dir():
+                _remove_path(destination)
             _sync_tree(child, destination)
         else:
+            if destination.exists() and destination.is_dir():
+                _remove_tree(destination)
             shutil.copy2(child, destination)
 
 
@@ -164,6 +180,10 @@ def publish_latest_artifact(config, run: ArtifactRun) -> None:
             if previous.exists():
                 _sync_tree(previous, final)
             raise
+    except Exception:
+        if replacement.exists():
+            _remove_tree(replacement, ignore_errors=True)
+        raise
     finally:
         if replacement.exists():
             _remove_tree(replacement, ignore_errors=True)
