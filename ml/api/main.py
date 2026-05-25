@@ -114,6 +114,22 @@ class PricePredictionRequest(BaseModel):
         payload = self.model_dump(exclude_none=True)
         if not payload:
             raise ValueError("Provide product_id or product feature fields for price prediction.")
+        if "product_id" not in payload:
+            required = {
+                "brand",
+                "category_name",
+                "subcategory_name",
+                "discount_percent",
+                "rating_avg",
+                "review_count",
+                "stock",
+            }
+            missing = sorted(required - payload.keys())
+            if missing:
+                raise ValueError(
+                    "Provide product_id or complete product feature fields for price prediction. "
+                    f"Missing: {', '.join(missing)}"
+                )
         return self
 
 
