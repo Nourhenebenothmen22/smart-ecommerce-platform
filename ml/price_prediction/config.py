@@ -89,22 +89,12 @@ class FeatureConfig:
             "max_order_quantity",
             "fulfilled_order_lines",
             "fulfilled_quantity_sold",
-            "total_order_revenue",
-            "avg_historical_unit_price",
-            "min_historical_unit_price",
-            "max_historical_unit_price",
-            "historical_unit_price_stddev",
-            "historical_price_range",
-            "historical_price_std_ratio",
-            "historical_discount_gap_pct",
             "distinct_buyers",
             "days_since_first_order",
             "days_since_last_order",
             "log_order_line_count",
             "log_total_quantity_sold",
-            "log_total_order_revenue",
             "sales_velocity",
-            "revenue_per_buyer",
             "quantity_per_buyer",
             "buyer_per_order_ratio",
             "view_count",
@@ -132,6 +122,20 @@ class FeatureConfig:
             "purchase_to_view_rate",
             "wishlist_to_view_rate",
             "stock_to_sales_ratio",
+        ]
+    )
+    historical_price_proxy_features: List[str] = field(
+        default_factory=lambda: [
+            "total_order_revenue",
+            "avg_historical_unit_price",
+            "min_historical_unit_price",
+            "max_historical_unit_price",
+            "historical_unit_price_stddev",
+            "historical_price_range",
+            "historical_price_std_ratio",
+            "historical_discount_gap_pct",
+            "log_total_order_revenue",
+            "revenue_per_buyer",
         ]
     )
     categorical_features: List[str] = field(
