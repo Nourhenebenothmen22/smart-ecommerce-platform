@@ -42,7 +42,7 @@ from ml.customer_segmentation.config import Config as SegmentationConfig
 from ml.customer_segmentation.data_loader import load_and_prepare
 from ml.price_prediction.config import Config as PriceConfig
 from ml.price_prediction.data_loader import load_product_training_data
-from ml.price_prediction.preprocessing import build_feature_frame, clean_price_data, feature_columns
+from ml.price_prediction.preprocessing import build_feature_frame_from_cleaned, clean_price_data, feature_columns
 from ml.price_prediction.train_baseline import build_baseline_pipeline
 from ml.price_prediction.train_model import build_performant_pipeline
 
@@ -489,7 +489,7 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         path.mkdir(parents=True, exist_ok=True)
     df_raw = load_product_training_data(config, force_reload=True)
     cleaned, cleaning_report = clean_price_data(df_raw, config=config, include_target=True)
-    frame = build_feature_frame(cleaned, config=config, include_target=True)
+    frame = build_feature_frame_from_cleaned(cleaned, config=config, include_target=True)
     assert isinstance(frame, pd.DataFrame)
     signal_availability = {
         "products_with_sales_history": int((cleaned["order_line_count"] > 0).sum()),
@@ -642,6 +642,16 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         and performant_test["r2"] > baseline_test["r2"]
     )
     acceptable_price_performance = performant_test["r2"] >= 0.2
+    ablation = report["price_prediction"].get("historical_proxy_ablation", {})
+    removed_proxy_features = ablation.get("removed_features", [])
+    ablation_metrics = ablation.get("performant_without_historical_price_proxies", {})
+    proxy_ablation_passed = bool(
+        not removed_proxy_features
+        or (
+            isinstance(ablation_metrics, dict)
+            and ablation_metrics.get("r2", -999.0) >= 0.2
+        )
+    )
     sales_history_metrics = price["price_prediction_performant"]["test_by_sales_history"]["with_sales_history"]
     cold_start_metrics = price["price_prediction_performant"]["test_by_sales_history"]["cold_start_no_sales_history"]
     existing_product_ready = bool(
@@ -661,6 +671,7 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         and leakage_passed
         and existing_product_ready
         and cold_start_ready
+        and proxy_ablation_passed
         and performant_test["rmse"] > 0
         and segmentation["current_rows"] > 0
         and segmentation["test_metrics"]["silhouette_score"] is not None
@@ -677,6 +688,10 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
         recommendations.append("Existing-product price readiness failed for products with sales history.")
     if not cold_start_ready:
         recommendations.append("Cold-start price readiness is not proven for products without sales history.")
+    if not proxy_ablation_passed:
+        recommendations.append(
+            "Price readiness depends on historical price/revenue proxy features; exclude those proxies or limit readiness scope."
+        )
     if segmentation["test_metrics"]["silhouette_score"] is None or segmentation["test_metrics"]["silhouette_score"] < 0.1:
         recommendations.append("Segmentation separation is weak; enrich user_features with recency/frequency/session/device signals.")
     if not db_passed:
@@ -692,6 +707,7 @@ def build_readiness_conclusion(report: dict[str, Any]) -> dict[str, Any]:
             "actual_test_r2": performant_test["r2"],
             "existing_product_ready": existing_product_ready,
             "cold_start_ready": cold_start_ready,
+            "proxy_ablation_passed": proxy_ablation_passed,
         },
         "production_readiness_scope": {
             "existing_products_with_sales_history": existing_product_ready,
