@@ -29,11 +29,11 @@ class BM25Retriever:
                            LEFT(p.description, 1000) AS description_preview,
                            p.rating_avg, p.stock,
                            ts_rank(
-                               to_tsvector('french', COALESCE(p.title, '') || ' ' || COALESCE(p.description, '')),
+                               p.search_vector,
                                websearch_to_tsquery('french', %s)
                            ) AS score
                     FROM products p
-                    WHERE to_tsvector('french', COALESCE(p.title, '') || ' ' || COALESCE(p.description, ''))
+                    WHERE p.search_vector
                           @@ websearch_to_tsquery('french', %s)
                       AND p.is_active = TRUE
                       AND p.stock > 0
