@@ -38,6 +38,7 @@ L'algorithme a déterminé que la structure la plus robuste de votre base de don
 | **Stabilité** | Maximale (50 init) | Variable (selon densité) |
 
 ## 📁 Localisation des Résultats
-*   **Modèle Persistant** : `ml/artifacts/customer_segmentation/models/kmeans_model.pkl`
-*   **Données Étiquetées** : `ml/artifacts/customer_segmentation/data/best_model_users_labelled.csv`
-*   **Rapport Comparatif** : `ml/artifacts/customer_segmentation/reports/model_comparison.csv`
+*   **Modele production** : `ml/artifacts/customer_segmentation/model/kmeans_model.pkl`
+*   **Donnees etiquetees** : `ml/artifacts/customer_segmentation/data/processed/best_model_users_labelled.csv`
+*   **Rapport comparatif** : `ml/artifacts/customer_segmentation/reports/model_comparison.csv`
+*   **Note production** : DBSCAN reste disponible pour l'analyse offline, mais l'artefact publie pour l'inference backend est K-Means car il fournit une prediction deterministe pour de nouveaux utilisateurs.
