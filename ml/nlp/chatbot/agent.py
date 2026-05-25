@@ -8,12 +8,16 @@ Includes prompt injection protection and graceful degradation.
 import logging
 import re
 from typing import Dict, Any, List
-import os
 
 try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None  # type: ignore
+
+try:
+    from ml.core.config import settings
+except ImportError:  # pragma: no cover - supports running from inside ml/
+    from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,18 +44,12 @@ class RAGChatbotAgent:
     """
 
     def __init__(self, api_key: str = None):
-        from dotenv import load_dotenv
-        # Point specifically to project root .env
-        dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../.env'))
-        load_dotenv(dotenv_path)
-
-        # API Key: injected > env variable
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-        enable_llm_calls = os.getenv("ML_ENABLE_LLM_CALLS", "true").lower() == "true"
+        self.api_key = api_key or settings.OPENAI_API_KEY
         self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=self.api_key
-        ) if OpenAI and self.api_key and enable_llm_calls else None
+            base_url=settings.LLM_BASE_URL,
+            api_key=self.api_key,
+            timeout=settings.LLM_TIMEOUT_SECONDS,
+        ) if OpenAI and self.api_key and settings.ML_ENABLE_LLM_CALLS else None
 
         if not self.client:
             logger.warning("OpenAI client not initialized — chatbot will operate in DEMO mode.")
@@ -172,7 +170,7 @@ class RAGChatbotAgent:
         # 4. LLM Inference
         try:
             response = self.client.chat.completions.create(
-                model="openai/gpt-4o-mini",
+                model=settings.LLM_MODEL,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": user_message}
