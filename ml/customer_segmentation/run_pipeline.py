@@ -71,6 +71,19 @@ def run_segmentation_pipeline():
 
         # 5. Compare & Select Best Model
         winner_name, winner_data, reason, comp_df = compare_models(kmeans_results, dbscan_results, local_cfg)
+        analysis_winner = winner_name
+        if not winner_name.lower().startswith("k"):
+            logger.warning(
+                "%s won the offline comparison, but production inference only supports KMeans predict(). "
+                "Publishing KMeans as the production segmentation model.",
+                winner_name,
+            )
+            winner_name = "KMeans"
+            winner_data = kmeans_results
+            reason = (
+                f"{analysis_winner} had the best offline score, but KMeans was selected for production "
+                "because DBSCAN does not support deterministic prediction for unseen users."
+            )
 
         # 6. Business Interpretation
         df_labelled = interpret_and_save(df_raw, df_clean, winner_data["labels"], features, local_cfg)
@@ -83,6 +96,8 @@ def run_segmentation_pipeline():
             "model_name": local_cfg.segmentation_model_name,
             "model_version": local_cfg.segmentation_model_version,
             "winner": winner_name,
+            "analysis_winner": analysis_winner,
+            "production_model_type": "KMeans",
             "metrics": winner_data["metrics"],
             "features": features,
             "artifact_policy": "latest_valid_only",
