@@ -8,6 +8,8 @@ import sys
 from typing import Any
 
 import joblib
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ml.core.artifacts import (
@@ -28,7 +30,13 @@ from .plots import (
     plot_model_performance,
     plot_price_distribution,
 )
-from .preprocessing import PreprocessingProfile, build_feature_frame_for_profile, feature_columns
+from .preprocessing import (
+    PreprocessingProfile,
+    build_feature_frame_for_profile,
+    build_feature_frame_from_cleaned,
+    clean_price_data,
+    feature_columns,
+)
 from .train_baseline import build_baseline_pipeline
 from .train_model import build_performant_pipeline
 
@@ -41,14 +49,54 @@ logging.basicConfig(
 logger = logging.getLogger("price_prediction_pipeline")
 
 
-def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cfg) -> tuple[dict[str, dict[str, Any]], Any, dict[str, Any]]:
-    prepared, report = build_feature_frame_for_profile(
-        df,
-        config=config,
-        profile=profile,
-        include_target=True,
-        return_report=True,
+def _time_aware_split(
+    prepared: pd.DataFrame,
+    cleaned: pd.DataFrame,
+    config: Config,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    meta = pd.DataFrame(
+        {
+            "row_index": np.arange(len(prepared)),
+            "product_id": cleaned["product_id"].reset_index(drop=True).iloc[: len(prepared)].to_numpy(),
+            "created_at": pd.to_datetime(
+                cleaned["created_at"].reset_index(drop=True).iloc[: len(prepared)],
+                errors="coerce",
+            ),
+        }
     )
+    meta = meta.sort_values(["created_at", "product_id"], na_position="first").reset_index(drop=True)
+    split_at = int(len(meta) * (1 - config.model.test_size))
+    if split_at <= 0 or split_at >= len(meta):
+        raise ValueError("Not enough price rows for time-aware train/test split.")
+
+    train_meta = meta.iloc[:split_at].copy()
+    test_meta = meta.iloc[split_at:].copy()
+    return (
+        train_meta["row_index"].to_numpy(),
+        test_meta["row_index"].to_numpy(),
+        {
+            "type": "time_aware_product_created_at",
+            "train_rows": int(len(train_meta)),
+            "test_rows": int(len(test_meta)),
+            "train_max_created_at": str(train_meta["created_at"].max()),
+            "test_min_created_at": str(test_meta["created_at"].min()),
+        },
+    )
+
+
+def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cfg) -> tuple[dict[str, dict[str, Any]], Any, dict[str, Any]]:
+    cleaned = None
+    if profile == "improved":
+        cleaned, report = clean_price_data(df, config=config, include_target=True)
+        prepared = build_feature_frame_from_cleaned(cleaned, config=config, include_target=True)
+    else:
+        prepared, report = build_feature_frame_for_profile(
+            df,
+            config=config,
+            profile=profile,
+            include_target=True,
+            return_report=True,
+        )
     if len(prepared) < config.model.min_training_rows:
         raise ValueError(
             f"Need at least {config.model.min_training_rows} product rows to train {profile} price prediction; got {len(prepared)}."
@@ -57,12 +105,24 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
     columns = feature_columns(config, profile)
     X = prepared[columns]
     y = prepared[config.features.target_col].astype(float)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=config.model.test_size,
-        random_state=config.model.random_state,
-    )
+    if cleaned is not None:
+        train_idx, test_idx, split_strategy = _time_aware_split(prepared, cleaned, config)
+        X_train = X.iloc[train_idx].reset_index(drop=True)
+        X_test = X.iloc[test_idx].reset_index(drop=True)
+        y_train = y.iloc[train_idx].reset_index(drop=True)
+        y_test = y.iloc[test_idx].reset_index(drop=True)
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=config.model.test_size,
+            random_state=config.model.random_state,
+        )
+        split_strategy = {
+            "type": "random",
+            "train_rows": int(len(X_train)),
+            "test_rows": int(len(X_test)),
+        }
 
     candidates = {
         config.model.baseline_name: build_baseline_pipeline(
@@ -81,11 +141,13 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
     for name, pipeline in candidates.items():
         logger.info("Training price prediction model: %s (%s preprocessing)", name, profile)
         pipeline.fit(X_train, y_train)
+        train_predictions = pipeline.predict(X_train)
         predictions = pipeline.predict(X_test)
         result_key = name if profile == "improved" else f"{profile}__{name}"
         results[result_key] = {
             "pipeline": pipeline,
             "predictions": predictions,
+            "train_metrics": evaluate_regression(y_train, train_predictions),
             "metrics": evaluate_regression(y_test, predictions),
             "profile": profile,
             "model_name": name,
@@ -98,6 +160,7 @@ def _train_profile_models(df, profile: PreprocessingProfile, config: Config = cf
                 )
             ),
             "y_test": y_test,
+            "split_strategy": split_strategy,
         }
         joblib.dump(pipeline, config.models_dir / f"{profile}_{name}.pkl")
 
@@ -172,6 +235,8 @@ def train_price_prediction_models(
             "best_profile": results[best_name]["profile"],
             "best_result_key": best_name,
             "metrics": metrics_by_model,
+            "train_metrics": {name: data["train_metrics"] for name, data in results.items()},
+            "split_strategy": results[best_name]["split_strategy"],
             "feature_columns": feature_columns(lcfg, results[best_name]["profile"]),
             "target": lcfg.features.target_col,
             "artifact_policy": "latest_valid_only",
