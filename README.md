@@ -177,8 +177,6 @@ Depuis la racine :
 # Exécuter tous les modèles et comparer le meilleur
 python -m ml.customer_segmentation.run_pipeline
 
-# Exécuter des modèles spécifiques (ex: K-Means et GMM)
-python -m ml.customer_segmentation.run_pipeline --models kmeans gmm
 
 # Forcer la synchronisation avec la base de données
 python -m ml.customer_segmentation.run_pipeline --force-reload
