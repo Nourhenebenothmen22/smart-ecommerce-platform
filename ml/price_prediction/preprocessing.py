@@ -18,6 +18,32 @@ from sklearn.preprocessing import OneHotEncoder, RobustScaler
 from .config import Config, cfg
 
 PreprocessingProfile = Literal["legacy", "improved"]
+PreprocessingStrategy = Literal["linear_regression", "random_forest", "xgboost"]
+
+
+class NumericOutlierClipper(BaseEstimator, TransformerMixin):
+    """Train-fitted numeric clipping for feature outliers."""
+
+    def __init__(self, lower_quantile: float = 0.005, upper_quantile: float = 0.995):
+        self.lower_quantile = lower_quantile
+        self.upper_quantile = upper_quantile
+
+    def fit(self, X, y=None):
+        values = np.asarray(X, dtype=float)
+        if values.ndim == 1:
+            values = values.reshape(-1, 1)
+        self.lower_bounds_ = np.nanquantile(values, self.lower_quantile, axis=0)
+        self.upper_bounds_ = np.nanquantile(values, self.upper_quantile, axis=0)
+        return self
+
+    def transform(self, X):
+        values = np.asarray(X, dtype=float)
+        if values.ndim == 1:
+            values = values.reshape(-1, 1)
+        return np.clip(values, self.lower_bounds_, self.upper_bounds_)
+
+    def get_feature_names_out(self, input_features=None):
+        return np.asarray(input_features if input_features is not None else [], dtype=object)
 
 
 class TargetMeanEncoder(BaseEstimator, TransformerMixin):
@@ -513,8 +539,12 @@ def split_features_target(
     return X, y
 
 
-def build_preprocessor(config: Config = cfg, profile: PreprocessingProfile = "improved") -> ColumnTransformer:
-    """Build the reusable sklearn preprocessing transformer."""
+def build_preprocessor(
+    config: Config = cfg,
+    profile: PreprocessingProfile = "improved",
+    strategy: PreprocessingStrategy = "linear_regression",
+) -> ColumnTransformer:
+    """Build an estimator-specific reusable sklearn preprocessing transformer."""
     numeric_features = (
         config.features.legacy_numeric_features
         if profile == "legacy"
@@ -526,15 +556,22 @@ def build_preprocessor(config: Config = cfg, profile: PreprocessingProfile = "im
         else config.features.categorical_features
     )
 
-    numeric_pipeline = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", RobustScaler()),
-        ]
-    )
+    numeric_steps: list[tuple[str, Any]] = [
+        ("imputer", SimpleImputer(strategy="median")),
+        (
+            "outlier_clipper",
+            NumericOutlierClipper(
+                lower_quantile=config.features.outlier_lower_quantile,
+                upper_quantile=config.features.outlier_upper_quantile,
+            ),
+        ),
+    ]
+    if strategy == "linear_regression":
+        numeric_steps.append(("scaler", RobustScaler()))
+    numeric_pipeline = Pipeline(steps=numeric_steps)
     categorical_pipeline = Pipeline(
         steps=[
-            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("imputer", SimpleImputer(strategy="constant", fill_value="unknown")),
             ("onehot", _one_hot_encoder(config)),
         ]
     )
@@ -543,7 +580,7 @@ def build_preprocessor(config: Config = cfg, profile: PreprocessingProfile = "im
         ("numeric", numeric_pipeline, numeric_features),
         ("categorical", categorical_pipeline, categorical_features),
     ]
-    if profile != "legacy" and config.features.target_encoded_features:
+    if profile != "legacy" and strategy in {"random_forest", "xgboost"} and config.features.target_encoded_features:
         transformers.append(
             (
                 "target_price_prior",
