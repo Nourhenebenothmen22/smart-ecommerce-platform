@@ -15,7 +15,7 @@ def build_baseline_pipeline(
     """Linear regression baseline used as a simple, real reference model."""
     pipeline = Pipeline(
         steps=[
-            ("preprocessor", build_preprocessor(config, profile=profile)),
+            ("preprocessor", build_preprocessor(config, profile=profile, strategy="linear_regression")),
             ("model", LinearRegression()),
         ]
     )
