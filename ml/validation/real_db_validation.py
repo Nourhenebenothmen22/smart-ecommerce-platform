@@ -582,7 +582,7 @@ def validate_price_prediction(artifacts: ValidationArtifacts) -> dict[str, Any]:
         ["mae", "rmse", "r2"],
     )
 
-    leakage_forbidden = [col for col in ["price", "final_price", "category_id", "subcategory_id", "product_id"] if col in columns]
+    leakage_forbidden = [col for col in ["price", "final_price", "category_id", "subcategory_id", "product_id", "supplier_cost", "margin_pct"] if col in columns]
     result = {
         "data_source": "PostgreSQL products joined to categories, subcategories, order_items/orders, user_interactions, reviews, cart_items, and wishlists",
         "raw_rows": int(len(df_raw)),

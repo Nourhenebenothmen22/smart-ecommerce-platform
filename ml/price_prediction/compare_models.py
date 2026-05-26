@@ -40,11 +40,17 @@ def train_test_diagnostics(
     rmse_train = float(train_metrics.get("rmse", 0.0))
     rmse_test = float(test_metrics.get("rmse", 0.0))
     rmse_gap_pct = 0.0 if rmse_train <= 0 else float((rmse_test - rmse_train) / rmse_train)
+    
+    # Underfitting: both train and test R2 < 0.1
+    train_r2 = train_metrics.get("r2", 0.0)
+    test_r2 = test_metrics.get("r2", 0.0)
+    underfitting = bool(train_r2 < 0.1 and test_r2 < 0.1)
+    
     return {
         "r2_gap": r2_gap,
         "rmse_gap_pct": rmse_gap_pct,
         "overfitting": bool(r2_gap > config.model.max_overfit_r2_gap and rmse_gap_pct > 0.25),
-        "underfitting": bool(train_metrics.get("r2", 0.0) <= 0 and test_metrics.get("r2", 0.0) <= 0),
+        "underfitting": underfitting,
     }
 
 
@@ -58,14 +64,42 @@ def production_gate(
     reasons: list[str] = []
     if model_name == baseline_name:
         reasons.append("baseline_reference_only")
+        
     model_metrics = results[model_name]["metrics"]
     baseline_metrics = results[baseline_name]["metrics"]
+    
     if model_metrics.get("r2", 0.0) <= config.model.minimum_publish_r2:
         reasons.append("test_r2_not_positive")
     if model_metrics.get("r2", float("-inf")) <= baseline_metrics.get("r2", float("-inf")):
         reasons.append("r2_does_not_beat_linear_regression")
     if model_metrics.get("rmse", float("inf")) >= baseline_metrics.get("rmse", float("inf")):
         reasons.append("rmse_does_not_beat_linear_regression")
+        
+    # Overfitting gap check (reject if train R2 - test R2 > 0.35)
+    diagnostics = results[model_name].get("diagnostics", {})
+    r2_gap = diagnostics.get("r2_gap", 0.0)
+    if r2_gap > config.model.max_overfit_r2_gap:
+        reasons.append("overfitting_gap_exceeded")
+        
+    # Data leakage check: assert supplier_cost and margin_pct are NOT in training features
+    feature_cols = config.features.numeric_features + config.features.categorical_features
+    leakage_intersection = set(feature_cols).intersection({"supplier_cost", "margin_pct"})
+    if leakage_intersection:
+        reasons.append("data_leakage_features_detected")
+        
+    # Prediction realism warning check
+    predictions = results[model_name].get("predictions", np.array([]))
+    y_train = results[model_name].get("y_train")
+    if len(predictions) > 0 and y_train is not None and len(y_train) > 0:
+        max_train_val = float(np.max(y_train))
+        max_pred_val = float(np.max(predictions))
+        if max_pred_val > 5.0 * max_train_val:
+            import logging
+            logging.getLogger("price_prediction_pipeline").warning(
+                "Prediction Realism Warning: Model %s predicted a max price of %s which is > 5x the max training price of %s",
+                model_name, max_pred_val, max_train_val
+            )
+            
     return len(reasons) == 0, reasons
 
 

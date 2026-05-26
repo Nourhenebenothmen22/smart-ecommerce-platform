@@ -282,6 +282,12 @@ def _ensure_columns(df: pd.DataFrame) -> pd.DataFrame:
         "tags": [],
         "is_active": True,
         "created_at": None,
+        "brand_tier": 2,
+        "product_tier": 2,
+        "condition": "new",
+        "release_year": 2026,
+        "supplier_cost": 0.0,
+        "margin_pct": 0.0,
     }
     defaults.update(RAW_PRICE_SIGNAL_DEFAULTS)
     for column, default in defaults.items():
@@ -324,6 +330,11 @@ def clean_price_data(
         "rating_avg",
         "review_count",
         "stock",
+        "brand_tier",
+        "product_tier",
+        "release_year",
+        "supplier_cost",
+        "margin_pct",
         *[column for column, default in RAW_PRICE_SIGNAL_DEFAULTS.items() if isinstance(default, (int, float))],
     ]
     for column in numeric_inputs:
@@ -335,10 +346,18 @@ def clean_price_data(
     work["stock"] = work["stock"].fillna(0).clip(lower=0)
     work["category_id"] = work["category_id"].fillna(0).clip(lower=0)
     work["subcategory_id"] = work["subcategory_id"].fillna(0).clip(lower=0)
+
+    # Clean new price driver columns
+    work["brand_tier"] = work["brand_tier"].fillna(2).clip(lower=1, upper=4).astype(int)
+    work["product_tier"] = work["product_tier"].fillna(2).clip(lower=1, upper=4).astype(int)
+    work["release_year"] = work["release_year"].fillna(2026).astype(int)
+    work["supplier_cost"] = work["supplier_cost"].fillna(0.0).clip(lower=0.0)
+    work["margin_pct"] = work["margin_pct"].fillna(0.0).clip(lower=0.0)
+
     for column in [column for column, default in RAW_PRICE_SIGNAL_DEFAULTS.items() if isinstance(default, (int, float))]:
         work[column] = work[column].fillna(0).clip(lower=0)
 
-    for column in ["brand", "category_name", "subcategory_name"]:
+    for column in ["brand", "category_name", "subcategory_name", "condition"]:
         work[column] = work[column].map(_normalise_text)
 
     work["title"] = work["title"].fillna("").astype(str).str.strip()
@@ -382,6 +401,33 @@ def _add_basic_features(work: pd.DataFrame) -> pd.DataFrame:
 
 def _add_advanced_features(work: pd.DataFrame) -> pd.DataFrame:
     work = _add_basic_features(work)
+
+    # Derived price driver features
+    work["warranty_months"] = (work["product_tier"] * 6 + work["brand_tier"] * 6).astype(float)
+    work["spec_score"] = (work["brand_tier"] * 0.4 + work["product_tier"] * 0.6).astype(float)
+    
+    # competitor price (leakage-free estimation based on subcategory midpoints and tiers)
+    MIDPOINTS = {
+        "smartphones": 600.0, "laptops": 1200.0, "tablets": 400.0, "headphones": 200.0,
+        "cameras": 1500.0, "smartwatches": 300.0, "televisions": 1000.0, "skincare": 40.0,
+        "makeup": 30.0, "haircare": 35.0, "fragrance": 100.0, "personal_hygiene": 10.0,
+        "kitchen_appliances": 200.0, "cleaning_devices": 350.0, "air_conditioning": 600.0,
+        "washing_machines": 500.0, "refrigerators": 1200.0, "desktop_pc": 1500.0,
+        "computer_accessories": 75.0, "storage_devices": 100.0, "monitors": 500.0,
+        "gaming_consoles": 400.0, "gaming_accessories": 80.0, "gaming_chairs": 250.0,
+        "gaming_headsets": 120.0, "fitness_equipment": 600.0, "running_shoes": 100.0,
+        "cycling": 1200.0, "sportswear": 50.0, "mens_clothing": 60.0, "womens_clothing": 80.0,
+        "footwear": 120.0, "bags_accessories": 150.0, "fiction_books": 15.0,
+        "non_fiction_books": 20.0, "stationery": 15.0, "coffee_tea": 15.0,
+        "snacks": 5.0, "supplements": 30.0
+    }
+    sub_midpoint = work["subcategory_name"].map(MIDPOINTS).fillna(50.0)
+    work["competitor_price"] = (sub_midpoint * (0.5 + work["product_tier"] * 0.25) * (0.8 + work["brand_tier"] * 0.1)).astype(float)
+    
+    # shipping cost estimate
+    HEAVY_SUBCATS = {"washing_machines", "refrigerators", "televisions", "fitness_equipment", "gaming_chairs", "desktop_pc", "air_conditioning"}
+    is_heavy = work["subcategory_name"].isin(HEAVY_SUBCATS).astype(float)
+    work["shipping_cost_estimate"] = (5.0 + is_heavy * 45.0 + work["product_tier"] * 2.0).astype(float)
 
     work["discount_ratio"] = work["discount_percent"] / 100.0
     work["has_discount"] = (work["discount_percent"] > 0).astype(int)

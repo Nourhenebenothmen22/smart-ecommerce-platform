@@ -1203,3 +1203,97 @@ TOPICS_POOL = [
     "seasonal availability", "upgrade worthiness", "gifting suitability",
     "long-term durability", "material feel", "size accuracy",
 ]
+
+# =========================================================
+# BRAND TIER AND PRICE RANGE MAPS
+# =========================================================
+BRAND_TIERS = {
+    # Luxury (4)
+    "Apple": 4, "Samsung": 3, "Dell": 3, "HP": 2, "Razer": 4, "Microsoft": 4, "Bose": 4,
+    "Bang & Olufsen": 4, "Canon": 3, "Leica": 4, "Hasselblad": 4, "Dyson": 4, "Miele": 4,
+    "Sub-Zero": 4, "Secretlab": 3, "Herman Miller": 4, "Peloton": 4, "Specialized": 4,
+    "Lululemon": 4, "Chanel": 4, "Dior": 4, "Tom Ford": 4, "Coach": 3, "Kate Spade": 3,
+    "Montblanc": 4, "Kérastase": 4, "Olaplex": 4, "Drunk Elephant": 3, "Tatcha": 4,
+    "Sunday Riley": 3, "Charlotte Tilbury": 3, "Tom Ford": 4, "Givenchy": 4, "Guerlain": 4,
+    "Hermès": 4, "Prada": 4, "Dolce & Gabbana": 4, "Jean Paul Gaultier": 4, "Tumi": 4,
+    
+    # Premium (3)
+    "Sony": 3, "Lenovo": 3, "Asus": 3, "MSI": 3, "Alienware": 3, "Garmin": 3, "LG": 3,
+    "GoPro": 3, "DJI": 3, "Philips": 3, "Bosch": 3, "Tefal": 3, "Ninja": 3, "Breville": 3,
+    "Corsair": 3, "Keychron": 3, "SteelSeries": 3, "HyperX": 3, "Nike": 3, "Adidas": 3,
+    "Brooks": 3, "HOKA": 3, "Asics": 3, "Clinique": 3, "Kiehl's": 3, "Paula's Choice": 3,
+    "Yves Saint Laurent": 3, "Burberry": 3, "Michael Kors": 3, "Briggs & Riley": 3,
+    "Peak Design": 3, "Bowflex": 3, "NordicTrack": 3, "Life Fitness": 3, "Technogym": 3,
+    "Trek": 3, "Giant": 3, "Cannondale": 3, "Scott": 3, "BMC": 3, "Canyon": 3,
+    
+    # Mid (2)
+    "Xiaomi": 2, "OnePlus": 2, "Huawei": 2, "Oppo": 2, "Nokia": 2, "Motorola": 2,
+    "Realme": 2, "Vivo": 2, "Honor": 2, "Nothing": 2, "Acer": 2, "Toshiba": 2,
+    "Amazon": 2, "JBL": 2, "Sennheiser": 2, "Audio-Technica": 2, "Jabra": 2, "Beats": 2,
+    "Panasonic": 2, "Olympus": 2, "Kodak": 2, "Hisense": 2, "TCL": 2, "CeraVe": 2,
+    "Vichy": 2, "Nivea": 2, "La Roche-Posay": 2, "Bioderma": 2, "Neutrogena": 2,
+    "The Ordinary": 2, "Drunk Elephant": 2, "Fenty Beauty": 2, "Charlotte Tilbury": 2,
+    "Urban Decay": 2, "NARS": 2, "Huda Beauty": 2, "Dove": 2, "Pantene": 2, "Garnier": 2,
+    "Wella": 2, "Moroccanoil": 2, "Zara": 2, "H&M": 2, "Mango": 2, "ASOS": 2, "Everlane": 2,
+    "Converse": 2, "Vans": 2, "Clarks": 2, "Timberland": 2, "Moleskine": 2, "Leuchtturm1917": 2,
+    "Rhodia": 2, "Gillette": 2, "Oral-B": 2, "Colgate": 2, "Listerine": 2, "Vaseline": 2,
+}
+
+SUBCATEGORY_PRICE_RANGES = {
+    "smartphones": (80.0, 1200.0),
+    "laptops": (200.0, 2500.0),
+    "tablets": (50.0, 800.0),
+    "headphones": (15.0, 400.0),
+    "cameras": (100.0, 3000.0),
+    "smartwatches": (30.0, 600.0),
+    "televisions": (150.0, 3000.0),
+    "skincare": (5.0, 80.0),
+    "makeup": (5.0, 60.0),
+    "haircare": (4.0, 70.0),
+    "fragrance": (10.0, 200.0),
+    "personal_hygiene": (2.0, 20.0),
+    "kitchen_appliances": (20.0, 500.0),
+    "cleaning_devices": (40.0, 800.0),
+    "air_conditioning": (150.0, 1200.0),
+    "washing_machines": (150.0, 1000.0),
+    "refrigerators": (200.0, 2500.0),
+    "desktop_pc": (300.0, 3500.0),
+    "computer_accessories": (10.0, 150.0),
+    "storage_devices": (8.0, 250.0),
+    "monitors": (80.0, 1200.0),
+    "gaming_consoles": (150.0, 600.0),
+    "gaming_accessories": (15.0, 200.0),
+    "gaming_chairs": (80.0, 500.0),
+    "gaming_headsets": (20.0, 250.0),
+    "fitness_equipment": (50.0, 1500.0),
+    "running_shoes": (30.0, 180.0),
+    "cycling": (100.0, 2500.0),
+    "sportswear": (15.0, 100.0),
+    "mens_clothing": (10.0, 150.0),
+    "womens_clothing": (12.0, 200.0),
+    "footwear": (20.0, 250.0),
+    "bags_accessories": (15.0, 400.0),
+    "fiction_books": (4.0, 25.0),
+    "non_fiction_books": (5.0, 35.0),
+    "stationery": (2.0, 40.0),
+    "coffee_tea": (3.0, 30.0),
+    "snacks": (1.5, 15.0),
+    "supplements": (8.0, 60.0),
+}
+
+# Augment CATALOG dictionary dynamically
+for category, subcategories in CATALOG.items():
+    for subcategory, data in subcategories.items():
+        # Add price range
+        price_range = SUBCATEGORY_PRICE_RANGES.get(subcategory, (10.0, 100.0))
+        data["price_range"] = price_range
+        
+        # Add brand tiers
+        brand_tiers = {}
+        for brand in data.get("brands", []):
+            brand_tiers[brand] = BRAND_TIERS.get(brand, 2) # default to mid-tier (2)
+        data["brand_tiers"] = brand_tiers
+        
+        # Add product tiers
+        data["product_tiers"] = [1, 2, 3, 4] # entry, mid, high, flagship
+

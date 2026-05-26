@@ -64,6 +64,13 @@ class FeatureConfig:
     )
     numeric_features: List[str] = field(
         default_factory=lambda: [
+            "brand_tier",
+            "product_tier",
+            "release_year",
+            "warranty_months",
+            "spec_score",
+            "competitor_price",
+            "shipping_cost_estimate",
             "discount_percent",
             "discount_ratio",
             "has_discount",
@@ -121,6 +128,12 @@ class FeatureConfig:
             "stock_to_sales_ratio",
         ]
     )
+    leakage_exclusion_features: List[str] = field(
+        default_factory=lambda: [
+            "supplier_cost",
+            "margin_pct",
+        ]
+    )
     historical_price_proxy_features: List[str] = field(
         default_factory=lambda: [
             "total_order_revenue",
@@ -150,6 +163,7 @@ class FeatureConfig:
             "has_cart_pressure",
             "has_wishlist_pressure",
             "demand_bucket",
+            "condition",
         ]
     )
     target_encoded_features: List[str] = field(

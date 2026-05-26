@@ -151,3 +151,48 @@ def generate_product_images(category: str, subcategory: str, title: str, slug: s
 
 def generate_thumbnail(category: str, subcategory: str, title: str, slug: str):
     return build_product_image_url(category, subcategory, title, slug, "Thumbnail", 700, 700)
+
+
+def compute_product_price(supplier_cost: float, margin_pct: float, condition: str, release_year: int) -> float:
+    # 1. Base price
+    base_price = supplier_cost * (1.0 + margin_pct / 100.0)
+    
+    # 2. Condition multiplier
+    cond_multipliers = {
+        "new": 1.0,
+        "open_box": 0.85,
+        "refurbished": 0.70,
+        "used": 0.50
+    }
+    cond_mult = cond_multipliers.get(condition, 1.0)
+    
+    # 3. Release year depreciation (base year 2026, 5% depreciation per year, min 0.4 multiplier)
+    years_old = max(0, 2026 - release_year)
+    depreciation_mult = max(0.4, 1.0 - (years_old * 0.05))
+    
+    # 4. Apply multipliers
+    adjusted_price = base_price * cond_mult * depreciation_mult
+    
+    # 5. Add small noise (+-3%)
+    noise = random.uniform(0.97, 1.03)
+    final_price = adjusted_price * noise
+    
+    return float(round(final_price, 2))
+
+
+def value_for_money_score(price: float, brand_tier: int, product_tier: int, supplier_cost: float = None) -> float:
+    if price <= 0:
+        return 1.0
+    if supplier_cost is None or supplier_cost <= 0:
+        # Estimate supplier cost if not available
+        supplier_cost = price * 0.65
+    
+    # Expected markup based on brand tier and product tier
+    # budget = 15-30%, luxury = 60-80%
+    expected_margin_pct = 15.0 + (brand_tier - 1) * 15.0 + (product_tier - 1) * 5.0
+    expected_price = supplier_cost * (1.0 + expected_margin_pct / 100.0)
+    
+    # Value for money is expected price divided by actual price
+    # e.g., if we paid less than expected, value is high (>1.0)
+    return float(expected_price / price)
+

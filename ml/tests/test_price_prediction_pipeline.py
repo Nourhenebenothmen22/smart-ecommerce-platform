@@ -88,6 +88,15 @@ def _sample_products() -> pd.DataFrame:
         } else 0
         bucket_jump = 45 if discount_percent >= 18 and stock < 55 else 0
         base = 120 + cat_id * 22 + rating * 18 + demand_curve + category_interaction + bucket_jump
+        
+        # New price driver columns
+        brand_tier = idx % 4 + 1
+        product_tier = idx % 3 + 1
+        condition = ["new", "refurbished", "open_box", "used"][idx % 4]
+        release_year = 2020 + idx % 7
+        supplier_cost = round(base * 0.6, 2)
+        margin_pct = round(15.0 + brand_tier * 10, 2)
+        
         rows.append(
             {
                 "product_id": idx,
@@ -139,6 +148,12 @@ def _sample_products() -> pd.DataFrame:
                 "avg_review_rating": rating,
                 "negative_review_count": idx % 3,
                 "positive_review_count": idx % 6,
+                "brand_tier": brand_tier,
+                "product_tier": product_tier,
+                "condition": condition,
+                "release_year": release_year,
+                "supplier_cost": supplier_cost,
+                "margin_pct": margin_pct,
             }
         )
     return pd.DataFrame(rows)
@@ -382,6 +397,46 @@ class PricePredictionPipelineTests(unittest.TestCase):
             stock=20,
         )
         self.assertEqual(complete.brand, "Acme")
+
+    def test_leakage_exclusion_rules(self):
+        config = Config()
+        cols = feature_columns(config, "improved")
+        self.assertNotIn("supplier_cost", cols)
+        self.assertNotIn("margin_pct", cols)
+        
+    def test_gate_realism_and_overfitting_checks(self):
+        config = Config()
+        results = {
+            config.model.baseline_name: {
+                "metrics": {"rmse": 10.0, "mae": 5.0, "r2": 0.50},
+                "diagnostics": {"r2_gap": 0.05},
+            },
+            config.model.medium_name: {
+                "metrics": {"rmse": 8.0, "mae": 4.0, "r2": 0.60},
+                "diagnostics": {"r2_gap": 0.40}, # Exceeds 0.35 threshold
+            }
+        }
+        passed, reasons = production_gate(config.model.medium_name, results, config.model.baseline_name, config)
+        self.assertFalse(passed)
+        self.assertIn("overfitting_gap_exceeded", reasons)
+        
+    def test_residual_analysis_and_realism_presence_in_results(self):
+        with _workspace_tempdir() as tmp_dir:
+            config = _config(tmp_dir)
+            results = train_price_prediction_models(_sample_products(), config=config)
+            self.assertTrue(results["published"])
+            
+            metadata = results["metadata"]
+            self.assertIn("residual_analysis", metadata)
+            self.assertIn("realism_check", metadata)
+            
+            baseline_res = metadata["residual_analysis"][config.model.baseline_name]
+            self.assertIn("residuals_summary", baseline_res)
+            self.assertIn("error_by_segment", baseline_res)
+            
+            baseline_realism = metadata["realism_check"][config.model.baseline_name]
+            self.assertIn("max_training_price", baseline_realism)
+            self.assertIn("unrealistic_count", baseline_realism)
 
 
 if __name__ == "__main__":

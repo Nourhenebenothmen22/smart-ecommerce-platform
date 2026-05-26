@@ -254,6 +254,97 @@ def _split_quality_report(
     }
 
 
+def _detect_data_drift(X_train: pd.DataFrame, X_test: pd.DataFrame, config: Config) -> dict[str, Any]:
+    drift_report = {}
+    numeric_cols = [c for c in config.features.numeric_features if c in X_train.columns and c in X_test.columns]
+    for col in numeric_cols:
+        train_vals = pd.to_numeric(X_train[col], errors="coerce").dropna()
+        test_vals = pd.to_numeric(X_test[col], errors="coerce").dropna()
+        if len(train_vals) > 5 and len(test_vals) > 5:
+            t_mean = float(train_vals.mean())
+            te_mean = float(test_vals.mean())
+            mean_diff = abs(te_mean - t_mean)
+            t_std = float(train_vals.std())
+            std_factor = t_std if t_std > 0 else 1.0
+            drift_score = mean_diff / std_factor
+            drift_report[col] = {
+                "train_mean": t_mean,
+                "test_mean": te_mean,
+                "drift_score": drift_score,
+                "drift_detected": bool(drift_score > 0.25)
+            }
+    return drift_report
+
+
+def _prediction_realism_check(y_train: pd.Series, predictions: np.ndarray) -> dict[str, Any]:
+    if len(y_train) == 0 or len(predictions) == 0:
+        return {"unrealistic_count": 0, "max_training_price": 0.0}
+    max_training_price = float(np.max(y_train))
+    limit = max_training_price * 1.5
+    unrealistic = predictions > limit
+    unrealistic_count = int(np.sum(unrealistic))
+    return {
+        "max_training_price": max_training_price,
+        "unrealism_limit": limit,
+        "unrealistic_count": unrealistic_count,
+        "unrealistic_share": float(np.mean(unrealistic)),
+        "unrealistic_values": [float(val) for val in predictions[unrealistic][:10]],
+    }
+
+
+def _analyze_residuals_and_segments(y_true: pd.Series, y_pred: np.ndarray, X_test: pd.DataFrame) -> dict[str, Any]:
+    residuals = np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float)
+    
+    analysis = {
+        "residuals_summary": {
+            "mean": float(np.mean(residuals)),
+            "std": float(np.std(residuals)),
+            "skew": float(pd.Series(residuals).skew()) if len(residuals) > 2 else 0.0,
+        },
+        "error_by_segment": {}
+    }
+    
+    df_analysis = X_test.copy()
+    df_analysis["y_true"] = np.asarray(y_true, dtype=float)
+    df_analysis["y_pred"] = np.asarray(y_pred, dtype=float)
+    
+    if "brand_tier" in df_analysis.columns:
+        brand_tier_errors = {}
+        for tier in sorted(df_analysis["brand_tier"].dropna().unique()):
+            sub = df_analysis[df_analysis["brand_tier"] == tier]
+            if len(sub) > 0:
+                brand_tier_errors[int(tier)] = evaluate_regression(sub["y_true"], sub["y_pred"])
+        analysis["error_by_segment"]["brand_tier"] = brand_tier_errors
+        
+    if "category_name" in df_analysis.columns:
+        category_errors = {}
+        for cat in df_analysis["category_name"].dropna().unique():
+            sub = df_analysis[df_analysis["category_name"] == cat]
+            if len(sub) > 0:
+                category_errors[str(cat)] = evaluate_regression(sub["y_true"], sub["y_pred"])
+        analysis["error_by_segment"]["category_name"] = category_errors
+        
+    try:
+        q25 = float(np.percentile(y_true, 25))
+        q50 = float(np.percentile(y_true, 50))
+        q75 = float(np.percentile(y_true, 75))
+        quartiles = [
+            ("q1_low", df_analysis[df_analysis["y_true"] <= q25]),
+            ("q2_mid_low", df_analysis[(df_analysis["y_true"] > q25) & (df_analysis["y_true"] <= q50)]),
+            ("q3_mid_high", df_analysis[(df_analysis["y_true"] > q50) & (df_analysis["y_true"] <= q75)]),
+            ("q4_high", df_analysis[df_analysis["y_true"] > q75]),
+        ]
+        quartile_errors = {}
+        for name, sub in quartiles:
+            if len(sub) > 0:
+                quartile_errors[name] = evaluate_regression(sub["y_true"], sub["y_pred"])
+        analysis["error_by_segment"]["price_quartile"] = quartile_errors
+    except Exception:
+        pass
+        
+    return analysis
+
+
 def _price_data_quality_report(
     raw_df: pd.DataFrame,
     cleaned: pd.DataFrame,
@@ -285,6 +376,7 @@ def _price_data_quality_report(
             "prepared_rows": int(len(prepared)),
             "min_training_rows": int(config.model.min_training_rows),
         },
+        "data_drift": _detect_data_drift(X_train, X_test, config),
         "missing_values": {
             "top_missing_rate_columns": [
                 {"column": str(column), "missing_rate": float(rate)}
@@ -384,7 +476,10 @@ def _fit_variant(
         "params": params or {},
         "use_log_target": use_log_target,
         "y_test": y_test,
+        "y_train": y_train,
         "prediction_examples": _prediction_examples(y_test, test_predictions, product_ids_test),
+        "residual_analysis": _analyze_residuals_and_segments(y_test, test_predictions, X_test),
+        "realism_check": _prediction_realism_check(y_train, test_predictions),
     }
 
 
@@ -420,7 +515,10 @@ def _fit_baseline_variant(
         "params": {},
         "use_log_target": use_log_target,
         "y_test": y_test,
+        "y_train": y_train,
         "prediction_examples": _prediction_examples(y_test, test_predictions, product_ids_test),
+        "residual_analysis": _analyze_residuals_and_segments(y_test, test_predictions, X_test),
+        "realism_check": _prediction_realism_check(y_train, test_predictions),
     }
 
 
@@ -669,6 +767,8 @@ def train_price_prediction_models(
             "gate_reasons_by_model": {name: data["gate_reasons"] for name, data in results.items()},
             "comparison": comparison.to_dict(orient="records"),
             "data_quality": data_quality_report,
+            "residual_analysis_by_model": {name: data.get("residual_analysis") for name, data in results.items()},
+            "realism_check_by_model": {name: data.get("realism_check") for name, data in results.items()},
         }
         _write_json(lcfg.reports_dir / "metrics_report.json", metrics_report)
 
@@ -711,6 +811,8 @@ def train_price_prediction_models(
                 name: data["prediction_examples"]
                 for name, data in results.items()
             },
+            "residual_analysis": {name: data.get("residual_analysis") for name, data in results.items()},
+            "realism_check": {name: data.get("realism_check") for name, data in results.items()},
         }
         _write_json(lcfg.metadata_dir / "metadata.json", metadata)
 
