@@ -249,12 +249,14 @@ class PricePredictionPipelineTests(unittest.TestCase):
                 self.assertIn("mape", metrics)
 
             self.assertTrue((config.models_dir / "best_model.pkl").exists())
+            self.assertTrue((config.models_dir / "preprocessing_pipeline.pkl").exists())
             self.assertFalse((config.models_dir / f"improved_{config.model.baseline_name}.pkl").exists())
             self.assertTrue((config.metadata_dir / "metadata.json").exists())
             self.assertTrue((config.metadata_dir / "feature_list.json").exists())
             self.assertTrue((config.raw_data_dir / "products_price_raw.csv").exists())
             self.assertTrue((config.processed_data_dir / "products_price_preprocessed.csv").exists())
             self.assertTrue((config.reports_dir / "model_comparison.csv").exists())
+            self.assertTrue((config.reports_dir / "metrics_report.json").exists())
             self.assertTrue((config.reports_dir / "preprocessing_report.json").exists())
             self.assertTrue((config.plots_dir / "price_distribution.png").exists())
             self.assertTrue((config.plots_dir / "feature_correlation.png").exists())
@@ -265,9 +267,11 @@ class PricePredictionPipelineTests(unittest.TestCase):
 
             metadata = json.loads((config.metadata_dir / "metadata.json").read_text(encoding="utf-8"))
             self.assertIn("train_metrics", metadata)
-            self.assertEqual(metadata["artifact_schema_version"], "latest-valid-v3")
+            self.assertEqual(metadata["artifact_schema_version"], "latest-valid-v4")
             self.assertTrue(metadata["production_ready"])
             self.assertTrue(metadata["published"])
+            self.assertIn("best_preprocessing_strategy", metadata)
+            self.assertIn("data_quality_report", metadata)
             self.assertEqual(metadata["feature_columns"], feature_columns(config, "improved"))
             self.assertEqual(
                 json.loads((config.metadata_dir / "feature_list.json").read_text(encoding="utf-8")),
@@ -285,6 +289,7 @@ class PricePredictionPipelineTests(unittest.TestCase):
             self.assertEqual(prediction["model_name"], config.price_model_name)
             self.assertEqual(prediction["model_version"], config.price_model_version)
             self.assertEqual(prediction["preprocessing_profile"], "improved")
+            self.assertEqual(prediction["preprocessing_strategy"], metadata["best_preprocessing_strategy"])
             self.assertIn("features_used", prediction)
 
     def test_prediction_hides_legacy_metadata_metrics(self):
@@ -355,7 +360,8 @@ class PricePredictionPipelineTests(unittest.TestCase):
             results = train_price_prediction_models(_sample_products(), config=config)
 
             self.assertFalse(results["published"])
-            self.assertFalse(tmp_dir.exists())
+            self.assertTrue((tmp_dir / "reports" / "latest_rejection_report.json").exists())
+            self.assertFalse((tmp_dir / "model" / "best_model.pkl").exists())
             self.assertFalse((tmp_dir.parent / ".staging").exists())
 
     def test_price_prediction_request_requires_complete_payload_without_product_id(self):
