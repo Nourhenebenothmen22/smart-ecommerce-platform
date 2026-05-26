@@ -86,7 +86,7 @@ def _active_metrics(metadata: dict[str, Any]) -> dict[str, Any]:
         if candidate in metrics and isinstance(metrics[candidate], dict):
             return {public_key: metrics[candidate]}
 
-    metric_names = {"mae", "mse", "rmse", "r2"}
+    metric_names = {"mae", "mse", "rmse", "r2", "mape"}
     if metric_names.intersection(metrics.keys()):
         return {public_key: metrics}
     return {}
@@ -129,6 +129,7 @@ def predict_price(payload: dict[str, Any], config: Config = cfg) -> dict[str, An
         "model_version": config.price_model_version,
         "model_algorithm": _public_algorithm_name(metadata.get("best_result_key", metadata.get("best_model", "unknown"))),
         "preprocessing_profile": profile,
+        "preprocessing_strategy": metadata.get("best_preprocessing_strategy"),
         "metrics": _active_metrics(metadata),
         "features_used": features,
     }
