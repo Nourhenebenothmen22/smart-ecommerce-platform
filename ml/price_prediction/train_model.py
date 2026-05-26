@@ -30,7 +30,7 @@ def build_random_forest_pipeline(
         rf_params.update(params)
     pipeline = Pipeline(
         steps=[
-            ("preprocessor", build_preprocessor(config, profile=profile)),
+            ("preprocessor", build_preprocessor(config, profile=profile, strategy="random_forest")),
             (
                 "model",
                 RandomForestRegressor(
@@ -64,7 +64,7 @@ def build_xgboost_pipeline(
         xgb_params.update(params)
     pipeline = Pipeline(
         steps=[
-            ("preprocessor", build_preprocessor(config, profile=profile)),
+            ("preprocessor", build_preprocessor(config, profile=profile, strategy="xgboost")),
             (
                 "model",
                 XGBRegressor(
