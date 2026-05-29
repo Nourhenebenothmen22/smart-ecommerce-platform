@@ -54,6 +54,7 @@ dotenv.config({ path: envPath });
 
 const envSchema = z.object({
   PORT: z.preprocess((val) => (val === undefined ? undefined : Number(val)), z.number().default(5000)),
+  HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),

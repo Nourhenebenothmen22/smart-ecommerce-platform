@@ -9,7 +9,7 @@ async function bootstrap() {
     await checkDatabaseConnection();
 
     // 2. Start Express server
-    const server = app.listen(env.PORT, () => {
+    const server = app.listen(env.PORT, env.HOST, () => {
       console.log(`🚀 Server running on http://localhost:${env.PORT}`);
       console.log(`📚 Swagger docs available at http://localhost:${env.PORT}/api/docs`);
       console.log(`🌍 Environment: ${env.NODE_ENV}`);
