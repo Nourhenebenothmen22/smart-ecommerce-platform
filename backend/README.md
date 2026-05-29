@@ -16,63 +16,26 @@ Express.js backend with PostgreSQL (pgvector), JWT auth, Swagger docs, ML integr
 | **JWT** (jsonwebtoken) | Auth (httpOnly cookie) |
 | **bcryptjs** | Password hashing |
 | **Swagger** (swagger-jsdoc + swagger-ui-express) | OpenAPI 3.0 docs |
-| **Helmet / CORS / Lusca / express-rate-limit / csurf** | Security (headers, CORS, CSRF, rate limiting) |
+| **Helmet / CORS / Lusca / express-rate-limit** | Security (headers, CORS, CSRF, rate limiting) |
 | **Pino** | Structured JSON logging |
 | **prom-client** | Prometheus metrics (`/api/observability/metrics`) |
-| **Prometheus + Alertmanager + Grafana** | Metrics collection, alerting, dashboards (`docker-compose`) |
-| **Jest + ts-jest + supertest** | Testing (101 tests, 21 suites) |
+| **Prometheus + Alertmanager + Grafana** | Metrics collection, alerting, dashboards (Docker) |
+| **Jest + ts-jest + supertest** | Testing |
 
-## Setup
+---
+
+## Quick Start
 
 ### Prerequisites
 
 - Node.js ≥ 22
-- Docker (PostgreSQL with pgvector)
+- Docker
 
 ### Install
 
 ```bash
 cd backend
 npm install
-```
-
-### Database
-
-Start the PostgreSQL container:
-
-```bash
-docker run -d \
-  --name ecommerce_postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=ecommerce_ml_db \
-  -p 5433:5432 \
-  ankane/pgvector:latest
-```
-
-Run all 15 migration files (idempotent):
-
-```bash
-npm run db:init
-```
-
-Or run individual migrations:
-
-```bash
-npm run db:1-tables      # Core tables + extensions
-npm run db:2-constraints # FK, unique, check constraints
-npm run db:3-indexes     # Performance + HNSW vector index
-npm run db:4-triggers    # Auto-update timestamps, totals, review stats
-npm run db:5-views       # product_review_summary, order_summary
-npm run db:6-ml-schema   # ML tables (ml_models, user_features, etc.)
-npm run db:6b-ml-constraints # ML traceability FKs
-npm run db:7-ml-views    # v_user_behavior_features analytical view
-npm run db:8-ml-indexes  # ML-specific indexes
-npm run db:9-nlp-schema  # chatbot_interactions table
-npm run db:10-nlp-evaluations # nlp_similarity_metrics table
-npm run db:11-fts        # Full-text search (tsvector + GIN)
-npm run db:12-voice-confirmations-extend # Voice confirmation extensions
-npm run db:13-price-drivers # Price driver columns on products
 ```
 
 ### Environment
@@ -106,14 +69,40 @@ TRUST_PROXY=false
 COOKIE_SECRET=
 ```
 
+### Database
+
+```bash
+# Start PostgreSQL
+docker run -d \
+  --name ecommerce_postgres \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=ecommerce_ml_db \
+  -p 5433:5432 \
+  ankane/pgvector:latest
+
+# Run all migrations (idempotent)
+npm run db:init
+```
+
 ### Dev
 
 ```bash
-npm run dev      # tsx watch on src/server.ts
+npm run dev
 ```
 
-Open **http://localhost:5000** (server responds)  
 Open **http://localhost:5000/api/docs** (Swagger UI)
+
+La bannière de démarrage affiche les URLs de tous les services :
+
+| Service | URL |
+| ------- | --- |
+| API | `http://localhost:5000/api` |
+| Swagger | `http://localhost:5000/api/docs` |
+| Métriques | `http://localhost:5000/api/observability/metrics` |
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3000` |
+| Alertmanager | `http://localhost:9093` |
 
 ### Build & Start
 
@@ -127,6 +116,8 @@ npm start        # node dist/server.js
 ```bash
 npm test         # jest --runInBand --passWithNoTests (101 tests)
 ```
+
+---
 
 ## Scripts
 
@@ -143,6 +134,8 @@ npm test         # jest --runInBand --passWithNoTests (101 tests)
 | `npm run ml:seed:append` | Append seed data via ML Python script |
 | `npm run ml:seed:reset` | Reset seed data via ML Python script |
 
+---
+
 ## Project Structure
 
 ```
@@ -157,13 +150,14 @@ src/
     dbCheck.ts              DB connectivity check utility
   middlewares/
     auth.middleware.ts      JWT verification (extracts user from cookie)
-    cors.middleware.ts      CORS configuration (FRONTEND_URL + CORS_ALLOWED_ORIGINS)
-    csrf.middleware.ts      CSRF protection via Lusca
+    cors.middleware.ts      CORS configuration
+    csrf.middleware.ts      CSRF protection via Origin header
     error.middleware.ts     Global error handler
     rateLimit.middleware.ts Rate limiting (express-rate-limit)
     role.middleware.ts      Role-based access control (customer / admin / manager)
-    upload.middleware.ts    Multer file upload (products images)
+    upload.middleware.ts    Multer file upload (product images)
     validate.middleware.ts  Zod schema validation middleware
+    observability.middleware.ts Request ID, logging, metrics recording
   controllers/              Request handlers (11 files)
   services/                 Business logic (11 files + voice/)
   routes/                   Express routers (11 files)
@@ -173,10 +167,14 @@ src/
   utils/
     apiResponse.ts          Unified { success, message, data, errors } response builder
     AppError.ts             Custom error class (status code, isOperational)
+    logger.ts               Pino structured logger
+    metrics.ts              Prometheus metrics registry (prom-client)
     password.ts             bcryptjs hash/compare helpers
   sql/                      15 migration SQL files (001–013)
   tests/                    22 test files + helpers/
 ```
+
+---
 
 ## API Endpoints
 
@@ -210,29 +208,37 @@ src/
 | **GET** | `/api/subcategories/:id` | — | Get subcategory |
 | **PATCH** | `/api/subcategories/:id` | admin | Update subcategory |
 | **DELETE** | `/api/subcategories/:id` | admin | Delete subcategory |
-| **GET** | `/api/products/:productId/reviews` | — | Reviews for product |
-| **POST** | `/api/reviews` | user | Add review |
-| **GET** | `/api/reviews/product/:id` | — | Reviews by product (legacy) |
-| **PATCH** | `/api/reviews/:id` | owner | Update review |
-| **DELETE** | `/api/reviews/:id` | owner | Delete review |
+| **GET** | `/api/cart` | user | Get cart items |
+| **POST** | `/api/cart` | user | Add item to cart |
+| **PATCH** | `/api/cart/:productId` | user | Update cart item quantity |
+| **DELETE** | `/api/cart/:productId` | user | Remove item from cart |
 | **POST** | `/api/orders` | user | Create order |
 | **GET** | `/api/orders` | admin | List all orders |
 | **GET** | `/api/orders/my` | user | My orders |
 | **GET** | `/api/orders/:id` | owner/admin | Get order |
 | **DELETE** | `/api/orders/:id` | admin | Cancel order |
 | **PATCH** | `/api/orders/:id/status` | admin | Update order status |
+| **GET** | `/api/products/:productId/reviews` | — | Reviews for product |
+| **POST** | `/api/reviews` | user | Add review |
+| **GET** | `/api/reviews/product/:id` | — | Reviews by product (legacy) |
+| **PATCH** | `/api/reviews/:id` | owner | Update review |
+| **DELETE** | `/api/reviews/:id` | owner | Delete review |
 | **POST** | `/api/ml/recalculate-features` | admin | Recalculate user features |
 | **POST** | `/api/ml/segments` | admin | Push segmentation results |
 | **POST** | `/api/ml/models` | admin | Register ML model |
 | **POST** | `/api/ml/price/predict` | admin | Predict product price |
+| **POST** | `/api/chat` | customer | AI chatbot query |
 | **POST** | `/api/voice/initiate/:id` | admin | Initiate phone confirmation call |
 | **GET** | `/api/voice/context/:id` | admin | Get call context |
 | **POST** | `/api/voice/webhook` | — | Voice provider webhook (HMAC) |
-| **POST** | `/api/chat` | customer | AI chatbot query |
 
-## Database Tables
+---
 
-### Core Commerce
+## Database
+
+### Tables
+
+#### Core Commerce
 
 | Table | Key Columns |
 | ----- | ----------- |
@@ -251,7 +257,7 @@ src/
 | `audit_logs` | id, user_id, action, entity_type, entity_id, metadata (jsonb) |
 | `user_sessions` | id, user_id, session_started_at, session_ended_at, device_type, source_channel |
 
-### ML / NLP
+#### ML / NLP
 
 | Table | Key Columns |
 | ----- | ----------- |
@@ -263,15 +269,14 @@ src/
 | `review_analysis` | id, review_id, sentiment_label, sentiment_score, keywords (jsonb), topics (jsonb), model_name, model_version |
 | `chatbot_interactions` | id, user_id, session_id, user_query, retrieval_algorithm, retrieved_context (jsonb), llm_prompt, llm_response, llm_model_used, execution_time_ms, user_feedback_score |
 | `nlp_similarity_metrics` | id, experiment_name, dataset_size, algorithm_name, model_version, precision_at_k, recall_at_k, mrr, ndcg, avg_latency_ms, hyperparameters (jsonb) |
-| `business_drivers` | (price driver columns added to products via 013) |
 
-### Voice Confirmation
+#### Voice Confirmation
 
 | Table | Key Columns |
 | ----- | ----------- |
 | `voice_confirmations` | id, order_id, phone_number, call_status, transcript, confirmed, confirmed_at, retry_count, provider_call_id |
 
-### Views
+#### Views
 
 | View | Description |
 | ---- | ----------- |
@@ -279,7 +284,7 @@ src/
 | `order_summary` | Order ID, user_id, status, payment_status, total_amount, total_items |
 | `v_user_behavior_features` | Full analytical view joining orders, items, reviews, interactions, wishlists, cart for ML input |
 
-## ER Diagram
+### ER Diagram
 
 ```mermaid
 erDiagram
@@ -319,16 +324,183 @@ erDiagram
     ml_models ||--o{ product_price_predictions : "price_prediction_model"
 ```
 
-## Use Case Diagrams
+### Migration Files
 
-### Hiérarchie des acteurs
+| # | File | Purpose |
+| - | ---- | ------- |
+| 001 | `001_tables.sql` | Extensions (vector, citext), all base tables |
+| 002 | `002_constraints.sql` | FK, unique, check constraints |
+| 003 | `003_indexes.sql` | FK indexes, status indexes, HNSW vector index |
+| 004 | `004_triggers.sql` | `update_timestamp`, `maintain_order_total`, `maintain_product_review_stats` |
+| 005 | `005_views.sql` | `product_review_summary`, `order_summary` |
+| 006 | `006_ml_schema.sql` | `ml_models`, `user_features`, `user_segments`, `product_price_predictions`, `user_sessions` |
+| 006b | `006b_ml_constraints.sql` | ML table foreign keys + check constraints |
+| 007 | `007_ml_views.sql` | `v_user_behavior_features` analytical view |
+| 008 | `008_ml_indexes.sql` | ML-specific indexes |
+| 009 | `009_nlp_schema.sql` | `chatbot_interactions` (RAG + LLM traceability) |
+| 010 | `010_nlp_evaluations.sql` | `nlp_similarity_metrics` (Precision@K, MRR, NDCG) |
+| 011 | `011_fts_search.sql` | `search_vector` tsvector column + GIN index |
+| 012 | `012_voice_confirmations_extend.sql` | retry_count, provider_call_id, partial unique index |
+| 013 | `013_price_drivers.sql` | supplier_cost, margin_pct, brand_tier, product_tier, condition, release_year |
+
+---
+
+## Observability & Monitoring
+
+### Endpoints
+
+| Path | Description |
+| ---- | ----------- |
+| `GET /api/observability/health` | Health check enrichi (statut DB + pool stats) |
+| `GET /api/observability/metrics` | Métriques Prometheus (counter, histogram, gauge) |
+
+### Métriques exposées
+
+| Métrique | Type | Labels |
+| -------- | ---- | ------ |
+| `http_requests_total` | Counter | method, route, status_code |
+| `http_request_duration_seconds` | Histogram (buckets: 5ms→10s) | method, route, status_code |
+| `http_requests_active` | Gauge | method |
+| `nodejs_eventloop_lag_*` | Gauge | — |
+| `nodejs_heap_size_*` | Gauge | — |
+| `nodejs_gc_duration_seconds` | Histogram | kind |
+| `nodejs_active_handles/requests` | Gauge | type |
+
+### Lancer la stack monitoring
+
+```bash
+# Depuis backend/infra/docker/
+docker compose up -d prometheus grafana alertmanager
+```
+
+### Services
+
+| Service | URL | Rôle |
+| ------- | --- | ---- |
+| **Prometheus** | `http://localhost:9090` | Collecte et stocke les métriques (scrape toutes les 15s) |
+| **Grafana** | `http://localhost:3000` | Visualisation des métriques (login: `admin` / `admin`) |
+| **Alertmanager** | `http://localhost:9093` | Routage et notification des alertes (email) |
+
+### Pourquoi ces services ?
+
+- **Prometheus** — Base de données de séries temporelles. Il **pull** (scrape) les métriques depuis `/api/observability/metrics` toutes les 15s. C'est le cœur du monitoring : sans lui, pas de données historiques, pas d'alertes.
+
+- **Grafana** — Interface de dashboarding. Il interroge Prometheus en PromQL pour afficher des graphiques temps réel. Les dashboards sont **pré-provisionnés** (fichiers JSON versionnés) — aucun clic manuel nécessaire.
+
+- **Alertmanager** — Routage et notification des alertes. Il reçoit les alertes déclenchées par Prometheus et les envoie par **email**. Sans lui, les alertes restent dans Prometheus sans jamais notifier personne.
+
+### Architecture
 
 ```mermaid
 graph LR
-    G[Guest] --> C[Customer]
-    C --> A[Admin]
-    C --> M[Manager]
+    Backend[Node.js Backend<br/>:5000]
+    Backend -->|GET /metrics| Prometheus[Prometheus :9090]
+    Prometheus -->|alert rules| Alertmanager[Alertmanager :9093]
+    Alertmanager -->|SMTP| Email[✉️ admin@email]
+    Grafana[Grafana :3000] -->|PromQL query| Prometheus
+    Dev[Developer] -->|http://localhost:3000| Grafana
 ```
+
+### Alertes pré-configurées (13 règles)
+
+Les règles sont dans `infra/docker/prometheus/alert.rules.yml`, évaluées toutes les 15s :
+
+| Alerte | Seuil | Sévérité | Déclencheur |
+| ------ | ----- | -------- | ----------- |
+| **BackendDown** | `up == 0` | 🔴 critical | Backend injoignable |
+| **DatabaseUnreachable** | `503 sur /health` | 🔴 critical | PostgreSQL déconnecté |
+| **MLServiceUnavailable** | `502/503/504 sur /api/ml/*` | 🔴 critical | Service ML HS |
+| **ChatMLServiceUnavailable** | `502/503/504 sur /chat` | 🔴 critical | Chat ML HS |
+| **HighErrorRate** | `5xx > 5%` | 🟡 warning | Bugs applicatifs |
+| **BruteForceAttempt** | `401 login > 10/2min` | 🟡 warning | Attaque force brute |
+| **AuthRateLimitReached** | `429 auth` | 🟡 warning | Rate limit atteint |
+| **OrderCreationFailing** | `400 POST /orders > 2/10min` | 🟡 warning | Stock épuisé |
+| **StockExhaustion** | `400 POST /cart > 5/10min` | 🟡 warning | Stock insuffisant |
+| **HighP99Latency** | `P99 > 3s` | 🟡 warning | Latence dégradée |
+| **HighP95Latency** | `P95 > 1s` | 🟡 warning | Latence dégradée |
+| **MemoryPressure** | `heap > 85%` | 🟡 warning | Fuite mémoire |
+| **AccountDeactivated** | `403 login > 2/5min` | 🔵 info | Comptes désactivés |
+| **AdminSelfModificationAttempt** | `403 role/status` | 🔵 info | Auto-modification admin |
+
+Les alertes **critical** sont envoyées par email toutes les 30min, les **warning** toutes les 2h, les **info** toutes les 4h.
+
+### Fichiers de configuration
+
+```
+infra/docker/
+  docker-compose.yml              ← Tous les services Docker
+  prometheus/
+    prometheus.yml                ← Scrape config + alerting + alertmanager target
+    alert.rules.yml               ← 13 règles d'alerte métier
+  alertmanager/
+    alertmanager.yml              ← Configuration SMTP + routage des alertes
+  grafana/
+    datasources/
+      datasource.yml              ← Auto-provision Prometheus datasource
+    dashboards/
+      dashboard.yml               ← Auto-provision dashboard provider
+      nodejs-app.json             ← Dashboard (6 panels)
+```
+
+### Commandes utiles
+
+```bash
+# Lancer la stack monitoring
+docker compose up -d prometheus grafana alertmanager
+
+# Voir les alertes Prometheus
+open http://localhost:9090/alerts
+
+# Voir Alertmanager
+open http://localhost:9093
+
+# Voir le dashboard Grafana
+open http://localhost:3000/dashboards
+
+# Logs
+docker logs ecommerce_alertmanager
+docker logs ecommerce_prometheus
+```
+
+> **Note email :** Modifie les paramètres SMTP dans `infra/docker/alertmanager/alertmanager.yml` (smtp_smarthost, smtp_auth_username, smtp_auth_password, smtp_from, to).
+
+---
+
+## Security
+
+- **Helmet** — HTTP headers hardening
+- **CORS** — Restricted to `FRONTEND_URL` + `CORS_ALLOWED_ORIGINS`
+- **CSRF** — Origin header validation via custom middleware on mutating requests
+- **Rate limiting** — Auth: 10 req/15min, Global: 100 req/15min
+- **JWT** — httpOnly cookie (`access_token`), not accessible from JS
+- **Password** — bcryptjs with salt rounds, min 12 chars (uppercase, lowercase, digit, special)
+- **Zod validation** — All request bodies validated at runtime
+- **Input sanitization** — Parameterized queries via pg
+- **Production guards** — Min 32-char JWT secret, webhook secret, ML token
+
+---
+
+## Actors
+
+| Acteur | Rôle |
+|--------|------|
+| `Guest` | Non authentifié — navigation catalogue, auth |
+| `Customer` | Authentifié (role `customer`) — achats, avis, chat |
+| `Admin` | Role `admin` — gestion utilisateurs, produits, commandes, ML, appels vocaux |
+| `Manager` | Role `manager` — hérite de Customer (réservé usage futur) |
+| `Retell AI` | Service externe — POSTe le webhook de fin d'appel |
+| `ML Service` | Service Python — calcul features, segmentation, prédiction prix |
+| `System` | Backend + PostgreSQL — processus automatiques, appels externes |
+
+### Légende des relations
+
+| Symbole | Signification |
+|---------|---------------|
+| `A --> B` | L'acteur A déclenche le cas d'utilisation B |
+| `A -.->\|<<include>>\| B` | A inclut obligatoirement B |
+| `A -.->\|<<extend>>\| B` | A peut optionnellement étendre vers B |
+
+## Use Case Diagrams
 
 ### 1. Authentification et Navigation (Guest)
 
@@ -453,181 +625,3 @@ graph LR
         T3[MAJ rating_avg / review_count]
     end
 ```
-
-### Tables des acteurs
-
-| Acteur | Rôle |
-|--------|------|
-| `Guest` | Non authentifié — navigation catalogue, auth |
-| `Customer` | Authentifié (role `customer`) — achats, avis, chat |
-| `Admin` | Role `admin` — gestion utilisateurs, produits, commandes, ML, appels vocaux |
-| `Manager` | Role `manager` — hérite de Customer (réservé usage futur) |
-| `Retell AI` | Service externe — POSTe le webhook de fin d'appel |
-| `ML Service` | Service Python — calcul features, segmentation, prédiction prix |
-| `System` | Backend + PostgreSQL — processus automatiques, appels externes |
-
-### Légende des relations
-
-| Symbole | Signification |
-|---------|---------------|
-| `A --> B` | L'acteur A déclenche le cas d'utilisation B |
-| `A -.->\|<<include>>\| B` | A inclut obligatoirement B |
-| `A -.->\|<<extend>>\| B` | A peut optionnellement étendre vers B |
-
-## Migration Files Index
-
-| # | File | Purpose |
-| - | ---- | ------- |
-| 001 | `001_tables.sql` | Extensions (vector, citext), all base tables |
-| 002 | `002_constraints.sql` | FK, unique, check constraints |
-| 003 | `003_indexes.sql` | FK indexes, status indexes, HNSW vector index |
-| 004 | `004_triggers.sql` | `update_timestamp`, `maintain_order_total`, `maintain_product_review_stats` |
-| 005 | `005_views.sql` | `product_review_summary`, `order_summary` |
-| 006 | `006_ml_schema.sql` | `ml_models`, `user_features`, `user_segments`, `product_price_predictions`, `user_sessions` |
-| 006b | `006b_ml_constraints.sql` | ML table foreign keys + check constraints |
-| 007 | `007_ml_views.sql` | `v_user_behavior_features` analytical view |
-| 008 | `008_ml_indexes.sql` | ML-specific indexes |
-| 009 | `009_nlp_schema.sql` | `chatbot_interactions` (RAG + LLM traceability) |
-| 010 | `010_nlp_evaluations.sql` | `nlp_similarity_metrics` (Precision@K, MRR, NDCG) |
-| 011 | `011_fts_search.sql` | `search_vector` tsvector column + GIN index |
-| 012 | `012_voice_confirmations_extend.sql` | retry_count, provider_call_id, partial unique index |
-| 013 | `013_price_drivers.sql` | supplier_cost, margin_pct, brand_tier, product_tier, condition, release_year |
-
-## Observability
-
-### Endpoints
-
-| Path | Description |
-| ---- | ----------- |
-| `GET /api/observability/health` | Health check enrichi (statut DB + pool stats) |
-| `GET /api/observability/metrics` | Métriques Prometheus (counter, histogram, gauge, métriques Node.js) |
-
-### Métriques exposées
-
-| Métrique | Type | Labels |
-| -------- | ---- | ------ |
-| `http_requests_total` | Counter | method, route, status_code |
-| `http_request_duration_seconds` | Histogram (buckets: 5ms→10s) | method, route, status_code |
-| `http_requests_active` | Gauge | method |
-| `nodejs_*` (event loop, mémoire, GC, handles) | Gauges / Histograms | — |
-
-### Stack technique
-
-- **Pino** — Logger structuré JSON (pretty-print en dev, silencieux en test)
-- **prom-client** — Métriques Prometheus embarquées dans le processus Node.js
-- **Prometheus** — Scrape les métriques du backend toutes les 15s
-- **Grafana** — Dashboards pré-configurés (req/s, latence, mémoire, event loop)
-
-### Lancer la stack monitoring complète (Prometheus + Grafana + Alertmanager)
-
-```bash
-# Depuis backend/infra/docker/
-docker compose up -d prometheus grafana alertmanager
-```
-
-### Services
-
-| Service | URL | Rôle |
-| ------- | --- | ---- |
-| **Prometheus** | `http://localhost:9090` | Collecte et stocke les métriques (scrape toutes les 15s) |
-| **Grafana** | `http://localhost:3000` | Visualisation des métriques (login: `admin` / `admin`) |
-| **Alertmanager** | `http://localhost:9093` | Gère les alertes et les notifications (email, Slack, etc.) |
-
-#### Pourquoi ces services ?
-
-- **Prometheus** — Base de données de séries temporelles. Il **pull** (scrape) les métriques depuis le endpoint `/api/observability/metrics` du backend toutes les 15s et les stocke dans son TSDB. C'est le cœur du monitoring : sans lui, pas de données historiques, pas d'alertes.
-
-- **Grafana** — Interface de dashboarding. Il interroge Prometheus en PromQL pour afficher des graphiques temps réel (requêtes/sec, latence, mémoire, event loop). Les dashboards sont **pré-provisionnés** (fichiers JSON versionnés dans le repo) — aucun clic manuel nécessaire.
-
-- **Alertmanager** — Routage et notification des alertes. Il reçoit les alertes déclenchées par Prometheus et les envoie par **email** (ou Slack, Telegram, PagerDuty, etc.). Sans lui, les alertes restent dans Prometheus sans jamais notifier personne.
-
-### Alertes pré-configurées (13 règles)
-
-Les règles sont définies dans `infra/docker/prometheus/alert.rules.yml` et évaluées toutes les 15s :
-
-| Alerte | Seuil | Sévérité | Déclencheur |
-| ------ | ----- | -------- | ----------- |
-| **BackendDown** | `up == 0` | 🔴 critical | Backend injoignable par Prometheus |
-| **DatabaseUnreachable** | `503 sur /health` | 🔴 critical | PostgreSQL déconnecté |
-| **MLServiceUnavailable** | `502/503/504 sur /api/ml/*` | 🔴 critical | Service ML (price prediction/segments) HS |
-| **ChatMLServiceUnavailable** | `502/503/504 sur /api/chat` | 🔴 critical | Chat ML HS |
-| **HighErrorRate** | `5xx > 5% des requêtes` | 🟡 warning | Bugs applicatifs généralisés |
-| **BruteForceAttempt** | `401 login > 10/2min` | 🟡 warning | Attaque par force brute suspectée |
-| **AuthRateLimitReached** | `429 auth` | 🟡 warning | Limiteur anti-brute-force qui bloque des requêtes légitimes |
-| **OrderCreationFailing** | `400 POST /orders > 2/10min` | 🟡 warning | Stock épuisé ou produit inactif |
-| **StockExhaustion** | `400 POST /cart > 5/10min` | 🟡 warning | Ajouts au panier refusés pour stock insuffisant |
-| **HighP99Latency** | `P99 > 3s` | 🟡 warning | Latence dégradée |
-| **HighP95Latency** | `P95 > 1s` | 🟡 warning | Latence dégradée |
-| **MemoryPressure** | `heap > 85%` | 🟡 warning | Fuite mémoire possible |
-| **AccountDeactivated** | `403 login > 2/5min` | 🔵 info | Comptes désactivés sollicités |
-| **AdminSelfModificationAttempt** | `403 role/status` | 🔵 info | Admin tente de modifier son propre rôle |
-
-Les alertes **critical** sont envoyées par email toutes les 30min, les **warning** toutes les 2h, les **info** toutes les 4h.
-
-### Architecture
-
-```mermaid
-graph LR
-    Backend[Node.js Backend<br/>:5000] -->|GET /api/observability/metrics| Backend
-    Prometheus[Prometheus<br/>:9090] -->|scrape 15s| Backend
-    Prometheus -->|alert rules| Alertmanager[Alertmanager<br/>:9093]
-    Alertmanager -->|SMTP| Email[✉️ admin@email]
-    Grafana[Grafana<br/>:3000] -->|query| Prometheus
-    Dev[Developer] -->|http://localhost:3000| Grafana
-```
-
-### Fichiers de configuration
-
-```
-infra/docker/
-  docker-compose.yml              ← Services: postgres, elasticsearch, kibana, logstash, prometheus, grafana, alertmanager
-  prometheus/
-    prometheus.yml                ← Scrape config + alerting rules + alertmanager target
-    alert.rules.yml               ← 13 règles d'alerte métier (créé)
-  alertmanager/
-    alertmanager.yml              ← Configuration SMTP + routage des alertes (créé)
-  grafana/
-    datasources/
-      datasource.yml              ← Auto-provision Prometheus datasource
-    dashboards/
-      dashboard.yml               ← Auto-provision dashboard provider
-      nodejs-app.json             ← Dashboard JSON corrigé (6 panels + metric name fix)
-```
-
-### Commandes utiles
-
-```bash
-# Lancer toute la stack monitoring
-docker compose up -d prometheus grafana alertmanager
-
-# Vérifier l'état des conteneurs
-docker ps
-
-# Voir les alertes dans Prometheus
-open http://localhost:9090/alerts
-
-# Voir l'interface Alertmanager
-open http://localhost:9093
-
-# Voir le dashboard Grafana
-open http://localhost:3000/dashboards
-
-# Consulter les logs d'un service
-docker logs ecommerce_alertmanager
-docker logs ecommerce_prometheus
-```
-
-> **Note :** Pour recevoir les alertes par email, modifie les paramètres SMTP dans `infra/docker/alertmanager/alertmanager.yml` (smarthost, auth_username, auth_password, from, to).
-
-## Security
-
-- **Helmet** — HTTP headers hardening
-- **CORS** — Restricted to `FRONTEND_URL` + `CORS_ALLOWED_ORIGINS`
-- **CSRF** — Origin header validation via custom middleware on mutating requests
-- **Rate limiting** — Auth endpoints (configurable via express-rate-limit)
-- **JWT** — httpOnly cookie (`access_token`), not accessible from JS
-- **Password** — bcryptjs with salt rounds
-- **Zod validation** — All request bodies validated at runtime
-- **Input sanitization** — Parameterized queries via pg
-- **Production guards** — Enforces min 32-char JWT secret, webhook secret, and ML token
-
