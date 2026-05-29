@@ -19,6 +19,7 @@ import { orderRouter } from "./routes/order.route.js";
 import { reviewRouter } from "./routes/review.route.js";
 import { voiceRouter } from "./routes/voice.route.js";
 import { voiceWebhookRouter } from "./routes/voice.route.js";
+import { chatRouter } from "./routes/chat.route.js";
 import { StatusCodes } from "http-status-codes";
 import { env } from "./config/env.js";
 import { parseTrustProxy } from "./config/trustProxy.js";
@@ -87,6 +88,7 @@ app.use("/api/subcategories", subcategoryRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/voice", voiceRouter);
+app.use("/api/chat", chatRouter);
 
 /*
 404 Handler

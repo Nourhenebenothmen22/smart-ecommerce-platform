@@ -17,6 +17,7 @@ from collections import defaultdict, deque
 from time import monotonic
 
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 # Ensure both project root and the 'ml' directory are importable.
@@ -45,6 +46,23 @@ app = FastAPI(
     title="eCommerce ML Intelligence API",
     description="RAG Chatbot API with Hybrid Search (BM25 + Dense Vector + RRF Fusion).",
     version="2.0.0"
+)
+
+# CORS - allow only configured origins in production, localhost in development
+_cors_origins_str = os.getenv("ML_CORS_ORIGINS", "")
+if _cors_origins_str:
+    _cors_origins = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
+else:
+    _cors_origins = ["http://localhost:5000", "http://127.0.0.1:5000"]
+    if not settings.IS_PRODUCTION:
+        _cors_origins.extend(["http://localhost:5173", "http://localhost:3000"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-ML-Service-Token", "X-ML-User-Id"],
 )
 
 # Initialize engines. Hybrid retriever uses both BM25 + Vector internally.

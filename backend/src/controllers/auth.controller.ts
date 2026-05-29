@@ -21,14 +21,17 @@ export function getCookieOptions() {
   return {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    sameSite: (env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
     maxAge: parseJwtExpiryMs(env.JWT_EXPIRES_IN),
   };
 }
 
 function getClearCookieOptions() {
-  const { maxAge: _maxAge, ...options } = getCookieOptions();
-  return options;
+  return {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: (env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
+  };
 }
 
 export class AuthController {
