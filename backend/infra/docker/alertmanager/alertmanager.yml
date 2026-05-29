@@ -1,24 +1,9 @@
 global:
   resolve_timeout: 5m
-
-  # ── Configuration SMTP ──
-  # Remplace les valeurs ci-dessous par ton serveur SMTP
-  #
-  # Gmail (nécessite un mot de passe d'application) :
-  #   smarthost: smtp.gmail.com:587
-  #   auth_username: tonemail@gmail.com
-  #   auth_password: mdp-application-16-caracteres
-  #   from: tonemail@gmail.com
-  #
-  # Outlook :
-  #   smarthost: smtp.office365.com:587
-  #   auth_username: tonemail@outlook.com
-  #   auth_password: ton-mot-de-passe
-  #   from: tonemail@outlook.com
-  smarthost: "smtp.gmail.com:587"
-  auth_username: "benothmennourhen8@gmail.com"
-  auth_password: "ugxl pgcz upnu xhmn"
-  from: "benothmennourhen8@gmail.com"
+  smtp_smarthost: "smtp.gmail.com:587"
+  smtp_from: "benothmennourhen8@gmail.com"
+  smtp_auth_username: "benothmennourhen8@gmail.com"
+  smtp_auth_password: "ugxl pgcz upnu xhmn"
 
 route:
   receiver: "email-admin"
