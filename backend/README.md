@@ -347,4 +347,3 @@ erDiagram
 - **Input sanitization** — Parameterized queries via pg
 - **Production guards** — Enforces min 32-char JWT secret, webhook secret, and ML token
 
-See [`SECURITY_GUIDE.md`](./SECURITY_GUIDE.md) for detailed policies.
