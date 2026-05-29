@@ -1,0 +1,144 @@
+groups:
+  - name: ecommerce-backend
+    interval: 15s
+    rules:
+
+      # ── CRITICAL — App en panne ──
+      - alert: BackendDown
+        expr: up{job="ecommerce-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend injoignable"
+          description: "Prometheus ne peut plus scrapper le backend"
+
+      # ── CRITICAL — Base de données ──
+      - alert: DatabaseUnreachable
+        expr: rate(http_requests_total{route="/api/observability/health",status_code="503"}[2m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Base de données injoignable"
+          description: "Le health check DB est en échec depuis {{ $value | humanizeDuration }}"
+
+      # ── CRITICAL — ML Service ──
+      - alert: MLServiceUnavailable
+        expr: rate(http_requests_total{route=~"/api/ml/.*",status_code=~"502|503|504"}[2m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service ML indisponible"
+          description: "Le service ML (price prediction/segments) retourne des erreurs 502/503/504"
+
+      # ── CRITICAL — Chat ML ──
+      - alert: ChatMLServiceUnavailable
+        expr: rate(http_requests_total{route="/api/chat",status_code=~"502|503|504"}[2m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service Chat ML indisponible"
+          description: "Le chat ML retourne des erreurs"
+
+      # ── WARNING — Taux d'erreur élevé ──
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status_code=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreur 5xx > 5%"
+          description: "{{ $value | humanizePercentage }} des requêtes sont en erreur 5xx ces 5 minutes"
+
+      # ── WARNING — Tentative de force brute ──
+      - alert: BruteForceAttempt
+        expr: rate(http_requests_total{route="/api/auth/login",status_code="401"}[2m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tentative de force brute suspectée"
+          description: "{{ $value | humanize }} tentatives de login échouées/s sur /api/auth/login"
+
+      # ── WARNING — Rate limit auth atteint ──
+      - alert: AuthRateLimitReached
+        expr: rate(http_requests_total{route=~"/api/auth/(register|login)",status_code="429"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit auth déclenché"
+          description: "Des requêtes sont bloquées sur les endpoints auth (10 req/15min)"
+
+      # ── WARNING — Échecs création commande ──
+      - alert: OrderCreationFailing
+        expr: rate(http_requests_total{route="/api/orders",method="POST",status_code="400"}[10m]) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Échecs création de commande"
+          description: "{{ $value | humanize }} commandes/10min rejetées (stock insuffisant ou produit inactif)"
+
+      # ── WARNING — Stock épuisé ──
+      - alert: StockExhaustion
+        expr: rate(http_requests_total{route="/api/cart",method="POST",status_code="400"}[10m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Demandes d'ajout panier rejetées pour stock insuffisant"
+          description: "{{ $value | humanize }} tentatives/10min de ajout panier refusées pour stock épuisé"
+
+      # ── WARNING — Latence P99 ──
+      - alert: HighP99Latency
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence P99 > 3s"
+          description: "La latence P99 est à {{ $value }}s depuis 5 minutes"
+
+      # ── WARNING — Latence P95 ──
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence P95 > 1s"
+          description: "La latence P95 est à {{ $value }}s depuis 5 minutes"
+
+      # ── WARNING — Mémoire saturée ──
+      - alert: MemoryPressure
+        expr: nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mémoire heap > 85%"
+          description: "Utilisation mémoire à {{ $value | humanizePercentage }}"
+
+      # ── INFO — Verrouillage de compte ──
+      - alert: AccountDeactivated
+        expr: rate(http_requests_total{route="/api/auth/login",status_code="403"}[5m]) > 2
+        for: 2m
+        labels:
+          severity: info
+        annotations:
+          summary: "Tentatives de connexion sur comptes désactivés"
+          description: "{{ $value | humanize }} tentatives/5min sur comptes is_active=false"
+
+      # ── INFO — Auto-modification admin ──
+      - alert: AdminSelfModificationAttempt
+        expr: increase(http_requests_total{route=~"/api/users/[0-9]+/(role|status)",status_code="403"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Tentative d'auto-modification admin bloquée"
+          description: "Un admin a tenté de modifier son propre rôle/statut"
