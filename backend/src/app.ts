@@ -21,6 +21,7 @@ import { reviewRouter } from "./routes/review.route.js";
 import { voiceRouter } from "./routes/voice.route.js";
 import { voiceWebhookRouter } from "./routes/voice.route.js";
 import { chatRouter } from "./routes/chat.route.js";
+import { cartRouter } from "./routes/cart.route.js";
 import { StatusCodes } from "http-status-codes";
 import { env } from "./config/env.js";
 import { parseTrustProxy } from "./config/trustProxy.js";
@@ -58,12 +59,10 @@ app.use(compression());
 app.use(cookieParser());
 
 /*
-Security Headers & CSRF (handled by lusca)
+Security Headers (handled by lusca)
 */
 app.use(lusca.xframe("SAMEORIGIN"));
 app.use(lusca.xssProtection(true));
-// Note: CSRF is disabled by default here, enable if processing stateful forms with cookies
-// app.use(lusca.csrf()); 
 
 /*
 Static Files
@@ -86,13 +85,15 @@ app.get("/api/docs.json", (_req, res) => {
 });
 
 /*
+Rate Limiter — global before all routes (covers health, observability, webhook, API)
+*/
+app.use(rateLimitMiddleware);
+
+/*
 Routes
 */
 app.use("/api/health", healthRouter);
 app.use("/api/observability", observabilityRouter);
-
-// Apply rate limiter to all routes except health
-app.use(rateLimitMiddleware);
 
 // Webhook must be mounted before express.json() so HMAC uses the exact raw body.
 app.use("/api/voice/webhook", voiceWebhookRouter);
@@ -110,6 +111,7 @@ app.use("/api/orders", orderRouter);
 app.use("/api/reviews", reviewRouter);
 app.use("/api/voice", voiceRouter);
 app.use("/api/chat", chatRouter);
+app.use("/api/cart", cartRouter);
 
 /*
 404 Handler

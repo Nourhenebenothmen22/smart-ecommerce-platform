@@ -181,8 +181,9 @@ export class MLService {
 
       if (!response.ok) {
         const message = await response.text();
+        logger.error({ mlResponse: message, status: response.status }, "ML price prediction failed");
         throw new AppError(
-          `ML price prediction failed: ${message || response.statusText}`,
+          "ML price prediction service returned an error",
           response.status >= 400 && response.status < 500
             ? StatusCodes.BAD_GATEWAY
             : StatusCodes.SERVICE_UNAVAILABLE

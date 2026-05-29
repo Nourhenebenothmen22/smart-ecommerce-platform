@@ -20,8 +20,8 @@ export function parseJwtExpiryMs(value: string): number {
 export function getCookieOptions() {
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: (env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
+    secure: true,
+    sameSite: "strict" as const,
     maxAge: parseJwtExpiryMs(env.JWT_EXPIRES_IN),
   };
 }
@@ -29,8 +29,8 @@ export function getCookieOptions() {
 function getClearCookieOptions() {
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: (env.NODE_ENV === "production" ? "strict" : "lax") as "strict" | "lax",
+    secure: true,
+    sameSite: "strict" as const,
   };
 }
 

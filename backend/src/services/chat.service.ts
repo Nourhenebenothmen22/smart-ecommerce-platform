@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
+import { logger } from "../utils/logger.js";
 
 export interface ChatInput {
   query: string;
@@ -39,8 +40,9 @@ export class ChatService {
 
       if (!response.ok) {
         const message = await response.text();
+        logger.error({ mlResponse: message, status: response.status }, "Chat ML service error");
         throw new AppError(
-          `Chat service error: ${message || response.statusText}`,
+          "Chat service returned an error",
           response.status >= 400 && response.status < 500
             ? StatusCodes.BAD_GATEWAY
             : StatusCodes.SERVICE_UNAVAILABLE

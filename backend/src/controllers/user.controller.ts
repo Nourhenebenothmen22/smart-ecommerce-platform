@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../utils/apiResponse.js";
+import { AppError } from "../utils/AppError.js";
 import { userService } from "../services/user.service.js";
 
 export class UserController {
@@ -34,6 +35,9 @@ export class UserController {
 
   async updateRole(req: Request, res: Response, next: NextFunction) {
     try {
+      if (Number(req.params.id) === req.user!.id) {
+        throw new AppError("Cannot modify your own role", StatusCodes.FORBIDDEN);
+      }
       const user = await userService.updateRole(Number(req.params.id), req.body.role);
       sendResponse(res, StatusCodes.OK, "Role updated", user);
     } catch (error) { next(error); }
@@ -41,6 +45,9 @@ export class UserController {
 
   async updateStatus(req: Request, res: Response, next: NextFunction) {
     try {
+      if (Number(req.params.id) === req.user!.id) {
+        throw new AppError("Cannot modify your own status", StatusCodes.FORBIDDEN);
+      }
       const user = await userService.updateStatus(Number(req.params.id), req.body.is_active);
       sendResponse(res, StatusCodes.OK, "Status updated", user);
     } catch (error) { next(error); }
@@ -48,6 +55,9 @@ export class UserController {
 
   async deleteUser(req: Request, res: Response, next: NextFunction) {
     try {
+      if (Number(req.params.id) === req.user!.id) {
+        throw new AppError("Cannot delete your own account", StatusCodes.FORBIDDEN);
+      }
       await userService.deleteUser(Number(req.params.id));
       sendResponse(res, StatusCodes.OK, "User deactivated");
     } catch (error) { next(error); }
