@@ -10,6 +10,7 @@ import { productService } from "../services/product.service.js";
 import { orderService } from "../services/order.service.js";
 import { reviewService } from "../services/review.service.js";
 import { userService } from "../services/user.service.js";
+import { mockResponse, mockRequest } from "./helpers/controller-test-setup.js";
 
 jest.mock("../services/category.service.js", () => ({
   categoryService: {
@@ -59,19 +60,6 @@ jest.mock("../services/user.service.js", () => ({
     deleteUser: jest.fn<any>(),
   },
 }));
-
-function mockResponse() {
-  const res = {
-    status: jest.fn(),
-    json: jest.fn(),
-  } as unknown as Response;
-  (res.status as jest.Mock).mockReturnValue(res);
-  return res;
-}
-
-function mockRequest(data: Record<string, unknown> = {}) {
-  return data as unknown as Request;
-}
 
 describe("CRUD controller flows", () => {
   let next: NextFunction;

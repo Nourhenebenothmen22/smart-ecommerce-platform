@@ -5,13 +5,9 @@ import { authenticate } from "../middlewares/auth.middleware.js";
 import { pool } from "../db/pool.js";
 import { env } from "../config/env.js";
 
-jest.mock("../db/pool.js", () => {
-  return {
-    pool: {
-      query: jest.fn<any>(),
-    },
-  };
-});
+jest.mock("../db/pool.js", () => ({
+  pool: { query: jest.fn<any>() },
+}));
 
 describe("authenticate middleware", () => {
   let mockRequest: Partial<Request>;
@@ -20,9 +16,7 @@ describe("authenticate middleware", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequest = {
-      cookies: {},
-    };
+    mockRequest = { cookies: {} };
     mockResponse = {};
     next = jest.fn();
   });

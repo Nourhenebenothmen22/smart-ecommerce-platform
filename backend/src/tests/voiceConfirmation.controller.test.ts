@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
 import { voiceConfirmationController } from "../controllers/voiceConfirmation.controller.js";
 import { Request, Response, NextFunction } from "express";
+import { createMockExpress } from "./helpers/controller-test-setup.js";
 
 const mockInitiateCall = jest.fn<any>();
 const mockHandleWebhookResult = jest.fn<any>();
@@ -34,18 +35,10 @@ jest.mock("../config/env.js", () => ({
 }));
 
 describe("VoiceConfirmationController", () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let mockNext: NextFunction;
-  let jsonMock: any;
-  let statusMock: any;
+  let ctx: ReturnType<typeof createMockExpress>;
 
   beforeEach(() => {
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnValue({ json: jsonMock });
-    mockRequest = { params: {}, body: {}, headers: {} };
-    mockResponse = { status: statusMock };
-    mockNext = jest.fn();
+    ctx = createMockExpress({ user: null });
     jest.clearAllMocks();
   });
 
@@ -58,11 +51,11 @@ describe("VoiceConfirmationController", () => {
       const req = makeRequest();
       mockInitiateCall.mockResolvedValue({ providerCallId: "call_abc_123" });
 
-      await voiceConfirmationController.initiateCall(req, mockResponse as Response, mockNext);
+      await voiceConfirmationController.initiateCall(req, ctx.mockResponse as Response, ctx.mockNext);
 
       expect(mockInitiateCall).toHaveBeenCalledWith(123, "https://example.com");
-      expect(statusMock).toHaveBeenCalledWith(200);
-      expect(jsonMock).toHaveBeenCalledWith(
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
           data: expect.objectContaining({ orderId: 123, providerCallId: "call_abc_123" }),
@@ -75,85 +68,109 @@ describe("VoiceConfirmationController", () => {
       const error = new Error("Call failed");
       mockInitiateCall.mockRejectedValue(error);
 
-      await voiceConfirmationController.initiateCall(req, mockResponse as Response, mockNext);
+      await voiceConfirmationController.initiateCall(req, ctx.mockResponse as Response, ctx.mockNext);
 
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(ctx.mockNext).toHaveBeenCalledWith(error);
     });
   });
 
   describe("getContext", () => {
     test("retrieves confirmation context for an order", async () => {
-      mockRequest.params = { id: "123" };
+      ctx.mockRequest.params = { id: "123" };
       const context = [{ id: 1, order_id: 123, call_status: "completed" }];
       mockGetConfirmationContext.mockResolvedValue(context);
 
-      await voiceConfirmationController.getContext(mockRequest as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.getContext(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mockGetConfirmationContext).toHaveBeenCalledWith(123);
-      expect(statusMock).toHaveBeenCalledWith(200);
-      expect(jsonMock).toHaveBeenCalledWith(
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({ success: true, data: context })
       );
     });
 
     test("forwards errors to next handler", async () => {
-      mockRequest.params = { id: "123" };
+      ctx.mockRequest.params = { id: "123" };
       const error = new Error("Context error");
       mockGetConfirmationContext.mockRejectedValue(error);
 
-      await voiceConfirmationController.getContext(mockRequest as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.getContext(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(ctx.mockNext).toHaveBeenCalledWith(error);
     });
   });
 
   describe("webhook", () => {
     test("processes valid webhook payload", async () => {
-      mockRequest.body = Buffer.from(JSON.stringify({ call_id: "call_1" }));
-      mockRequest.headers = { "x-retell-signature": "valid-sig" };
+      ctx.mockRequest.body = Buffer.from(JSON.stringify({ call_id: "call_1" }));
+      ctx.mockRequest.headers = { "x-retell-signature": "valid-sig" };
       mockHandleWebhookResult.mockResolvedValue({ orderId: 123, outcome: "confirmed" });
 
-      await voiceConfirmationController.webhook(mockRequest as any as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.webhook(
+        ctx.mockRequest as any as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mockHandleWebhookResult).toHaveBeenCalledWith(
         expect.any(Buffer),
         "valid-sig"
       );
-      expect(statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
     });
 
     test("ignores unknown payloads gracefully", async () => {
-      mockRequest.body = Buffer.from("{}");
-      mockRequest.headers = { "x-retell-signature": "bad-sig" };
+      ctx.mockRequest.body = Buffer.from("{}");
+      ctx.mockRequest.headers = { "x-retell-signature": "bad-sig" };
       mockHandleWebhookResult.mockResolvedValue(null);
 
-      await voiceConfirmationController.webhook(mockRequest as any as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.webhook(
+        ctx.mockRequest as any as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(statusMock).toHaveBeenCalledWith(200);
-      expect(jsonMock).toHaveBeenCalledWith(
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({ message: "Ignored (unknown or invalid payload)" })
       );
     });
 
     test("throws on missing raw body", async () => {
-      mockRequest.body = "not-a-buffer";
+      ctx.mockRequest.body = "not-a-buffer";
 
-      await voiceConfirmationController.webhook(mockRequest as any as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.webhook(
+        ctx.mockRequest as any as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mockNext).toHaveBeenCalledWith(
+      expect(ctx.mockNext).toHaveBeenCalledWith(
         expect.objectContaining({ statusCode: 400 })
       );
     });
 
     test("forwards errors to next handler", async () => {
-      mockRequest.body = Buffer.from("{}");
-      mockRequest.headers = { "x-retell-signature": "sig" };
+      ctx.mockRequest.body = Buffer.from("{}");
+      ctx.mockRequest.headers = { "x-retell-signature": "sig" };
       const error = new Error("Webhook processing error");
       mockHandleWebhookResult.mockRejectedValue(error);
 
-      await voiceConfirmationController.webhook(mockRequest as any as Request, mockResponse as Response, mockNext);
+      await voiceConfirmationController.webhook(
+        ctx.mockRequest as any as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(ctx.mockNext).toHaveBeenCalledWith(error);
     });
   });
 });

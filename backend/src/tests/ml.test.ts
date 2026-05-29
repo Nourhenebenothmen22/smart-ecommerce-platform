@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import { mlController } from "../controllers/ml.controller.js";
 import { mlService } from "../services/ml.service.js";
 import { Request, Response, NextFunction } from "express";
+import { createMockExpress } from "./helpers/controller-test-setup.js";
 
 jest.mock("../services/ml.service.js", () => ({
   mlService: {
@@ -13,18 +14,10 @@ jest.mock("../services/ml.service.js", () => ({
 }));
 
 describe("MLController", () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let mockNext: NextFunction;
-  let jsonMock: any;
-  let statusMock: any;
+  let ctx: ReturnType<typeof createMockExpress>;
 
   beforeEach(() => {
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnValue({ json: jsonMock });
-    mockRequest = { params: {}, body: {}, query: {} };
-    mockResponse = { status: statusMock };
-    mockNext = jest.fn();
+    ctx = createMockExpress({ user: null });
     jest.clearAllMocks();
   });
 
@@ -32,11 +25,15 @@ describe("MLController", () => {
     test("triggers features recalculation", async () => {
       (mlService.recalculateUserFeatures as any).mockResolvedValue(undefined);
 
-      await mlController.recalculateFeatures(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.recalculateFeatures(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.recalculateUserFeatures).toHaveBeenCalled();
-      expect(statusMock).toHaveBeenCalledWith(200);
-      expect(jsonMock).toHaveBeenCalledWith(
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.jsonMock).toHaveBeenCalledWith(
         expect.objectContaining({ success: true })
       );
     });
@@ -45,15 +42,19 @@ describe("MLController", () => {
       const error = new Error("ML service unavailable");
       (mlService.recalculateUserFeatures as any).mockRejectedValue(error);
 
-      await mlController.recalculateFeatures(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.recalculateFeatures(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(ctx.mockNext).toHaveBeenCalledWith(error);
     });
   });
 
   describe("updateSegments", () => {
     test("validates body and calls recordUserSegments", async () => {
-      mockRequest.body = {
+      ctx.mockRequest.body = {
         segments: [{
           user_id: 1,
           segment_id: 2,
@@ -64,34 +65,46 @@ describe("MLController", () => {
       };
       (mlService.recordUserSegments as any).mockResolvedValue(undefined);
 
-      await mlController.updateSegments(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.updateSegments(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mlService.recordUserSegments).toHaveBeenCalledWith(mockRequest.body.segments);
-      expect(statusMock).toHaveBeenCalledWith(200);
+      expect(mlService.recordUserSegments).toHaveBeenCalledWith(ctx.mockRequest.body.segments);
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
     });
 
     test("returns 400 if validation fails (empty segments)", async () => {
-      mockRequest.body = { segments: [] };
+      ctx.mockRequest.body = { segments: [] };
 
-      await mlController.updateSegments(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.updateSegments(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.recordUserSegments).not.toHaveBeenCalled();
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(ctx.statusMock).toHaveBeenCalledWith(400);
     });
 
     test("returns 400 if segments field missing", async () => {
-      mockRequest.body = {};
+      ctx.mockRequest.body = {};
 
-      await mlController.updateSegments(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.updateSegments(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.recordUserSegments).not.toHaveBeenCalled();
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(ctx.statusMock).toHaveBeenCalledWith(400);
     });
   });
 
   describe("registerModel", () => {
     test("validates details and calls registerModel", async () => {
-      mockRequest.body = {
+      ctx.mockRequest.body = {
         model_name: "kmeans_customer",
         model_version: "1.0.0",
         model_type: "segmentation",
@@ -99,43 +112,59 @@ describe("MLController", () => {
       };
       (mlService.registerModel as any).mockResolvedValue(undefined);
 
-      await mlController.registerModel(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.registerModel(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
-      expect(mlService.registerModel).toHaveBeenCalledWith(mockRequest.body);
-      expect(statusMock).toHaveBeenCalledWith(201);
+      expect(mlService.registerModel).toHaveBeenCalledWith(ctx.mockRequest.body);
+      expect(ctx.statusMock).toHaveBeenCalledWith(201);
     });
 
     test("returns 400 if model_name missing", async () => {
-      mockRequest.body = { model_version: "1.0.0", model_type: "segmentation", algorithm: "kmeans" };
+      ctx.mockRequest.body = { model_version: "1.0.0", model_type: "segmentation", algorithm: "kmeans" };
 
-      await mlController.registerModel(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.registerModel(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.registerModel).not.toHaveBeenCalled();
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(ctx.statusMock).toHaveBeenCalledWith(400);
     });
   });
 
   describe("predictProductPrice", () => {
     test("validates body and calls predictProductPrice", async () => {
-      mockRequest.body = { product_id: 10, brand: "Acme", stock: 15 };
+      ctx.mockRequest.body = { product_id: 10, brand: "Acme", stock: 15 };
       const result = { predicted_price: 199.99 };
       (mlService.predictProductPrice as any).mockResolvedValue(result);
 
-      await mlController.predictProductPrice(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.predictProductPrice(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.predictProductPrice).toHaveBeenCalledWith({
         product_id: 10, brand: "Acme", stock: 15,
       });
-      expect(statusMock).toHaveBeenCalledWith(200);
+      expect(ctx.statusMock).toHaveBeenCalledWith(200);
     });
 
     test("returns 400 for empty body", async () => {
-      mockRequest.body = {};
+      ctx.mockRequest.body = {};
 
-      await mlController.predictProductPrice(mockRequest as Request, mockResponse as Response, mockNext);
+      await mlController.predictProductPrice(
+        ctx.mockRequest as Request,
+        ctx.mockResponse as Response,
+        ctx.mockNext
+      );
 
       expect(mlService.predictProductPrice).not.toHaveBeenCalled();
-      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(ctx.statusMock).toHaveBeenCalledWith(400);
     });
   });
 });

@@ -12,9 +12,7 @@ jest.mock("../config/env.js", () => ({
 }));
 
 jest.mock("../db/pool.js", () => ({
-  pool: {
-    query: jest.fn<any>(),
-  },
+  pool: { query: jest.fn<any>() },
 }));
 
 describe("ML price prediction backend integration", () => {

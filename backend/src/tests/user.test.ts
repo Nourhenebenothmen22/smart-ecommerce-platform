@@ -2,6 +2,7 @@ import { jest } from "@jest/globals";
 import { userController } from "../controllers/user.controller.js";
 import { userService } from "../services/user.service.js";
 import { Request, Response, NextFunction } from "express";
+import { createMockExpress } from "./helpers/controller-test-setup.js";
 
 jest.mock("../services/user.service.js", () => ({
   userService: {
@@ -16,18 +17,10 @@ jest.mock("../services/user.service.js", () => ({
 }));
 
 describe("UserController", () => {
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let mockNext: NextFunction;
-  let jsonMock: any;
-  let statusMock: any;
+  let ctx: ReturnType<typeof createMockExpress>;
 
   beforeEach(() => {
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnValue({ json: jsonMock });
-    mockRequest = { params: {}, body: {}, user: { id: 100, role: "customer", email: "me@example.com" } };
-    mockResponse = { status: statusMock };
-    mockNext = jest.fn();
+    ctx = createMockExpress({ user: { id: 100, role: "customer", email: "me@example.com" } });
     jest.clearAllMocks();
   });
 
@@ -35,11 +28,15 @@ describe("UserController", () => {
     const profile = { id: 100, email: "me@example.com" };
     (userService.getProfile as any).mockResolvedValue(profile);
 
-    await userController.getMe(mockRequest as Request, mockResponse as Response, mockNext);
+    await userController.getMe(
+      ctx.mockRequest as Request,
+      ctx.mockResponse as Response,
+      ctx.mockNext
+    );
 
     expect(userService.getProfile).toHaveBeenCalledWith(100);
-    expect(statusMock).toHaveBeenCalledWith(200);
-    expect(jsonMock).toHaveBeenCalledWith(
+    expect(ctx.statusMock).toHaveBeenCalledWith(200);
+    expect(ctx.jsonMock).toHaveBeenCalledWith(
       expect.objectContaining({ success: true, data: profile })
     );
   });
@@ -48,29 +45,41 @@ describe("UserController", () => {
     const users = [{ id: 1 }, { id: 2 }];
     (userService.getAllUsers as any).mockResolvedValue(users);
 
-    await userController.getAllUsers(mockRequest as Request, mockResponse as Response, mockNext);
+    await userController.getAllUsers(
+      ctx.mockRequest as Request,
+      ctx.mockResponse as Response,
+      ctx.mockNext
+    );
 
     expect(userService.getAllUsers).toHaveBeenCalled();
-    expect(statusMock).toHaveBeenCalledWith(200);
+    expect(ctx.statusMock).toHaveBeenCalledWith(200);
   });
 
   test("getUserById retrieves user by id (admin)", async () => {
-    mockRequest.params = { id: "2" };
+    ctx.mockRequest.params = { id: "2" };
     const user = { id: 2 };
     (userService.getUserById as any).mockResolvedValue(user);
 
-    await userController.getUserById(mockRequest as Request, mockResponse as Response, mockNext);
+    await userController.getUserById(
+      ctx.mockRequest as Request,
+      ctx.mockResponse as Response,
+      ctx.mockNext
+    );
 
     expect(userService.getUserById).toHaveBeenCalledWith(2);
-    expect(statusMock).toHaveBeenCalledWith(200);
+    expect(ctx.statusMock).toHaveBeenCalledWith(200);
   });
 
   test("forwards errors to next handler", async () => {
     const error = new Error("User not found");
     (userService.getProfile as any).mockRejectedValue(error);
 
-    await userController.getMe(mockRequest as Request, mockResponse as Response, mockNext);
+    await userController.getMe(
+      ctx.mockRequest as Request,
+      ctx.mockResponse as Response,
+      ctx.mockNext
+    );
 
-    expect(mockNext).toHaveBeenCalledWith(error);
+    expect(ctx.mockNext).toHaveBeenCalledWith(error);
   });
 });

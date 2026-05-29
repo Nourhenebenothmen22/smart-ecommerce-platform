@@ -3,9 +3,7 @@ import { productService } from "../services/product.service.js";
 import { pool } from "../db/pool.js";
 
 jest.mock("../db/pool.js", () => ({
-  pool: {
-    query: jest.fn<any>(),
-  },
+  pool: { query: jest.fn<any>() },
 }));
 
 describe("ProductService validation", () => {
