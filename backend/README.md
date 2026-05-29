@@ -319,205 +319,155 @@ erDiagram
 ## Use Case Diagram
 
 ```mermaid
-%% Acteurs
 actor Guest
 actor Customer
 actor Admin
 actor Manager
-actor "Retell AI" as RetellAI
-actor "ML Service" as MLService
-actor Système as System
+actor RetellAI as "Retell AI"
+actor MLService as "ML Service"
+actor System
 
-%% Hiérarchie des acteurs
 Guest <|-- Customer
 Customer <|-- Admin
 Customer <|-- Manager
 
-%% ══════════════════════════════════════════════
-%% 1. AUTHENTIFICATION (Guest → Customer)
-%% ══════════════════════════════════════════════
-usecase UC_Register as "S'inscrire (customer)"
-usecase UC_Login as "Se connecter"
-usecase UC_Logout as "Se déconnecter"
+usecase U1 as "S'inscrire"
+usecase U2 as "Se connecter"
+usecase U3 as "Se deconnecter"
+usecase U4 as "Consulter produits"
+usecase U5 as "Rechercher produits"
+usecase U6 as "Voir detail produit"
+usecase U7 as "Voir categories"
+usecase U8 as "Voir sous-categories"
+usecase U9 as "Voir avis produit"
+usecase U10 as "Voir mon profil"
+usecase U11 as "Modifier mon profil"
+usecase U12 as "Ajouter un avis"
+usecase U13 as "Modifier son avis"
+usecase U14 as "Supprimer son avis"
+usecase U15 as "Creer commande"
+usecase U16 as "Voir mes commandes"
+usecase U17 as "Voir detail commande"
+usecase U18 as "Chat AI assistant"
+usecase U19 as "Inscrire un admin"
+usecase U20 as "Lister utilisateurs"
+usecase U21 as "Voir utilisateur"
+usecase U22 as "Desactiver utilisateur"
+usecase U23 as "Changer role"
+usecase U24 as "Activer/desactiver compte"
+usecase U25 as "Creer produit"
+usecase U26 as "Modifier produit"
+usecase U27 as "Supprimer produit"
+usecase U28 as "Creer categorie"
+usecase U29 as "Modifier categorie"
+usecase U30 as "Supprimer categorie"
+usecase U31 as "Creer sous-categorie"
+usecase U32 as "Modifier sous-categorie"
+usecase U33 as "Supprimer sous-categorie"
+usecase U34 as "Voir toutes commandes"
+usecase U35 as "MAJ statut commande"
+usecase U36 as "Annuler commande"
+usecase U37 as "Lancer appel vocal"
+usecase U38 as "Voir contexte appel"
+usecase U39 as "Enregistrer modele ML"
+usecase U40 as "Predire prix produit"
+usecase U41 as "Recalculer features"
+usecase U42 as "Pousser segments"
+usecase U43 as "Passer appel Retell"
+usecase U44 as "Recevoir webhook"
+usecase U45 as "Relancer appel"
+usecase U46 as "Appeler ML Service"
+usecase U47 as "Journaliser audit"
+usecase U48 as "MAJ automatique timestamps"
+usecase U49 as "MAJ automatique total_amount"
+usecase U50 as "MAJ automatique rating_avg"
+usecase U51 as "Traiter chat RAG"
 
-Guest --> UC_Register
-Guest --> UC_Login
-Customer --> UC_Logout
+Guest --> U1
+Guest --> U2
+Customer --> U3
+Guest --> U4
+Guest --> U5
+Guest --> U6
+Guest --> U7
+Guest --> U8
+Guest --> U9
+Customer --> U10
+Customer --> U11
+Customer --> U12
+Customer --> U13
+Customer --> U14
+Customer --> U15
+Customer --> U16
+Customer --> U17
+Customer --> U18
+Admin --> U19
+Admin --> U20
+Admin --> U21
+Admin --> U22
+Admin --> U23
+Admin --> U24
+Admin --> U25
+Admin --> U26
+Admin --> U27
+Admin --> U28
+Admin --> U29
+Admin --> U30
+Admin --> U31
+Admin --> U32
+Admin --> U33
+Admin --> U34
+Admin --> U35
+Admin --> U36
+Admin --> U37
+Admin --> U38
+Admin --> U39
+Admin --> U40
+Admin --> U41
+Admin --> U42
+System --> U43
+System --> U44
+System --> U45
+System --> U46
+System --> U47
+System --> U48
+System --> U49
+System --> U50
+System --> U51
 
-%% ══════════════════════════════════════════════
-%% 2. CATALOGUE & NAVIGATION (Guest)
-%% ══════════════════════════════════════════════
-usecase UC_ListProducts as "Consulter les produits
-(paginés, filtrés, triés)"
-usecase UC_SearchProducts as "Rechercher produits
-(full-text search)"
-usecase UC_ViewProduct as "Voir détail produit"
-usecase UC_ViewCategories as "Voir catégories"
-usecase UC_ViewSubcategories as "Voir sous-catégories"
-usecase UC_ViewReviews as "Voir avis d'un produit"
+U37 ..> U43 : <<include>>
+U37 ..> U47 : <<include>>
+U43 ..> U44 : <<extend>>
+U44 ..> U45 : <<extend>>
+U44 ..> U35 : <<include>>
+U40 ..> U46 : <<include>>
+U41 ..> U46 : <<include>>
+U42 ..> U46 : <<include>>
+U15 ..> U47 : <<include>>
+U35 ..> U47 : <<include>>
+U25 ..> U47 : <<include>>
+U26 ..> U47 : <<include>>
+U27 ..> U47 : <<include>>
+U22 ..> U47 : <<include>>
+U18 ..> U51 : <<include>>
 
-Guest --> UC_ListProducts
-Guest --> UC_SearchProducts
-Guest --> UC_ViewProduct
-Guest --> UC_ViewCategories
-Guest --> UC_ViewSubcategories
-Guest --> UC_ViewReviews
-
-%% ══════════════════════════════════════════════
-%% 3. PROFIL & COMPTE (Customer)
-%% ══════════════════════════════════════════════
-usecase UC_ViewProfile as "Voir mon profil"
-usecase UC_UpdateProfile as "Modifier mon profil"
-
-Customer --> UC_ViewProfile
-Customer --> UC_UpdateProfile
-
-%% ══════════════════════════════════════════════
-%% 4. SHOPPING & COMMANDES (Customer)
-%% ══════════════════════════════════════════════
-usecase UC_AddReview as "Ajouter un avis"
-usecase UC_UpdateReview as "Modifier son avis"
-usecase UC_DeleteReview as "Supprimer son avis"
-usecase UC_CreateOrder as "Créer une commande"
-usecase UC_ViewMyOrders as "Voir mes commandes"
-usecase UC_ViewOrderDetail as "Voir détail commande"
-usecase UC_ChatAI as "Discuter avec l'assistant IA"
-
-Customer --> UC_AddReview
-Customer --> UC_UpdateReview
-Customer --> UC_DeleteReview
-Customer --> UC_CreateOrder
-Customer --> UC_ViewMyOrders
-Customer --> UC_ViewOrderDetail
-Customer --> UC_ChatAI
-
-%% ══════════════════════════════════════════════
-%% 5. ADMINISTRATION (Admin)
-%% ══════════════════════════════════════════════
-usecase UC_RegisterAdmin as "Inscrire un admin"
-usecase UC_ListUsers as "Lister tous les utilisateurs"
-usecase UC_GetUser as "Voir un utilisateur"
-usecase UC_DeactivateUser as "Désactiver un utilisateur"
-usecase UC_UpdateRole as "Changer le rôle d'un utilisateur"
-usecase UC_ToggleStatus as "Activer/désactiver un compte"
-
-usecase UC_CreateProduct as "Créer un produit"
-usecase UC_UpdateProduct as "Modifier un produit"
-usecase UC_DeleteProduct as "Supprimer un produit"
-usecase UC_CreateCategory as "Créer une catégorie"
-usecase UC_UpdateCategory as "Modifier une catégorie"
-usecase UC_DeleteCategory as "Supprimer une catégorie"
-usecase UC_CreateSubcategory as "Créer une sous-catégorie"
-usecase UC_UpdateSubcategory as "Modifier une sous-catégorie"
-usecase UC_DeleteSubcategory as "Supprimer une sous-catégorie"
-
-usecase UC_ListAllOrders as "Voir toutes les commandes"
-usecase UC_UpdateOrderStatus as "Mettre à jour le statut
-d'une commande"
-usecase UC_CancelOrder as "Annuler une commande"
-
-usecase UC_InitiateVoiceCall as "Lancer un appel vocal
-de confirmation"
-usecase UC_ViewVoiceContext as "Voir le contexte
-de l'appel vocal"
-
-Admin --> UC_RegisterAdmin
-Admin --> UC_ListUsers
-Admin --> UC_GetUser
-Admin --> UC_DeactivateUser
-Admin --> UC_UpdateRole
-Admin --> UC_ToggleStatus
-Admin --> UC_CreateProduct
-Admin --> UC_UpdateProduct
-Admin --> UC_DeleteProduct
-Admin --> UC_CreateCategory
-Admin --> UC_UpdateCategory
-Admin --> UC_DeleteCategory
-Admin --> UC_CreateSubcategory
-Admin --> UC_UpdateSubcategory
-Admin --> UC_DeleteSubcategory
-Admin --> UC_ListAllOrders
-Admin --> UC_UpdateOrderStatus
-Admin --> UC_CancelOrder
-Admin --> UC_InitiateVoiceCall
-Admin --> UC_ViewVoiceContext
-
-%% ══════════════════════════════════════════════
-%% 6. MACHINE LEARNING (Admin → ML Service)
-%% ══════════════════════════════════════════════
-usecase UC_RegisterMLModel as "Enregistrer un modèle ML"
-usecase UC_PredictPrice as "Prédire un prix produit"
-usecase UC_RecalcFeatures as "Recalculer les features
-utilisateurs"
-usecase UC_PushSegments as "Pousser les segments
-utilisateurs"
-
-Admin --> UC_RegisterMLModel
-Admin --> UC_PredictPrice
-Admin --> UC_RecalcFeatures
-Admin --> UC_PushSegments
-
-%% ══════════════════════════════════════════════
-%% 7. SYSTÈME (processus automatiques)
-%% ══════════════════════════════════════════════
-usecase UC_SendVoiceCall as "Passer l'appel vocal"
-usecase UC_ReceiveWebhook as "Recevoir webhook Retell"
-usecase UC_RetryCall as "Relancer l'appel
-(no-answer ≤ 3 tentatives)"
-usecase UC_ProcessML as "Appeler le service ML
-(Python)"
-usecase UC_LogAudit as "Journaliser dans audit_logs"
-usecase UC_UpdateTimestamps as "MAJ automatique
-updated_at"
-usecase UC_MaintainOrderTotal as "MAJ automatique
-total_amount"
-usecase UC_MaintainReviewStats as "MAJ automatique
-rating_avg / review_count"
-usecase UC_ProcessChatRAG as "Traiter requête chat
-(RAG: retrieval + LLM)"
-
-System --> UC_SendVoiceCall
-System --> UC_ReceiveWebhook
-System --> UC_RetryCall
-System --> UC_ProcessML
-System --> UC_LogAudit
-System --> UC_UpdateTimestamps
-System --> UC_MaintainOrderTotal
-System --> UC_MaintainReviewStats
-System --> UC_ProcessChatRAG
-
-%% Relations entre cas d'utilisation
-UC_InitiateVoiceCall ..> UC_SendVoiceCall : << include >>
-UC_InitiateVoiceCall ..> UC_LogAudit : << include >>
-UC_SendVoiceCall ..> UC_ReceiveWebhook : << extend >>
-UC_ReceiveWebhook ..> UC_RetryCall : << extend >>
-UC_ReceiveWebhook ..> UC_UpdateOrderStatus : << include >>
-UC_PredictPrice ..> UC_ProcessML : << include >>
-UC_RecalcFeatures ..> UC_ProcessML : << include >>
-UC_PushSegments ..> UC_ProcessML : << include >>
-UC_CreateOrder ..> UC_LogAudit : << include >>
-UC_UpdateOrderStatus ..> UC_LogAudit : << include >>
-UC_CreateProduct ..> UC_LogAudit : << include >>
-UC_UpdateProduct ..> UC_LogAudit : << include >>
-UC_DeleteProduct ..> UC_LogAudit : << include >>
-UC_DeleteUser ..> UC_LogAudit : << include >>
-UC_ChatAI ..> UC_ProcessChatRAG : << include >>
-
-%% Relations avec acteurs externes
-RetellAI --> UC_ReceiveWebhook : "POST /api/voice/webhook"
-MLService --> UC_ProcessML : "appel HTTP"
-
-%% Légende
-usecase LEG as "Légende
-┌─────────────────────────────────┐
-│  Guest    → non authentifié      │
-│  Customer → rôle customer        │
-│  Admin    → rôle admin           │
-│  Manager  → rôle manager         │
-│  <<include>>  → inclus obligatoire│
-│  <<extend>>   → extension option. │
-└─────────────────────────────────┘"
+RetellAI --> U44 : "POST webhook"
+MLService --> U46 : "HTTP call"
 ```
+
+| Acteur | Rôle |
+|--------|------|
+| Guest | Non authentifié — navigation catalogue, auth |
+| Customer | Authentifié (role `customer`) — achats, avis, chat |
+| Admin | Role `admin` — gestion utilisateurs, produits, commandes, ML, appels vocaux |
+| Manager | Role `manager` — hérite de Customer (réservé usage futur) |
+| Retell AI | Service externe — appelle `/api/voice/webhook` |
+| ML Service | Service Python — calcul features, segmentation, prédiction prix |
+
+| Stéréotype | Signification |
+|------------|---------------|
+| `<<include>>` | Le cas source déclenche obligatoirement le cas cible |
+| `<<extend>>` | Le cas source peut optionnellement déclencher le cas cible |
 
 ## Migration Files Index
 
