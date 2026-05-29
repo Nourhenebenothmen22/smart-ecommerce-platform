@@ -10,7 +10,10 @@ async function bootstrap() {
 
     // 2. Start Express server
     const server = app.listen(env.PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${env.PORT} [${env.NODE_ENV}]`);
+      console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+      console.log(`📚 Swagger docs available at http://localhost:${env.PORT}/api/docs`);
+      console.log(`🌍 Environment: ${env.NODE_ENV}`);
+      console.log(`🔗 API base URL: http://localhost:${env.PORT}/api`);
     });
 
     // 3. Graceful Shutdown handlers
