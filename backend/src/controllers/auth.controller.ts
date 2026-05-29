@@ -45,6 +45,15 @@ export class AuthController {
     }
   }
 
+  async registerAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { user } = await authService.registerAdmin(req.body);
+      sendResponse(res, StatusCodes.CREATED, "Admin registration successful", { user });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { user, token } = await authService.login(req.body.email, req.body.password);

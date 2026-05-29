@@ -6,6 +6,30 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 
 export class AuthService {
+  async registerAdmin(data: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    password: string;
+  }) {
+    const existing = await pool.query("SELECT id FROM users WHERE email = $1", [data.email]);
+    if (existing.rows.length > 0) {
+      throw new AppError("Email already registered", StatusCodes.CONFLICT);
+    }
+
+    const password_hash = await hashPassword(data.password);
+
+    const result = await pool.query(
+      `INSERT INTO users (first_name, last_name, email, password_hash, role)
+       VALUES ($1, $2, $3, $4, 'admin')
+       RETURNING id, first_name, last_name, email, phone, address_line, city, postal_code, country, role, is_active, token_version, created_at, updated_at`,
+      [data.first_name, data.last_name, data.email, password_hash]
+    );
+
+    const { token_version, ...user } = result.rows[0];
+    return { user };
+  }
+
   async register(data: {
     first_name: string;
     last_name: string;

@@ -338,6 +338,28 @@ const swaggerDefinition = {
         },
       },
     },
+    "/api/auth/register-admin": {
+      post: {
+        tags: ["Auth"],
+        summary: "Register a new admin user (admin only)",
+        security: [{ cookieAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/RegisterInput" } } },
+        },
+        responses: {
+          201: {
+            description: "Admin registration successful",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/ApiResponse" } } },
+          },
+          400: { description: "Validation error", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          401: { description: "Authentication required" },
+          403: { description: "Forbidden (requires admin role)" },
+          409: { description: "Email already registered" },
+        },
+      },
+    },
     "/api/auth/login": {
       post: {
         tags: ["Auth"],
