@@ -316,158 +316,160 @@ erDiagram
     ml_models ||--o{ product_price_predictions : "price_prediction_model"
 ```
 
-## Use Case Diagram
+## Use Case Diagrams
+
+### Hiérarchie des acteurs
 
 ```mermaid
-actor Guest
-actor Customer
-actor Admin
-actor Manager
-actor RetellAI as "Retell AI"
-actor MLService as "ML Service"
-actor System
-
-Guest <|-- Customer
-Customer <|-- Admin
-Customer <|-- Manager
-
-usecase U1 as "S'inscrire"
-usecase U2 as "Se connecter"
-usecase U3 as "Se deconnecter"
-usecase U4 as "Consulter produits"
-usecase U5 as "Rechercher produits"
-usecase U6 as "Voir detail produit"
-usecase U7 as "Voir categories"
-usecase U8 as "Voir sous-categories"
-usecase U9 as "Voir avis produit"
-usecase U10 as "Voir mon profil"
-usecase U11 as "Modifier mon profil"
-usecase U12 as "Ajouter un avis"
-usecase U13 as "Modifier son avis"
-usecase U14 as "Supprimer son avis"
-usecase U15 as "Creer commande"
-usecase U16 as "Voir mes commandes"
-usecase U17 as "Voir detail commande"
-usecase U18 as "Chat AI assistant"
-usecase U19 as "Inscrire un admin"
-usecase U20 as "Lister utilisateurs"
-usecase U21 as "Voir utilisateur"
-usecase U22 as "Desactiver utilisateur"
-usecase U23 as "Changer role"
-usecase U24 as "Activer/desactiver compte"
-usecase U25 as "Creer produit"
-usecase U26 as "Modifier produit"
-usecase U27 as "Supprimer produit"
-usecase U28 as "Creer categorie"
-usecase U29 as "Modifier categorie"
-usecase U30 as "Supprimer categorie"
-usecase U31 as "Creer sous-categorie"
-usecase U32 as "Modifier sous-categorie"
-usecase U33 as "Supprimer sous-categorie"
-usecase U34 as "Voir toutes commandes"
-usecase U35 as "MAJ statut commande"
-usecase U36 as "Annuler commande"
-usecase U37 as "Lancer appel vocal"
-usecase U38 as "Voir contexte appel"
-usecase U39 as "Enregistrer modele ML"
-usecase U40 as "Predire prix produit"
-usecase U41 as "Recalculer features"
-usecase U42 as "Pousser segments"
-usecase U43 as "Passer appel Retell"
-usecase U44 as "Recevoir webhook"
-usecase U45 as "Relancer appel"
-usecase U46 as "Appeler ML Service"
-usecase U47 as "Journaliser audit"
-usecase U48 as "MAJ automatique timestamps"
-usecase U49 as "MAJ automatique total_amount"
-usecase U50 as "MAJ automatique rating_avg"
-usecase U51 as "Traiter chat RAG"
-
-Guest --> U1
-Guest --> U2
-Customer --> U3
-Guest --> U4
-Guest --> U5
-Guest --> U6
-Guest --> U7
-Guest --> U8
-Guest --> U9
-Customer --> U10
-Customer --> U11
-Customer --> U12
-Customer --> U13
-Customer --> U14
-Customer --> U15
-Customer --> U16
-Customer --> U17
-Customer --> U18
-Admin --> U19
-Admin --> U20
-Admin --> U21
-Admin --> U22
-Admin --> U23
-Admin --> U24
-Admin --> U25
-Admin --> U26
-Admin --> U27
-Admin --> U28
-Admin --> U29
-Admin --> U30
-Admin --> U31
-Admin --> U32
-Admin --> U33
-Admin --> U34
-Admin --> U35
-Admin --> U36
-Admin --> U37
-Admin --> U38
-Admin --> U39
-Admin --> U40
-Admin --> U41
-Admin --> U42
-System --> U43
-System --> U44
-System --> U45
-System --> U46
-System --> U47
-System --> U48
-System --> U49
-System --> U50
-System --> U51
-
-U37 ..> U43 : <<include>>
-U37 ..> U47 : <<include>>
-U43 ..> U44 : <<extend>>
-U44 ..> U45 : <<extend>>
-U44 ..> U35 : <<include>>
-U40 ..> U46 : <<include>>
-U41 ..> U46 : <<include>>
-U42 ..> U46 : <<include>>
-U15 ..> U47 : <<include>>
-U35 ..> U47 : <<include>>
-U25 ..> U47 : <<include>>
-U26 ..> U47 : <<include>>
-U27 ..> U47 : <<include>>
-U22 ..> U47 : <<include>>
-U18 ..> U51 : <<include>>
-
-RetellAI --> U44 : "POST webhook"
-MLService --> U46 : "HTTP call"
+graph LR
+    G[Guest] --> C[Customer]
+    C --> A[Admin]
+    C --> M[Manager]
 ```
+
+### 1. Authentification et Navigation (Guest)
+
+```mermaid
+graph TD
+    Guest([Guest]) --> U1["S'inscrire"]
+    Guest --> U2[Se connecter]
+    Guest --> U3[Consulter produits]
+    Guest --> U4[Rechercher produits]
+    Guest --> U5[Voir detail produit]
+    Guest --> U6[Voir categories]
+    Guest --> U7[Voir sous-categories]
+    Guest --> U8[Voir avis produit]
+```
+
+### 2. Profil, Achats et Chat (Customer)
+
+```mermaid
+graph TD
+    Customer([Customer]) --> U1[Voir mon profil]
+    Customer --> U2[Modifier mon profil]
+    Customer --> U3[Se deconnecter]
+    Customer --> U4[Ajouter un avis]
+    Customer --> U5[Modifier son avis]
+    Customer --> U6[Supprimer son avis]
+    Customer --> U7[Creer commande]
+    Customer --> U8[Voir mes commandes]
+    Customer --> U9[Voir detail commande]
+    Customer --> U10[Chat AI assistant]
+
+    U7 -.-> U11["Journaliser audit (<<include>>)"]
+    U10 -.-> U12["Traiter chat RAG (<<include>>)"]
+```
+
+### 3. Gestion Utilisateurs (Admin)
+
+```mermaid
+graph TD
+    Admin([Admin]) --> U1[Inscrire un admin]
+    Admin --> U2[Lister utilisateurs]
+    Admin --> U3[Voir utilisateur]
+    Admin --> U4[Desactiver utilisateur]
+    Admin --> U5[Changer role]
+    Admin --> U6[Activer/desactiver compte]
+
+    U4 -.-> U7["Journaliser audit (<<include>>)"]
+```
+
+### 4. Gestion Catalogue (Admin)
+
+```mermaid
+graph TD
+    Admin([Admin]) --> U1[Creer produit]
+    Admin --> U2[Modifier produit]
+    Admin --> U3[Supprimer produit]
+    Admin --> U4[Creer categorie]
+    Admin --> U5[Modifier categorie]
+    Admin --> U6[Supprimer categorie]
+    Admin --> U7[Creer sous-categorie]
+    Admin --> U8[Modifier sous-categorie]
+    Admin --> U9[Supprimer sous-categorie]
+
+    U1 -.-> U10["Journaliser audit (<<include>>)"]
+    U2 -.-> U10
+    U3 -.-> U10
+```
+
+### 5. Gestion Commandes (Admin)
+
+```mermaid
+graph TD
+    Admin([Admin]) --> U1[Voir toutes commandes]
+    Admin --> U2[MAJ statut commande]
+    Admin --> U3[Annuler commande]
+
+    U2 -.-> U4["Journaliser audit (<<include>>)"]
+```
+
+### 6. Machine Learning (Admin → ML Service)
+
+```mermaid
+graph TD
+    Admin([Admin]) --> U1[Enregistrer modele ML]
+    Admin --> U2[Predire prix produit]
+    Admin --> U3[Recalculer features]
+    Admin --> U4[Pousser segments]
+
+    ML[/ML Service Python/]
+    U2 -.->|<<include>>| ML
+    U3 -.->|<<include>>| ML
+    U4 -.->|<<include>>| ML
+```
+
+### 7. Confirmation Vocale (Admin → Retell AI)
+
+```mermaid
+graph TD
+    Admin([Admin]) --> U1[Lancer appel vocal]
+    Admin --> U2[Voir contexte appel]
+
+    Sys([System]) --> U3[Passer appel Retell]
+    Sys --> U4[Recevoir webhook Retell]
+    Sys --> U5[Relancer appel si no-answer]
+    Sys --> U6[Journaliser audit]
+
+    Retell[/Retell AI/]
+    U1 -.->|<<include>>| U3
+    U1 -.->|<<include>>| U6
+    U3 -.->|<<extend>>| U4
+    U4 -.->|<<include>>| U2
+    U4 -.->|<<extend>>| U5
+    Retell -->|POST /api/voice/webhook| U4
+```
+
+### 8. Processus Automatiques Base de Données (System)
+
+```mermaid
+graph LR
+    subgraph Triggers PostgreSQL
+        T1[MAJ updated_at]
+        T2[MAJ total_amount orders]
+        T3[MAJ rating_avg / review_count]
+    end
+```
+
+### Tables des acteurs
 
 | Acteur | Rôle |
 |--------|------|
-| Guest | Non authentifié — navigation catalogue, auth |
-| Customer | Authentifié (role `customer`) — achats, avis, chat |
-| Admin | Role `admin` — gestion utilisateurs, produits, commandes, ML, appels vocaux |
-| Manager | Role `manager` — hérite de Customer (réservé usage futur) |
-| Retell AI | Service externe — appelle `/api/voice/webhook` |
-| ML Service | Service Python — calcul features, segmentation, prédiction prix |
+| `Guest` | Non authentifié — navigation catalogue, auth |
+| `Customer` | Authentifié (role `customer`) — achats, avis, chat |
+| `Admin` | Role `admin` — gestion utilisateurs, produits, commandes, ML, appels vocaux |
+| `Manager` | Role `manager` — hérite de Customer (réservé usage futur) |
+| `Retell AI` | Service externe — POSTe le webhook de fin d'appel |
+| `ML Service` | Service Python — calcul features, segmentation, prédiction prix |
+| `System` | Backend + PostgreSQL — processus automatiques, appels externes |
 
-| Stéréotype | Signification |
-|------------|---------------|
-| `<<include>>` | Le cas source déclenche obligatoirement le cas cible |
-| `<<extend>>` | Le cas source peut optionnellement déclencher le cas cible |
+### Légende des relations
+
+| Symbole | Signification |
+|---------|---------------|
+| `A --> B` | L'acteur A déclenche le cas d'utilisation B |
+| `A -.->\|<<include>>\| B` | A inclut obligatoirement B |
+| `A -.->\|<<extend>>\| B` | A peut optionnellement étendre vers B |
 
 ## Migration Files Index
 
