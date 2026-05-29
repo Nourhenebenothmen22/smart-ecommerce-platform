@@ -16,6 +16,7 @@ import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { orderService } from "./order.service.js";
 import { env } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 import type {
   IVoiceProvider,
   CallContext,
@@ -249,16 +250,14 @@ export class PhoneConfirmationService {
 
   // ── 3. Retry logic ────────────────────────────────────────────────────────
   private scheduleRetry(orderId: number, currentRetryCount: number): void {
-    const delayMs = Math.min(currentRetryCount * 60_000, 5 * 60_000); // 1m, 2m, 3m (capped at 5m)
-    console.log(
-      `[PhoneConfirmation] Scheduling retry #${currentRetryCount} for order ${orderId} in ${delayMs / 1000}s`
-    );
+    const delayMs = Math.min(currentRetryCount * 60_000, 5 * 60_000);
+    logger.info({ orderId, retryCount: currentRetryCount, delayMs }, `Scheduling retry #${currentRetryCount} for order ${orderId}`);
     setTimeout(async () => {
       try {
         const webhookBaseUrl = env.WEBHOOK_BASE_URL || "https://localhost:5000";
         await this.initiateCall(orderId, webhookBaseUrl);
       } catch (err) {
-        console.error(`[PhoneConfirmation] Retry #${currentRetryCount} failed for order ${orderId}:`, err);
+        logger.error({ orderId, retryCount: currentRetryCount, err }, `Retry #${currentRetryCount} failed for order ${orderId}`);
       }
     }, delayMs);
   }

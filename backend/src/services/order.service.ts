@@ -3,6 +3,7 @@ import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { env } from "../config/env.js";
 import type { PoolClient } from "pg";
+import { logger } from "../utils/logger.js";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<string, Set<string>> = {
   pending: new Set(["pending_phone_confirmation", "processing", "cancelled", "on_hold"]),
@@ -82,10 +83,10 @@ export class OrderService {
         
         // Fire-and-forget background trigger
         phoneService.initiateCall(order.id, webhookBaseUrl).catch((err: any) => {
-          console.error(`[OrderService] Failed to auto-trigger voice call for order ${order.id}:`, err.message || err);
+          logger.error({ orderId: order.id, err }, "Failed to auto-trigger voice call");
         });
       } catch (err: any) {
-        console.error(`[OrderService] Failed to import/initialize voice service for auto-trigger:`, err.message || err);
+        logger.error({ err }, "Failed to import/initialize voice service for auto-trigger");
       }
 
       // Return full order with items

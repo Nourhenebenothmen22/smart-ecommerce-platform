@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
-import debug from "debug";
 import { env } from "../config/env.js";
 import { ZodError } from "zod";
-
-const logError = debug("app:error");
+import { logger } from "../utils/logger.js";
 
 /**
  * Global error handling middleware.
@@ -12,11 +10,16 @@ const logError = debug("app:error");
  */
 export const errorHandler = (
   err: any,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): void => {
-  logError(err.stack || err.message);
+  logger.error({
+    reqId: req.id,
+    err,
+    method: req.method,
+    url: req.originalUrl || req.url,
+  }, err.stack || err.message);
 
   let statusCode = err.status || err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
   let message = err.message || "An unexpected error occurred on the server";

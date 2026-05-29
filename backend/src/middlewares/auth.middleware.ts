@@ -4,6 +4,7 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
 import { pool } from "../db/pool.js";
+import { logger } from "../utils/logger.js";
 
 interface JWTPayload {
   id: number;
@@ -53,7 +54,7 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
 
     next();
   } catch (error) {
-    console.error("JWT Verification Error:", error);
+    logger.warn({ err: error }, "JWT verification failed");
     next(new AppError("Invalid or expired token.", StatusCodes.UNAUTHORIZED));
   }
 };

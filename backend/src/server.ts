@@ -2,27 +2,29 @@ import { app } from "./app.js";
 import { env } from "./config/env.js";
 import { checkDatabaseConnection } from "./db/dbCheck.js";
 import { pool } from "./db/pool.js";
+import { logger } from "./utils/logger.js";
 
 async function bootstrap() {
   try {
-    // 1. Check and establish DB connection
     await checkDatabaseConnection();
 
-    // 2. Start Express server
     const server = app.listen(env.PORT, env.HOST, () => {
-      console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-      console.log(`📚 Swagger docs available at http://localhost:${env.PORT}/api/docs`);
-      console.log(`🌍 Environment: ${env.NODE_ENV}`);
-      console.log(`🔗 API base URL: http://localhost:${env.PORT}/api`);
+      logger.info({
+        port: env.PORT,
+        host: env.HOST,
+        env: env.NODE_ENV,
+        swagger: `http://localhost:${env.PORT}/api/docs`,
+        api: `http://localhost:${env.PORT}/api`,
+        metrics: `http://localhost:${env.PORT}/api/observability/metrics`,
+      }, `Server started on http://${env.HOST}:${env.PORT}`);
     });
 
-    // 3. Graceful Shutdown handlers
     const shutdown = async (signal: string) => {
-      console.log(`\n🛑 Received ${signal}. Closing server and database pool...`);
+      logger.warn({ signal }, `Received ${signal}, shutting down`);
       server.close(async () => {
-        console.log("✔ Express server closed.");
+        logger.info("Express server closed");
         await pool.end();
-        console.log("✔ Database pool closed.");
+        logger.info("Database pool closed");
         process.exit(0);
       });
     };
@@ -31,7 +33,7 @@ async function bootstrap() {
     process.on("SIGTERM", () => shutdown("SIGTERM"));
 
   } catch (error) {
-    console.error("❌ Application startup failed:", error);
+    logger.error({ err: error }, "Application startup failed");
     process.exit(1);
   }
 }

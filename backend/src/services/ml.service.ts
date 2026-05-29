@@ -5,6 +5,7 @@ import path from "path";
 import { StatusCodes } from "http-status-codes";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
+import { logger } from "../utils/logger.js";
 
 function resolveUserFeaturesSqlPath(): string {
   const candidates = [
@@ -61,10 +62,10 @@ export class MLService {
       await client.query(sql);
       await client.query("COMMIT");
       
-      console.log("User features recalculated successfully.");
+      logger.info("User features recalculated successfully");
     } catch (error) {
       await client.query("ROLLBACK");
-      console.error("Error recalculating user features:", error);
+      logger.error({ err: error }, "Error recalculating user features");
       throw error;
     } finally {
       client.release();

@@ -1,6 +1,5 @@
 import express from "express";
 import helmet from "helmet";
-import morgan from "morgan";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import lusca from "lusca";
@@ -8,7 +7,9 @@ import { corsMiddleware } from "./middlewares/cors.middleware.js";
 import { csrfOriginMiddleware } from "./middlewares/csrf.middleware.js";
 import { rateLimitMiddleware } from "./middlewares/rateLimit.middleware.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { requestIdMiddleware, requestLoggerMiddleware } from "./middlewares/observability.middleware.js";
 import { healthRouter } from "./routes/health.route.js";
+import { observabilityRouter } from "./routes/observability.route.js";
 import { mlRouter } from "./routes/ml.route.js";
 import { authRouter } from "./routes/auth.route.js";
 import { userRouter } from "./routes/user.route.js";
@@ -32,6 +33,13 @@ const trustProxy = parseTrustProxy(env.TRUST_PROXY);
 if (trustProxy !== false) {
   app.set("trust proxy", trustProxy);
 }
+
+/*
+Observability — request ID + metrics + structured logging
+(first to capture every request)
+*/
+app.use(requestIdMiddleware);
+app.use(requestLoggerMiddleware);
 
 /*
 Security Middleware
@@ -58,11 +66,6 @@ app.use(lusca.xssProtection(true));
 // app.use(lusca.csrf()); 
 
 /*
-HTTP Logger
-*/
-app.use(morgan("dev"));
-
-/*
 Static Files
 */
 app.use("/uploads", express.static("uploads"));
@@ -86,6 +89,7 @@ app.get("/api/docs.json", (_req, res) => {
 Routes
 */
 app.use("/api/health", healthRouter);
+app.use("/api/observability", observabilityRouter);
 
 // Apply rate limiter to all routes except health
 app.use(rateLimitMiddleware);
