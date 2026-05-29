@@ -17,6 +17,9 @@ Express.js backend with PostgreSQL (pgvector), JWT auth, Swagger docs, ML integr
 | **bcryptjs** | Password hashing |
 | **Swagger** (swagger-jsdoc + swagger-ui-express) | OpenAPI 3.0 docs |
 | **Helmet / CORS / Lusca (CSRF) / express-rate-limit** | Security |
+| **Pino** | Structured JSON logging |
+| **prom-client** | Prometheus metrics (`/api/observability/metrics`) |
+| **Prometheus + Grafana** | Metrics collection + dashboards (`docker-compose`) |
 | **Jest + ts-jest + supertest** | Testing (101 tests, 21 suites) |
 
 ## Setup
@@ -489,6 +492,77 @@ graph LR
 | 011 | `011_fts_search.sql` | `search_vector` tsvector column + GIN index |
 | 012 | `012_voice_confirmations_extend.sql` | retry_count, provider_call_id, partial unique index |
 | 013 | `013_price_drivers.sql` | supplier_cost, margin_pct, brand_tier, product_tier, condition, release_year |
+
+## Observability
+
+### Endpoints
+
+| Path | Description |
+| ---- | ----------- |
+| `GET /api/observability/health` | Health check enrichi (statut DB + pool stats) |
+| `GET /api/observability/metrics` | Métriques Prometheus (counter, histogram, gauge, métriques Node.js) |
+
+### Métriques exposées
+
+| Métrique | Type | Labels |
+| -------- | ---- | ------ |
+| `http_requests_total` | Counter | method, route, status_code |
+| `http_request_duration_seconds` | Histogram (buckets: 5ms→10s) | method, route, status_code |
+| `http_requests_active` | Gauge | method |
+| `nodejs_*` (event loop, mémoire, GC, handles) | Gauges / Histograms | — |
+
+### Stack technique
+
+- **Pino** — Logger structuré JSON (pretty-print en dev, silencieux en test)
+- **prom-client** — Métriques Prometheus embarquées dans le processus Node.js
+- **Prometheus** — Scrape les métriques du backend toutes les 15s
+- **Grafana** — Dashboards pré-configurés (req/s, latence, mémoire, event loop)
+
+### Lancer Prometheus + Grafana
+
+```bash
+# Depuis backend/infra/docker/
+docker compose up -d prometheus grafana
+```
+
+Les services sont pré-configurés avec :
+- **Prometheus** → `http://localhost:9090` (scrape `host.docker.internal:5000/api/observability/metrics`)
+- **Grafana** → `http://localhost:3000` (login: `admin` / `admin`)
+
+Grafana inclut automatiquement :
+- La datasource Prometheus pointant sur `http://prometheus:9090`
+- Un dashboard **"E-Commerce Backend"** avec 6 panels :
+  - HTTP Requests / sec
+  - Active Requests
+  - P99 / P95 / P50 Latency
+  - HTTP Status Breakdown (2xx, 4xx, 5xx)
+  - Node.js Event Loop Lag
+  - Heap Memory (used / total)
+
+### Architecture
+
+```mermaid
+graph LR
+    Backend[Node.js Backend<br/>:5000] -->|GET /api/observability/metrics| Backend
+    Prometheus[Prometheus<br/>:9090] -->|scrape 15s| Backend
+    Grafana[Grafana<br/>:3000] -->|query| Prometheus
+    Dev[Developer] -->|http://localhost:3000| Grafana
+```
+
+### Fichiers de configuration
+
+```
+infra/docker/
+  docker-compose.yml       ← Services: postgres, elasticsearch, kibana, logstash, prometheus, grafana
+  prometheus/
+    prometheus.yml         ← Scrape config (target: host.docker.internal:5000)
+  grafana/
+    datasources/
+      datasource.yml       ← Auto-provision Prometheus datasource
+    dashboards/
+      dashboard.yml        ← Auto-provision dashboard provider
+      nodejs-app.json      ← Dashboard JSON (6 panels)
+```
 
 ## Security
 
