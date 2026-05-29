@@ -23,6 +23,8 @@ import { chatRouter } from "./routes/chat.route.js";
 import { StatusCodes } from "http-status-codes";
 import { env } from "./config/env.js";
 import { parseTrustProxy } from "./config/trustProxy.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 export const app = express();
 
@@ -64,6 +66,21 @@ app.use(morgan("dev"));
 Static Files
 */
 app.use("/uploads", express.static("uploads"));
+
+/*
+API Documentation
+*/
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: ".swagger-ui .topbar { display: none }",
+  customSiteTitle: "E-Commerce API Docs",
+}));
+
+// JSON endpoint for the spec
+app.get("/api/docs.json", (_req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.json(swaggerSpec);
+});
 
 /*
 Routes
