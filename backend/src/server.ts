@@ -15,7 +15,6 @@ async function bootstrap() {
         env: env.NODE_ENV,
         swagger: `http://localhost:${env.PORT}/api/docs`,
         api: `http://localhost:${env.PORT}/api`,
-        metrics: `http://localhost:${env.PORT}/api/observability/metrics`,
         prometheus: `http://localhost:9090`,
         grafana: `http://localhost:3000`,
         alertmanager: `http://localhost:9093`,
