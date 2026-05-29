@@ -16,6 +16,11 @@ async function bootstrap() {
         swagger: `http://localhost:${env.PORT}/api/docs`,
         api: `http://localhost:${env.PORT}/api`,
         metrics: `http://localhost:${env.PORT}/api/observability/metrics`,
+        prometheus: `http://localhost:9090`,
+        grafana: `http://localhost:3000`,
+        alertmanager: `http://localhost:9093`,
+        alertRules: `http://localhost:9090/alerts`,
+        grafanaDashboards: `http://localhost:3000/dashboards`,
       }, `Server started on http://${env.HOST}:${env.PORT}`);
     });
 
