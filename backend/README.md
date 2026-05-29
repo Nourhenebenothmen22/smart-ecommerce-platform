@@ -16,10 +16,10 @@ Express.js backend with PostgreSQL (pgvector), JWT auth, Swagger docs, ML integr
 | **JWT** (jsonwebtoken) | Auth (httpOnly cookie) |
 | **bcryptjs** | Password hashing |
 | **Swagger** (swagger-jsdoc + swagger-ui-express) | OpenAPI 3.0 docs |
-| **Helmet / CORS / Lusca (CSRF) / express-rate-limit** | Security |
+| **Helmet / CORS / Lusca / express-rate-limit / csurf** | Security (headers, CORS, CSRF, rate limiting) |
 | **Pino** | Structured JSON logging |
 | **prom-client** | Prometheus metrics (`/api/observability/metrics`) |
-| **Prometheus + Grafana** | Metrics collection + dashboards (`docker-compose`) |
+| **Prometheus + Alertmanager + Grafana** | Metrics collection, alerting, dashboards (`docker-compose`) |
 | **Jest + ts-jest + supertest** | Testing (101 tests, 21 suites) |
 
 ## Setup
@@ -518,26 +518,51 @@ graph LR
 - **Prometheus** — Scrape les métriques du backend toutes les 15s
 - **Grafana** — Dashboards pré-configurés (req/s, latence, mémoire, event loop)
 
-### Lancer Prometheus + Grafana
+### Lancer la stack monitoring complète (Prometheus + Grafana + Alertmanager)
 
 ```bash
 # Depuis backend/infra/docker/
-docker compose up -d prometheus grafana
+docker compose up -d prometheus grafana alertmanager
 ```
 
-Les services sont pré-configurés avec :
-- **Prometheus** → `http://localhost:9090` (scrape `host.docker.internal:5000/api/observability/metrics`)
-- **Grafana** → `http://localhost:3000` (login: `admin` / `admin`)
+### Services
 
-Grafana inclut automatiquement :
-- La datasource Prometheus pointant sur `http://prometheus:9090`
-- Un dashboard **"E-Commerce Backend"** avec 6 panels :
-  - HTTP Requests / sec
-  - Active Requests
-  - P99 / P95 / P50 Latency
-  - HTTP Status Breakdown (2xx, 4xx, 5xx)
-  - Node.js Event Loop Lag
-  - Heap Memory (used / total)
+| Service | URL | Rôle |
+| ------- | --- | ---- |
+| **Prometheus** | `http://localhost:9090` | Collecte et stocke les métriques (scrape toutes les 15s) |
+| **Grafana** | `http://localhost:3000` | Visualisation des métriques (login: `admin` / `admin`) |
+| **Alertmanager** | `http://localhost:9093` | Gère les alertes et les notifications (email, Slack, etc.) |
+
+#### Pourquoi ces services ?
+
+- **Prometheus** — Base de données de séries temporelles. Il **pull** (scrape) les métriques depuis le endpoint `/api/observability/metrics` du backend toutes les 15s et les stocke dans son TSDB. C'est le cœur du monitoring : sans lui, pas de données historiques, pas d'alertes.
+
+- **Grafana** — Interface de dashboarding. Il interroge Prometheus en PromQL pour afficher des graphiques temps réel (requêtes/sec, latence, mémoire, event loop). Les dashboards sont **pré-provisionnés** (fichiers JSON versionnés dans le repo) — aucun clic manuel nécessaire.
+
+- **Alertmanager** — Routage et notification des alertes. Il reçoit les alertes déclenchées par Prometheus et les envoie par **email** (ou Slack, Telegram, PagerDuty, etc.). Sans lui, les alertes restent dans Prometheus sans jamais notifier personne.
+
+### Alertes pré-configurées (13 règles)
+
+Les règles sont définies dans `infra/docker/prometheus/alert.rules.yml` et évaluées toutes les 15s :
+
+| Alerte | Seuil | Sévérité | Déclencheur |
+| ------ | ----- | -------- | ----------- |
+| **BackendDown** | `up == 0` | 🔴 critical | Backend injoignable par Prometheus |
+| **DatabaseUnreachable** | `503 sur /health` | 🔴 critical | PostgreSQL déconnecté |
+| **MLServiceUnavailable** | `502/503/504 sur /api/ml/*` | 🔴 critical | Service ML (price prediction/segments) HS |
+| **ChatMLServiceUnavailable** | `502/503/504 sur /api/chat` | 🔴 critical | Chat ML HS |
+| **HighErrorRate** | `5xx > 5% des requêtes` | 🟡 warning | Bugs applicatifs généralisés |
+| **BruteForceAttempt** | `401 login > 10/2min` | 🟡 warning | Attaque par force brute suspectée |
+| **AuthRateLimitReached** | `429 auth` | 🟡 warning | Limiteur anti-brute-force qui bloque des requêtes légitimes |
+| **OrderCreationFailing** | `400 POST /orders > 2/10min` | 🟡 warning | Stock épuisé ou produit inactif |
+| **StockExhaustion** | `400 POST /cart > 5/10min` | 🟡 warning | Ajouts au panier refusés pour stock insuffisant |
+| **HighP99Latency** | `P99 > 3s` | 🟡 warning | Latence dégradée |
+| **HighP95Latency** | `P95 > 1s` | 🟡 warning | Latence dégradée |
+| **MemoryPressure** | `heap > 85%` | 🟡 warning | Fuite mémoire possible |
+| **AccountDeactivated** | `403 login > 2/5min` | 🔵 info | Comptes désactivés sollicités |
+| **AdminSelfModificationAttempt** | `403 role/status` | 🔵 info | Admin tente de modifier son propre rôle |
+
+Les alertes **critical** sont envoyées par email toutes les 30min, les **warning** toutes les 2h, les **info** toutes les 4h.
 
 ### Architecture
 
@@ -545,6 +570,8 @@ Grafana inclut automatiquement :
 graph LR
     Backend[Node.js Backend<br/>:5000] -->|GET /api/observability/metrics| Backend
     Prometheus[Prometheus<br/>:9090] -->|scrape 15s| Backend
+    Prometheus -->|alert rules| Alertmanager[Alertmanager<br/>:9093]
+    Alertmanager -->|SMTP| Email[✉️ admin@email]
     Grafana[Grafana<br/>:3000] -->|query| Prometheus
     Dev[Developer] -->|http://localhost:3000| Grafana
 ```
@@ -553,22 +580,50 @@ graph LR
 
 ```
 infra/docker/
-  docker-compose.yml       ← Services: postgres, elasticsearch, kibana, logstash, prometheus, grafana
+  docker-compose.yml              ← Services: postgres, elasticsearch, kibana, logstash, prometheus, grafana, alertmanager
   prometheus/
-    prometheus.yml         ← Scrape config (target: host.docker.internal:5000)
+    prometheus.yml                ← Scrape config + alerting rules + alertmanager target
+    alert.rules.yml               ← 13 règles d'alerte métier (créé)
+  alertmanager/
+    alertmanager.yml              ← Configuration SMTP + routage des alertes (créé)
   grafana/
     datasources/
-      datasource.yml       ← Auto-provision Prometheus datasource
+      datasource.yml              ← Auto-provision Prometheus datasource
     dashboards/
-      dashboard.yml        ← Auto-provision dashboard provider
-      nodejs-app.json      ← Dashboard JSON (6 panels)
+      dashboard.yml               ← Auto-provision dashboard provider
+      nodejs-app.json             ← Dashboard JSON corrigé (6 panels + metric name fix)
 ```
+
+### Commandes utiles
+
+```bash
+# Lancer toute la stack monitoring
+docker compose up -d prometheus grafana alertmanager
+
+# Vérifier l'état des conteneurs
+docker ps
+
+# Voir les alertes dans Prometheus
+open http://localhost:9090/alerts
+
+# Voir l'interface Alertmanager
+open http://localhost:9093
+
+# Voir le dashboard Grafana
+open http://localhost:3000/dashboards
+
+# Consulter les logs d'un service
+docker logs ecommerce_alertmanager
+docker logs ecommerce_prometheus
+```
+
+> **Note :** Pour recevoir les alertes par email, modifie les paramètres SMTP dans `infra/docker/alertmanager/alertmanager.yml` (smarthost, auth_username, auth_password, from, to).
 
 ## Security
 
 - **Helmet** — HTTP headers hardening
 - **CORS** — Restricted to `FRONTEND_URL` + `CORS_ALLOWED_ORIGINS`
-- **CSRF** — Lusca CSRF token validation on mutating requests
+- **CSRF** — Origin header validation via custom middleware on mutating requests
 - **Rate limiting** — Auth endpoints (configurable via express-rate-limit)
 - **JWT** — httpOnly cookie (`access_token`), not accessible from JS
 - **Password** — bcryptjs with salt rounds
