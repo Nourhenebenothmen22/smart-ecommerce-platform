@@ -91,6 +91,8 @@ services:
     restart: always
     volumes:
       - ./backend/infra/docker/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./backend/infra/docker/alertmanager/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/docker-entrypoint.sh"]
     environment:
       - SMTP_SMARTHOST=${ALERTMANAGER_SMTP_HOST:-smtp.gmail.com:587}
       - SMTP_FROM=${ALERTMANAGER_SMTP_FROM:-}
@@ -98,9 +100,8 @@ services:
       - SMTP_AUTH_PASSWORD=${ALERTMANAGER_SMTP_PASSWORD:-}
       - ALERTMANAGER_RECEIVER_EMAIL=${ALERTMANAGER_RECEIVER_EMAIL:-benothmennourhen8@gmail.com}
     command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--config.file=/tmp/alertmanager.yml"
       - "--storage.path=/alertmanager"
-      - "--config.expand-env=true"
     networks:
       - ecommerce_network
 
