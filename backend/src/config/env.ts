@@ -61,7 +61,10 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("7d"),
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   CORS_ALLOWED_ORIGINS: z.string().optional(),
-  WEBHOOK_BASE_URL: z.string().url().optional(),
+  WEBHOOK_BASE_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
   RETELL_API_KEY: z.string().optional(),
   RETELL_AGENT_ID: z.string().optional(),
   RETELL_FROM_NUMBER: z.string().optional(),
