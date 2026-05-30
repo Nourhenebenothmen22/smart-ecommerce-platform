@@ -5,10 +5,7 @@ WORKDIR /app
 # psycopg2-binary ships its own libpq - no system deps needed
 
 COPY ml/requirements-api.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-ENV SENTENCE_TRANSFORMERS_HOME=/app/model_cache
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
+RUN pip install --default-timeout=120 --retries=5 --no-cache-dir -r requirements.txt
 
 COPY ml/ ./
 
