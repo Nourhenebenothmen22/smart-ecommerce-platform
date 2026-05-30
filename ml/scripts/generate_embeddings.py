@@ -4,10 +4,15 @@ Generate or refresh product embeddings using versioned upserts.
 
 import logging
 import os
+import sys
 import time
 
 import psycopg2
 from sentence_transformers import SentenceTransformer
+
+_SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
 from ml.core.config import settings
 
