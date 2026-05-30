@@ -143,9 +143,9 @@ describe("CRUD controller flows", () => {
     (userService.deleteUser as any).mockResolvedValue(undefined);
 
     await userController.updateMe(mockRequest({ user, body: { city: "Tunis" } }), res, next);
-    await userController.updateRole(mockRequest({ params: { id: "8" }, body: { role: "manager" } }), res, next);
-    await userController.updateStatus(mockRequest({ params: { id: "8" }, body: { is_active: false } }), res, next);
-    await userController.deleteUser(mockRequest({ params: { id: "8" } }), res, next);
+    await userController.updateRole(mockRequest({ user, params: { id: "8" }, body: { role: "manager" } }), res, next);
+    await userController.updateStatus(mockRequest({ user, params: { id: "8" }, body: { is_active: false } }), res, next);
+    await userController.deleteUser(mockRequest({ user, params: { id: "8" } }), res, next);
 
     expect(userService.updateProfile).toHaveBeenCalledWith(7, { city: "Tunis" });
     expect(userService.updateRole).toHaveBeenCalledWith(8, "manager");

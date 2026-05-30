@@ -5,6 +5,6 @@ import { authorize } from "../middlewares/role.middleware.js";
 
 const router = Router();
 
-router.post("/", authenticate, authorize("customer"), (req, res, next) => chatController.sendMessage(req, res, next));
+router.post("/", authenticate, authorize("customer"), chatController.sendMessage);
 
 export { router as chatRouter };

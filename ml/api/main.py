@@ -53,16 +53,14 @@ _cors_origins_str = os.getenv("ML_CORS_ORIGINS", "")
 if _cors_origins_str:
     _cors_origins = [o.strip() for o in _cors_origins_str.split(",") if o.strip()]
 else:
-    _cors_origins = ["http://localhost:5000", "http://127.0.0.1:5000"]
-    if not settings.IS_PRODUCTION:
-        _cors_origins.extend(["http://localhost:5173", "http://localhost:3000"])
+    _cors_origins = ["http://backend:5000", "http://127.0.0.1:5000"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-ML-Service-Token", "X-ML-User-Id"],
+    allow_headers=["Content-Type", "X-ML-Service-Token", "X-ML-User-Id"],
 )
 
 # Initialize engines. Hybrid retriever uses both BM25 + Vector internally.

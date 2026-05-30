@@ -9,9 +9,9 @@ const router = Router();
 router.use(authenticate);
 router.use(authorize("admin"));
 
-router.post("/recalculate-features", (req, res, next) => mlController.recalculateFeatures(req, res, next));
-router.post("/segments", (req, res, next) => mlController.updateSegments(req, res, next));
-router.post("/models", (req, res, next) => mlController.registerModel(req, res, next));
-router.post("/price/predict", (req, res, next) => mlController.predictProductPrice(req, res, next));
+router.post("/recalculate-features", mlController.recalculateFeatures);
+router.post("/segments", mlController.updateSegments);
+router.post("/models", mlController.registerModel);
+router.post("/price/predict", mlController.predictProductPrice);
 
 export const mlRouter = router;

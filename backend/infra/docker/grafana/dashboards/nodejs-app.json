@@ -13,7 +13,7 @@
         {
           "expr": "rate(http_requests_total[1m])",
           "legendFormat": "{{method}} {{route}}",
-          "interval": "15s"
+          "interval": "30s"
         }
       ]
     },
@@ -25,7 +25,7 @@
         {
           "expr": "http_requests_active",
           "legendFormat": "{{method}}",
-          "interval": "15s"
+          "interval": "30s"
         }
       ]
     },
@@ -56,7 +56,7 @@
         {
           "expr": "rate(http_requests_total[1m])",
           "legendFormat": "{{status_code}}",
-          "interval": "15s"
+          "interval": "30s"
         }
       ]
     },
@@ -68,7 +68,7 @@
         {
           "expr": "nodejs_eventloop_lag_seconds",
           "legendFormat": "lag",
-          "interval": "15s"
+          "interval": "30s"
         }
       ]
     },

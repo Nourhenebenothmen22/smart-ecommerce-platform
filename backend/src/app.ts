@@ -98,8 +98,13 @@ app.use("/api/observability", observabilityRouter);
 // Webhook must be mounted before express.json() so HMAC uses the exact raw body.
 app.use("/api/voice/webhook", voiceWebhookRouter);
 
-app.use(express.json());
+/*
+CSRF check before body parser: reject untrusted origins early
+without parsing the request body.
+*/
 app.use(csrfOriginMiddleware);
+
+app.use(express.json());
 
 app.use("/api/ml", mlRouter);
 app.use("/api/auth", authRouter);

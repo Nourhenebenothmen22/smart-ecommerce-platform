@@ -1,9 +1,9 @@
 global:
   resolve_timeout: 5m
-  smtp_smarthost: "smtp.gmail.com:587"
-  smtp_from: "benothmennourhen8@gmail.com"
-  smtp_auth_username: "benothmennourhen8@gmail.com"
-  smtp_auth_password: "ugxl pgcz upnu xhmn"
+  smtp_smarthost: "${SMTP_SMARTHOST:-smtp.gmail.com:587}"
+  smtp_from: "${SMTP_FROM:-}"
+  smtp_auth_username: "${SMTP_AUTH_USERNAME:-}"
+  smtp_auth_password: "${SMTP_AUTH_PASSWORD:-}"
 
 route:
   receiver: "email-admin"
@@ -23,7 +23,7 @@ route:
 receivers:
   - name: "email-admin"
     email_configs:
-      - to: "benothmennourhen8@gmail.com"
+      - to: "${ALERTMANAGER_RECEIVER_EMAIL:-admin@example.com}"
         send_resolved: true
         headers:
           subject: '[{{ .Status | toUpper }}] E-Commerce - {{ .GroupLabels.alertname }}'

@@ -51,7 +51,7 @@ describe("validation hardening", () => {
       first_name: "Ada",
       last_name: "Lovelace",
       email: "ada@example.com",
-      password: "password123",
+      password: "Password123!",
     }).success).toBe(true);
   });
 

@@ -102,9 +102,36 @@ const envSchema = z.object({
 
 const parsedEnv = envSchema.safeParse(process.env);
 
+let env: z.infer<typeof envSchema>;
+
 if (!parsedEnv.success) {
-  console.error("❌ Invalid environment variables:", parsedEnv.error.format());
-  process.exit(1);
+  if (process.env.NODE_ENV === "test") {
+    env = {
+      PORT: 5000,
+      HOST: "0.0.0.0",
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test_db",
+      NODE_ENV: "test",
+      JWT_SECRET: "test_jwt_secret_at_least_32_chars_long!!",
+      JWT_EXPIRES_IN: "7d",
+      FRONTEND_URL: "http://localhost:5173",
+      CORS_ALLOWED_ORIGINS: undefined,
+      WEBHOOK_BASE_URL: undefined,
+      RETELL_API_KEY: undefined,
+      RETELL_AGENT_ID: undefined,
+      RETELL_FROM_NUMBER: undefined,
+      RETELL_WEBHOOK_SECRET: undefined,
+      ML_SERVICE_TOKEN: "test_token_at_least_32_chars_long!!!!",
+      ML_SERVICE_URL: "http://127.0.0.1:8000",
+      ML_REQUEST_TIMEOUT_MS: 5000,
+      TRUST_PROXY: "false",
+      COOKIE_SECRET: undefined,
+    };
+  } else {
+    console.error("❌ Invalid environment variables:", parsedEnv.error.format());
+    process.exit(1);
+  }
+} else {
+  env = parsedEnv.data;
 }
 
-export const env = parsedEnv.data;
+export { env };

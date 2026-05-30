@@ -72,6 +72,6 @@ describe("ML price prediction backend integration", () => {
     });
 
     await expect(mlService.predictProductPrice({ title: "New product" }))
-      .rejects.toThrow("ML price prediction failed");
+      .rejects.toThrow("ML price prediction service returned an error");
   });
 });
