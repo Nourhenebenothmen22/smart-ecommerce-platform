@@ -6,7 +6,11 @@ import { logger } from "./utils/logger.js";
 
 async function bootstrap() {
   try {
-    await checkDatabaseConnection();
+    try {
+      await checkDatabaseConnection();
+    } catch (dbErr) {
+      console.error("⚠️ Database not available, starting in limited mode:", (dbErr as Error).message);
+    }
 
     const server = app.listen(env.PORT, env.HOST, () => {
       logger.info(`Server started on http://${env.HOST}:${env.PORT}`);
