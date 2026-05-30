@@ -96,10 +96,11 @@ services:
       - SMTP_FROM=${ALERTMANAGER_SMTP_FROM:-}
       - SMTP_AUTH_USERNAME=${ALERTMANAGER_SMTP_USER:-}
       - SMTP_AUTH_PASSWORD=${ALERTMANAGER_SMTP_PASSWORD:-}
-      - ALERTMANAGER_RECEIVER_EMAIL=${ALERTMANAGER_RECEIVER_EMAIL:-}
+      - ALERTMANAGER_RECEIVER_EMAIL=${ALERTMANAGER_RECEIVER_EMAIL:-benothmennourhen8@gmail.com}
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--storage.path=/alertmanager"
+      - "--config.expand-env=true"
     networks:
       - ecommerce_network
 
