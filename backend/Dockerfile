@@ -23,6 +23,8 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/ml/data/sql/upsert_user_features.sql ./ml/data/sql/upsert_user_features.sql
 
+RUN mkdir -p uploads/products && chown -R express:nodejs uploads
+
 USER express
 EXPOSE 5000
 
