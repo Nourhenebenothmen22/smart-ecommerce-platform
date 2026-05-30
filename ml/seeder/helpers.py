@@ -1,7 +1,7 @@
 import uuid
 import hashlib
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 
 def make_unique_slug(text: str) -> str:
@@ -38,12 +38,12 @@ def random_tags(category: str, subcategory: str, brand: str):
 def random_past_datetime(min_days_ago=0, max_days_ago=365):
     """Generate a random datetime between min_days_ago and max_days_ago in the past."""
     days_ago = random.uniform(min_days_ago, max_days_ago)
-    return datetime.now() - timedelta(days=days_ago)
+    return datetime.now(timezone.utc) - timedelta(days=days_ago)
 
 def random_datetime_after(start_dt, end_dt=None):
     """Generate a random datetime between start_dt and end_dt (default: now)."""
     if end_dt is None:
-        end_dt = datetime.now()
+        end_dt = datetime.now(timezone.utc)
     if start_dt >= end_dt:
         return end_dt
     delta = (end_dt - start_dt).total_seconds()
