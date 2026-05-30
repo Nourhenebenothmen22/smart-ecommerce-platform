@@ -12,6 +12,7 @@ export const getAllowedOrigins = () => {
   if (env.NODE_ENV !== "production") {
     origins.add("http://localhost:5173");
     origins.add("http://localhost:3000");
+    origins.add("http://localhost:5000");
   }
 
   return [...origins];
