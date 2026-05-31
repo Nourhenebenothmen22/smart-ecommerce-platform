@@ -136,7 +136,7 @@ services:
     container_name: ecommerce_backend
     restart: always
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: 5000
       HOST: "0.0.0.0"
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-ecommerce_ml_db}
@@ -154,6 +154,9 @@ services:
       WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL:-http://localhost:5000}
     ports:
       - "5000:5000"
+    volumes:
+      - ./backend/src:/app/src
+    command: ${DEV_CMD:-node dist/server.js}
     depends_on:
       postgres:
         condition: service_healthy
