@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { env } from "../config/env.js";
 import { getAllowedOrigins } from "../middlewares/cors.middleware.js";
 import { csrfOriginMiddleware } from "../middlewares/csrf.middleware.js";
-import { authRateLimitConfig, standardRateLimitConfig } from "../middlewares/rateLimit.middleware.js";
+import { authLoginRateLimitConfig, standardRateLimitConfig } from "../middlewares/rateLimit.middleware.js";
 import { parseTrustProxy } from "../config/trustProxy.js";
 import fs from "fs";
 import path from "path";
@@ -28,7 +28,7 @@ describe("security middleware configuration", () => {
   });
 
   test("auth rate limit is stricter than the global limiter", () => {
-    expect(authRateLimitConfig.max).toBeLessThan(standardRateLimitConfig.max);
+    expect(authLoginRateLimitConfig.max).toBeLessThan(standardRateLimitConfig.max);
   });
 
   test("csrf origin middleware rejects cookie-auth unsafe requests from untrusted origins", () => {
