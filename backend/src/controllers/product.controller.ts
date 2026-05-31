@@ -6,7 +6,8 @@ import { productService } from "../services/product.service.js";
 export class ProductController {
   async getAllProducts(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await productService.getAllProducts(req.query);
+      const filters = (req as Request & { validatedQuery?: unknown }).validatedQuery ?? req.query;
+      const result = await productService.getAllProducts(filters);
       sendResponse(res, StatusCodes.OK, "Products retrieved", result);
     } catch (error) { next(error); }
   }
