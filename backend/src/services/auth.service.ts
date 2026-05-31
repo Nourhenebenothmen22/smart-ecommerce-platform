@@ -35,6 +35,11 @@ export class AuthService {
     last_name: string;
     email: string;
     password: string;
+    phone?: string;
+    address_line?: string;
+    city?: string;
+    postal_code?: string;
+    country?: string;
   }) {
     // Check email uniqueness
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [data.email]);
@@ -45,10 +50,10 @@ export class AuthService {
     const password_hash = await hashPassword(data.password);
 
     const result = await pool.query(
-      `INSERT INTO users (first_name, last_name, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, 'customer')
+      `INSERT INTO users (first_name, last_name, email, password_hash, phone, address_line, city, postal_code, country, role)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'customer')
        RETURNING id, first_name, last_name, email, phone, address_line, city, postal_code, country, role, is_active, token_version, created_at, updated_at`,
-      [data.first_name, data.last_name, data.email, password_hash]
+      [data.first_name, data.last_name, data.email, password_hash, data.phone ?? null, data.address_line ?? null, data.city ?? null, data.postal_code ?? null, data.country ?? null]
     );
 
     const { token_version, ...user } = result.rows[0];
