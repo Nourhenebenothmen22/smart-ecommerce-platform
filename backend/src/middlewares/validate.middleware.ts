@@ -36,7 +36,9 @@ export const validate = (schemas: ValidationSchemas) => {
                 if (!parsed.success) {
                     results.push({ part: 'query', errors: parsed.error });
                 } else {
-                    req.query = parsed.data as Record<string, string | string[] | undefined>;
+                    // Express 5 exposes req.query through a getter-only property.
+                    // Keep the parsed query available without assigning to req.query.
+                    (req as Request & { validatedQuery?: unknown }).validatedQuery = parsed.data;
                 }
             }
 
