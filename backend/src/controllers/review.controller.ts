@@ -4,6 +4,15 @@ import { sendResponse } from "../utils/apiResponse.js";
 import { reviewService } from "../services/review.service.js";
 
 export class ReviewController {
+  async getAllReviews(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const result = await reviewService.getAll(page, limit);
+      sendResponse(res, StatusCodes.OK, "Reviews retrieved", result);
+    } catch (error) { next(error); }
+  }
+
   async getProductReviews(req: Request, res: Response, next: NextFunction) {
     try {
       const productId = Number(req.params.productId || req.params.id);
