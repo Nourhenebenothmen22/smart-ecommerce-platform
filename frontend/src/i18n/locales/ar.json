@@ -1,0 +1,392 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "products": "المنتجات",
+    "categories": "الفئات",
+    "cart": "السلة",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي",
+    "admin": "لوحة الإدارة",
+    "search": "بحث",
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "myAccount": "حسابي",
+    "wishlist": "المفضلة",
+    "compare": "المقارنة",
+    "darkMode": "الوضع الداكن",
+    "lightMode": "الوضع الفاتح",
+    "language": "اللغة",
+    "toggleNavigation": "فتح القائمة",
+    "logoHome": "الرئيسية DarStore",
+    "logoAlt": "شعار DarStore"
+  },
+  "language": {
+    "en": "الإنجليزية",
+    "fr": "الفرنسية",
+    "ar": "العربية"
+  },
+  "hero": {
+    "slide1Title": "اكتشف منتجاتك المفضلة",
+    "slide1Subtitle": "تسوق أحدث أساسيات التقنية والموضة ونمط الحياة في مكان واحد.",
+    "slide1Cta": "تسوق الآن",
+    "slide2Title": "وصلت التشكيلات الجديدة",
+    "slide2Subtitle": "استكشف مجموعات مختارة بعناية للجودة والأناقة والراحة.",
+    "slide2Cta": "استكشف المجموعة",
+    "slide3Title": "أفضل العروض كل يوم",
+    "slide3Subtitle": "استمتع بعروض حصرية وتجربة تسوق سلسة مع DarStore.",
+    "slide3Cta": "شاهد العروض"
+  },
+  "home": {
+    "featuredProducts": "منتجات مميزة",
+    "collection": "مجموعة DarStore",
+    "collectionSubtitle": "استكشف أساسيات فاخرة مع تجربة سوق راقية.",
+    "bestSellers": "الأكثر مبيعا",
+    "newArrivals": "وصل حديثا",
+    "promotions": "العروض",
+    "recommended": "مقترح لك",
+    "viewAll": "عرض الكل",
+    "newsletter": "اشترك في النشرة",
+    "newsletterSubtitle": "احصل على آخر تحديثات المنتجات والعروض الخاصة.",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "subscribe": "اشتراك"
+  },
+  "categories": {
+    "Electronics": "الإلكترونيات",
+    "Fashion": "الموضة",
+    "Home": "المنزل"
+  },
+  "subcategories": {
+    "Phones": "الهواتف",
+    "Laptops": "الحواسيب المحمولة",
+    "Headphones": "سماعات الرأس",
+    "Men": "رجال",
+    "Women": "نساء",
+    "Shoes": "أحذية",
+    "Decor": "ديكور",
+    "Furniture": "أثاث",
+    "Kitchen": "مطبخ"
+  },
+  "catalog": {
+    "products": {
+      "1": {
+        "name": "هاتف أطلس برو",
+        "description": "هاتف أنيق بشاشة واضحة وأداء سريع وبطارية موثوقة طوال اليوم."
+      },
+      "2": {
+        "name": "حاسوب نوماد ألترا",
+        "description": "حاسوب خفيف مصمم للإنتاجية والعمل الإبداعي وتعدد المهام بسلاسة."
+      },
+      "3": {
+        "name": "سماعات Sahara اللاسلكية",
+        "description": "سماعات مريحة بصوت غني وجهير عميق وبطارية طويلة."
+      },
+      "4": {
+        "name": "سترة كتان Medina",
+        "description": "سترة خفيفة بقصة أنيقة لإطلالة يومية راقية ومريحة."
+      },
+      "5": {
+        "name": "فستان Amani المنسدل",
+        "description": "فستان أنيق بحركة ناعمة وقماش فاخر وقصة عصرية."
+      },
+      "6": {
+        "name": "حذاء Oasis الجلدي",
+        "description": "حذاء يومي فاخر بتصميم نظيف ونعل مريح ولمسة جلدية متينة."
+      },
+      "7": {
+        "name": "مجموعة ديكور Zellige",
+        "description": "مجموعة زخرفية مستوحاة من الأنماط الهندسية لإضافة الدفء إلى المنزل."
+      },
+      "8": {
+        "name": "كرسي استرخاء Casbah",
+        "description": "كرسي مريح بتنجيد فاخر وشكل أنيق مناسب للجلوس والاسترخاء."
+      },
+      "9": {
+        "name": "أساسيات مطبخ Amber",
+        "description": "مجموعة راقية للطهي والتقديم وتنظيم مساحة المطبخ اليومية."
+      }
+    }
+  },
+  "products": {
+    "allProducts": "كل المنتجات",
+    "sortBy": "ترتيب حسب",
+    "filterBy": "تصفية حسب",
+    "price": "السعر",
+    "brand": "العلامة",
+    "category": "الفئة",
+    "rating": "التقييم",
+    "noProducts": "لم يتم العثور على منتجات.",
+    "loading": "جاري تحميل المنتجات...",
+    "error": "فشل تحميل المنتجات.",
+    "retry": "إعادة المحاولة",
+    "addToCart": "أضف إلى السلة",
+    "addedToCart": "تمت الإضافة إلى السلة",
+    "outOfStock": "نفد المخزون",
+    "inStock": "متوفر",
+    "items": "عناصر",
+    "showFilters": "إظهار الفلاتر",
+    "hideFilters": "إخفاء الفلاتر"
+  },
+  "product": {
+    "details": "تفاصيل المنتج",
+    "description": "الوصف",
+    "specifications": "المواصفات",
+    "reviews": "المراجعات",
+    "relatedProducts": "منتجات مشابهة",
+    "quantity": "الكمية",
+    "addToCart": "أضف إلى السلة",
+    "viewProduct": "عرض المنتج",
+    "notFound": "المنتج غير موجود",
+    "buyNow": "اشتر الآن",
+    "addToWishlist": "أضف إلى المفضلة",
+    "compare": "قارن",
+    "share": "مشاركة",
+    "sku": "رمز المنتج",
+    "availability": "التوفر",
+    "freeShipping": "شحن مجاني",
+    "returnPolicy": "إرجاع خلال 30 يوما"
+  },
+  "cart": {
+    "title": "سلة التسوق",
+    "empty": "سلتك فارغة",
+    "emptyMessage": "لم تضف أي عناصر إلى سلتك بعد.",
+    "subtotal": "المجموع الفرعي",
+    "shipping": "الشحن",
+    "tax": "الضريبة",
+    "total": "الإجمالي",
+    "checkout": "إتمام الشراء",
+    "continueShopping": "متابعة التسوق",
+    "remove": "إزالة",
+    "quantity": "الكمية",
+    "orderSummary": "ملخص الطلب",
+    "freeShipping": "شحن مجاني",
+    "updateQuantity": "تحديث الكمية"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "phone": "رقم الهاتف",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "noAccount": "ليس لديك حساب؟",
+    "hasAccount": "لديك حساب بالفعل؟",
+    "loginTitle": "مرحبا بعودتك",
+    "registerTitle": "إنشاء حساب",
+    "loginButton": "تسجيل الدخول",
+    "registerButton": "إنشاء حساب"
+  },
+  "customer": {
+    "dashboard": "لوحة التحكم",
+    "overview": "نظرة عامة",
+    "orders": "طلباتي",
+    "orderHistory": "سجل الطلبات",
+    "profile": "ملفي الشخصي",
+    "settings": "الإعدادات",
+    "support": "الدعم",
+    "noOrders": "لم تقم بأي طلبات بعد.",
+    "viewOrder": "عرض الطلب",
+    "orderStatus": "حالة الطلب",
+    "totalSpent": "إجمالي الإنفاق"
+  },
+  "admin": {
+    "dashboard": "لوحة تحكم الإدارة",
+    "products": "المنتجات",
+    "categories": "الفئات",
+    "subcategories": "الفئات الفرعية",
+    "orders": "الطلبات",
+    "users": "المستخدمون",
+    "reviews": "المراجعات",
+    "ml": "نماذج التعلم الآلي",
+    "voice": "المكالمات الصوتية",
+    "settings": "الإعدادات",
+    "totalProducts": "إجمالي المنتجات",
+    "totalOrders": "إجمالي الطلبات",
+    "totalUsers": "إجمالي المستخدمين",
+    "totalRevenue": "إجمالي الإيرادات",
+    "add": "إضافة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "confirmDelete": "هل تريد حذف هذا العنصر؟",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "status": "الحالة",
+    "actions": "الإجراءات",
+    "search": "بحث..."
+  },
+  "adminDashboard": {
+    "title": "الإدارة",
+    "subtitle": "مركز التحكم",
+    "heading": "لوحة تحليلات الأعمال",
+    "description": "راقب العمليات والإيرادات والمخزون والعملاء والمراجعات ونشاط الذكاء الاصطناعي من واجهات API الحقيقية.",
+    "uncategorized": "غير مصنف",
+    "nav": {
+      "overview": "نظرة عامة",
+      "orders": "الطلبات",
+      "products": "المنتجات",
+      "users": "المستخدمون",
+      "insights": "التحليلات"
+    },
+    "stats": {
+      "totalUsers": "إجمالي المستخدمين",
+      "totalCustomers": "إجمالي العملاء",
+      "totalProducts": "إجمالي المنتجات",
+      "totalOrders": "إجمالي الطلبات",
+      "totalRevenue": "إجمالي الإيرادات",
+      "pendingOrders": "الطلبات المعلقة",
+      "lowStock": "منتجات منخفضة المخزون",
+      "totalReviews": "إجمالي المراجعات"
+    },
+    "charts": {
+      "salesByMonth": "المبيعات حسب الشهر",
+      "ordersByStatus": "الطلبات حسب الحالة",
+      "revenueEvolution": "تطور الإيرادات",
+      "topSellingProducts": "أفضل المنتجات مبيعا",
+      "customersBySegment": "العملاء حسب الشريحة",
+      "productsByCategory": "المنتجات حسب الفئة",
+      "aiPriceActivity": "نشاط توقع أسعار الذكاء الاصطناعي",
+      "chatbotUsage": "استخدام روبوت المحادثة"
+    },
+    "chartKeys": {
+      "sales": "المبيعات",
+      "revenue": "الإيرادات",
+      "quantity": "الكمية",
+      "products": "المنتجات"
+    },
+    "segments": {
+      "customers": "العملاء",
+      "admins": "المديرون"
+    },
+    "tables": {
+      "recentOrders": "أحدث الطلبات",
+      "recentUsers": "أحدث المستخدمين",
+      "lowStockProducts": "منتجات منخفضة المخزون",
+      "latestReviews": "أحدث المراجعات",
+      "products": "كتالوج المنتجات"
+    },
+    "columns": {
+      "order": "الطلب",
+      "customer": "العميل",
+      "status": "الحالة",
+      "total": "الإجمالي",
+      "date": "التاريخ",
+      "user": "المستخدم",
+      "email": "البريد الإلكتروني",
+      "role": "الدور",
+      "product": "المنتج",
+      "category": "الفئة",
+      "stock": "المخزون",
+      "price": "السعر",
+      "rating": "التقييم",
+      "review": "المراجعة"
+    },
+    "actions": {
+      "addProduct": "إضافة منتج",
+      "manageCategories": "إدارة الفئات",
+      "manageUsers": "إدارة المستخدمين",
+      "viewOrders": "عرض الطلبات",
+      "viewAi": "عرض وحدات الذكاء الاصطناعي"
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط",
+      "pending": "معلق",
+      "pending_phone_confirmation": "بانتظار تأكيد الهاتف",
+      "manual_review": "مراجعة يدوية",
+      "processing": "قيد المعالجة",
+      "shipped": "تم الشحن",
+      "delivered": "تم التسليم",
+      "completed": "مكتمل",
+      "cancelled": "ملغى",
+      "refunded": "مسترد",
+      "on_hold": "متوقف مؤقتا"
+    },
+    "roles": {
+      "admin": "مدير",
+      "customer": "عميل"
+    },
+    "empty": {
+      "ordersTitle": "لا توجد طلبات",
+      "ordersMessage": "ستظهر الطلبات هنا عندما يقوم العملاء بإرسالها.",
+      "usersTitle": "لا يوجد مستخدمون",
+      "usersMessage": "ستظهر حسابات المستخدمين بعد التسجيل.",
+      "lowStockTitle": "المخزون بحالة جيدة",
+      "lowStockMessage": "لا توجد منتجات تحت حد المخزون المنخفض.",
+      "productsTitle": "لا توجد منتجات",
+      "productsMessage": "ستظهر المنتجات عندما ترجع API الكتالوج بيانات.",
+      "reviewsTitle": "لا توجد مراجعات",
+      "reviewsMessage": "ستظهر مراجعات العملاء هنا عند توفرها."
+    },
+    "errors": {
+      "title": "تعذر تحميل بيانات اللوحة",
+      "message": "تحقق من صلاحيات المدير وتوفر واجهات API ثم حاول مرة أخرى."
+    },
+    "unavailable": {
+      "aiPriceActivity": "لا توجد واجهة مخصصة لنشاط التوقعات بعد. ما زالت توقعات الأسعار متاحة عبر API التعلم الآلي.",
+      "chatbotUsage": "لا توجد واجهة تحليلات لروبوت المحادثة بعد. يتم تخزين المحادثات في خدمة التعلم الآلي لكنها غير معروضة كملخص إداري."
+    },
+    "tableNotes": {
+      "products": "{{count}} فئة متاحة من API الفئات."
+    }
+  },
+  "footer": {
+    "aboutUs": "من نحن",
+    "aboutUsDesc": "DarStore وجهتك الموثوقة للمنتجات عالية الجودة بأسعار مناسبة.",
+    "quickLinks": "روابط سريعة",
+    "customerService": "خدمة العملاء",
+    "contactUs": "اتصل بنا",
+    "followUs": "تابعنا",
+    "privacyPolicy": "سياسة الخصوصية",
+    "termsOfService": "الشروط",
+    "returnPolicy": "سياسة الإرجاع",
+    "faq": "الأسئلة الشائعة",
+    "helpCenter": "مركز المساعدة",
+    "trackOrder": "تتبع الطلب",
+    "shippingInfo": "معلومات الشحن",
+    "allRightsReserved": "جميع الحقوق محفوظة.",
+    "newsletter": "النشرة"
+  },
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ.",
+    "retry": "إعادة المحاولة",
+    "empty": "لا يوجد شيء هنا بعد.",
+    "noData": "لا توجد بيانات متاحة.",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "search": "بحث",
+    "close": "إغلاق",
+    "yes": "نعم",
+    "no": "لا",
+    "ok": "حسنا",
+    "success": "تم بنجاح!",
+    "viewAll": "عرض الكل",
+    "seeMore": "شاهد المزيد",
+    "showMore": "عرض المزيد",
+    "showLess": "عرض أقل"
+  },
+  "states": {
+    "loading": "جاري التحميل، يرجى الانتظار...",
+    "error": "حدث خطأ ما.",
+    "empty": "لا يوجد شيء لعرضه.",
+    "forbidden": "تم رفض الوصول.",
+    "authRequired": "تسجيل الدخول مطلوب.",
+    "loginRequired": "يرجى تسجيل الدخول للمتابعة.",
+    "noPermission": "ليس لديك إذن للوصول إلى هذه الصفحة.",
+    "somethingWentWrong": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "tryAgain": "حاول مرة أخرى",
+    "goHome": "الذهاب إلى الرئيسية",
+    "goBack": "رجوع",
+    "pageNotFound": "الصفحة غير موجودة."
+  }
+}

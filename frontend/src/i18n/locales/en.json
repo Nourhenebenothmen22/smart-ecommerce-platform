@@ -1,0 +1,392 @@
+{
+  "nav": {
+    "home": "Home",
+    "products": "Products",
+    "categories": "Categories",
+    "cart": "Cart",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "profile": "Profile",
+    "admin": "Admin Panel",
+    "search": "Search",
+    "searchPlaceholder": "Search products...",
+    "myAccount": "My Account",
+    "wishlist": "Wishlist",
+    "compare": "Compare",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "language": "Language",
+    "toggleNavigation": "Toggle navigation",
+    "logoHome": "DarStore home",
+    "logoAlt": "DarStore logo"
+  },
+  "language": {
+    "en": "English",
+    "fr": "French",
+    "ar": "Arabic"
+  },
+  "hero": {
+    "slide1Title": "Discover Your Favorite Products",
+    "slide1Subtitle": "Shop the latest tech, fashion, and lifestyle essentials in one place.",
+    "slide1Cta": "Shop Now",
+    "slide2Title": "New Arrivals Are Here",
+    "slide2Subtitle": "Explore fresh collections selected for quality, style, and comfort.",
+    "slide2Cta": "Explore Collection",
+    "slide3Title": "Best Deals Every Day",
+    "slide3Subtitle": "Enjoy exclusive offers and a smooth shopping experience with DarStore.",
+    "slide3Cta": "View Offers"
+  },
+  "home": {
+    "featuredProducts": "Featured Products",
+    "collection": "DarStore Collection",
+    "collectionSubtitle": "Explore premium essentials with a refined marketplace experience.",
+    "bestSellers": "Best Sellers",
+    "newArrivals": "New Arrivals",
+    "promotions": "Promotions",
+    "recommended": "Recommended For You",
+    "viewAll": "View All",
+    "newsletter": "Subscribe to Our Newsletter",
+    "newsletterSubtitle": "Get the latest updates on new products and special promotions.",
+    "emailPlaceholder": "Enter your email address",
+    "subscribe": "Subscribe"
+  },
+  "categories": {
+    "Electronics": "Electronics",
+    "Fashion": "Fashion",
+    "Home": "Home"
+  },
+  "subcategories": {
+    "Phones": "Phones",
+    "Laptops": "Laptops",
+    "Headphones": "Headphones",
+    "Men": "Men",
+    "Women": "Women",
+    "Shoes": "Shoes",
+    "Decor": "Decor",
+    "Furniture": "Furniture",
+    "Kitchen": "Kitchen"
+  },
+  "catalog": {
+    "products": {
+      "1": {
+        "name": "Atlas Pro Smartphone",
+        "description": "A polished smartphone with a vivid display, fast performance, and reliable all-day battery life."
+      },
+      "2": {
+        "name": "Nomad Ultra Laptop",
+        "description": "A lightweight laptop designed for productivity, creative work, and smooth multitasking."
+      },
+      "3": {
+        "name": "Sahara Wireless Headphones",
+        "description": "Comfortable wireless headphones with rich sound, deep bass, and long battery life."
+      },
+      "4": {
+        "name": "Medina Linen Jacket",
+        "description": "A breathable linen jacket with a refined cut for smart casual everyday styling."
+      },
+      "5": {
+        "name": "Amani Flow Dress",
+        "description": "An elegant dress with soft movement, premium fabric, and a graceful modern silhouette."
+      },
+      "6": {
+        "name": "Oasis Leather Sneakers",
+        "description": "Premium everyday sneakers with a clean profile, cushioned sole, and durable leather finish."
+      },
+      "7": {
+        "name": "Zellige Wall Decor Set",
+        "description": "A decorative set inspired by geometric craftwork, made to bring warmth to living spaces."
+      },
+      "8": {
+        "name": "Casbah Lounge Chair",
+        "description": "A comfortable accent chair with premium upholstery and a sculptural, lounge-ready profile."
+      },
+      "9": {
+        "name": "Amber Kitchen Essentials",
+        "description": "A refined kitchen set for daily cooking, serving, and organized countertop storage."
+      }
+    }
+  },
+  "products": {
+    "allProducts": "All Products",
+    "sortBy": "Sort By",
+    "filterBy": "Filter By",
+    "price": "Price",
+    "brand": "Brand",
+    "category": "Category",
+    "rating": "Rating",
+    "noProducts": "No products found.",
+    "loading": "Loading products...",
+    "error": "Failed to load products.",
+    "retry": "Retry",
+    "addToCart": "Add to Cart",
+    "addedToCart": "Added to Cart",
+    "outOfStock": "Out of Stock",
+    "inStock": "In Stock",
+    "items": "items",
+    "showFilters": "Show Filters",
+    "hideFilters": "Hide Filters"
+  },
+  "product": {
+    "details": "Product Details",
+    "description": "Description",
+    "specifications": "Specifications",
+    "reviews": "Reviews",
+    "relatedProducts": "Related Products",
+    "quantity": "Quantity",
+    "addToCart": "Add to Cart",
+    "viewProduct": "View Product",
+    "notFound": "Product not found",
+    "buyNow": "Buy Now",
+    "addToWishlist": "Add to Wishlist",
+    "compare": "Compare",
+    "share": "Share",
+    "sku": "SKU",
+    "availability": "Availability",
+    "freeShipping": "Free Shipping",
+    "returnPolicy": "30-Day Return Policy"
+  },
+  "cart": {
+    "title": "Shopping Cart",
+    "empty": "Your cart is empty",
+    "emptyMessage": "Looks like you haven't added any items to your cart yet.",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "tax": "Tax",
+    "total": "Total",
+    "checkout": "Proceed to Checkout",
+    "continueShopping": "Continue Shopping",
+    "remove": "Remove",
+    "quantity": "Quantity",
+    "orderSummary": "Order Summary",
+    "freeShipping": "Free Shipping",
+    "updateQuantity": "Update Quantity"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginTitle": "Welcome Back",
+    "registerTitle": "Create an Account",
+    "loginButton": "Sign In",
+    "registerButton": "Create Account"
+  },
+  "customer": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "orders": "My Orders",
+    "orderHistory": "Order History",
+    "profile": "My Profile",
+    "settings": "Settings",
+    "support": "Support",
+    "noOrders": "You haven't placed any orders yet.",
+    "viewOrder": "View Order",
+    "orderStatus": "Order Status",
+    "totalSpent": "Total Spent"
+  },
+  "admin": {
+    "dashboard": "Admin Dashboard",
+    "products": "Products",
+    "categories": "Categories",
+    "subcategories": "Subcategories",
+    "orders": "Orders",
+    "users": "Users",
+    "reviews": "Reviews",
+    "ml": "ML Models",
+    "voice": "Voice Calls",
+    "settings": "Settings",
+    "totalProducts": "Total Products",
+    "totalOrders": "Total Orders",
+    "totalUsers": "Total Users",
+    "totalRevenue": "Total Revenue",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "save": "Save",
+    "cancel": "Cancel",
+    "status": "Status",
+    "actions": "Actions",
+    "search": "Search..."
+  },
+  "adminDashboard": {
+    "title": "Admin",
+    "subtitle": "Control center",
+    "heading": "Business Intelligence Dashboard",
+    "description": "Monitor operations, revenue, inventory, customers, reviews, and AI activity from real platform APIs.",
+    "uncategorized": "Uncategorized",
+    "nav": {
+      "overview": "Overview",
+      "orders": "Orders",
+      "products": "Products",
+      "users": "Users",
+      "insights": "Insights"
+    },
+    "stats": {
+      "totalUsers": "Total users",
+      "totalCustomers": "Total customers",
+      "totalProducts": "Total products",
+      "totalOrders": "Total orders",
+      "totalRevenue": "Total revenue",
+      "pendingOrders": "Pending orders",
+      "lowStock": "Low stock products",
+      "totalReviews": "Total reviews"
+    },
+    "charts": {
+      "salesByMonth": "Sales by month",
+      "ordersByStatus": "Orders by status",
+      "revenueEvolution": "Revenue evolution",
+      "topSellingProducts": "Top selling products",
+      "customersBySegment": "Customers by segment",
+      "productsByCategory": "Products by category",
+      "aiPriceActivity": "AI price prediction activity",
+      "chatbotUsage": "Chatbot usage"
+    },
+    "chartKeys": {
+      "sales": "Sales",
+      "revenue": "Revenue",
+      "quantity": "Quantity",
+      "products": "Products"
+    },
+    "segments": {
+      "customers": "Customers",
+      "admins": "Admins"
+    },
+    "tables": {
+      "recentOrders": "Recent orders",
+      "recentUsers": "Recent users",
+      "lowStockProducts": "Low stock products",
+      "latestReviews": "Latest reviews",
+      "products": "Product catalog"
+    },
+    "columns": {
+      "order": "Order",
+      "customer": "Customer",
+      "status": "Status",
+      "total": "Total",
+      "date": "Date",
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "product": "Product",
+      "category": "Category",
+      "stock": "Stock",
+      "price": "Price",
+      "rating": "Rating",
+      "review": "Review"
+    },
+    "actions": {
+      "addProduct": "Add product",
+      "manageCategories": "Manage categories",
+      "manageUsers": "Manage users",
+      "viewOrders": "View orders",
+      "viewAi": "View AI modules"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "pending": "Pending",
+      "pending_phone_confirmation": "Pending phone confirmation",
+      "manual_review": "Manual review",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded",
+      "on_hold": "On hold"
+    },
+    "roles": {
+      "admin": "Admin",
+      "customer": "Customer"
+    },
+    "empty": {
+      "ordersTitle": "No orders yet",
+      "ordersMessage": "Orders will appear here as soon as customers place them.",
+      "usersTitle": "No users found",
+      "usersMessage": "User accounts will appear here after registration.",
+      "lowStockTitle": "Inventory is healthy",
+      "lowStockMessage": "No products are below the low-stock threshold.",
+      "productsTitle": "No products found",
+      "productsMessage": "Products will appear when the catalog API returns data.",
+      "reviewsTitle": "No reviews yet",
+      "reviewsMessage": "Customer reviews will appear here when available."
+    },
+    "errors": {
+      "title": "Dashboard data failed to load",
+      "message": "Check admin authentication and API availability, then try again."
+    },
+    "unavailable": {
+      "aiPriceActivity": "No dedicated dashboard activity endpoint exists yet. Price prediction can still be called from the ML API.",
+      "chatbotUsage": "No chatbot analytics endpoint exists yet. Chat conversations are stored by the ML service but not exposed as an admin summary API."
+    },
+    "tableNotes": {
+      "products": "{{count}} categories are available from the category API."
+    }
+  },
+  "footer": {
+    "aboutUs": "About Us",
+    "aboutUsDesc": "DarStore is your trusted destination for quality products at competitive prices. We combine AI technology with a curated shopping experience.",
+    "quickLinks": "Quick Links",
+    "customerService": "Customer Service",
+    "contactUs": "Contact Us",
+    "followUs": "Follow Us",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "returnPolicy": "Return Policy",
+    "faq": "FAQ",
+    "helpCenter": "Help Center",
+    "trackOrder": "Track Order",
+    "shippingInfo": "Shipping Information",
+    "allRightsReserved": "All rights reserved.",
+    "newsletter": "Newsletter"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred.",
+    "retry": "Retry",
+    "empty": "Nothing here yet.",
+    "noData": "No data available.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "success": "Success!",
+    "viewAll": "View All",
+    "seeMore": "See More",
+    "showMore": "Show More",
+    "showLess": "Show Less"
+  },
+  "states": {
+    "loading": "Loading, please wait...",
+    "error": "Something went wrong.",
+    "empty": "Nothing to display.",
+    "forbidden": "Access denied.",
+    "authRequired": "Authentication required.",
+    "loginRequired": "Please log in to continue.",
+    "noPermission": "You don't have permission to access this page.",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "tryAgain": "Try Again",
+    "goHome": "Go to Homepage",
+    "goBack": "Go Back",
+    "pageNotFound": "Page not found."
+  }
+}
