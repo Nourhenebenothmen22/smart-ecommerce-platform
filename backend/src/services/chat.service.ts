@@ -18,22 +18,22 @@ export interface ChatResult {
 
 export class ChatService {
   async sendMessage(input: ChatInput, userId: number): Promise<ChatResult> {
-    if (!env.ML_SERVICE_TOKEN) {
-      throw new AppError("ML service token is not configured", StatusCodes.SERVICE_UNAVAILABLE);
-    }
-
     const endpoint = new URL("/chat", env.ML_SERVICE_URL);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), env.ML_REQUEST_TIMEOUT_MS);
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-ML-User-Id": String(userId),
+    };
+
+    if (env.ML_SERVICE_TOKEN) {
+      headers["X-ML-Service-Token"] = env.ML_SERVICE_TOKEN;
+    }
 
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-ML-Service-Token": env.ML_SERVICE_TOKEN,
-          "X-ML-User-Id": String(userId),
-        },
+        headers,
         body: JSON.stringify(input),
         signal: controller.signal,
       });
