@@ -22,6 +22,7 @@ import { voiceRouter } from "./routes/voice.route.js";
 import { voiceWebhookRouter } from "./routes/voice.route.js";
 import { chatRouter } from "./routes/chat.route.js";
 import { cartRouter } from "./routes/cart.route.js";
+import { wishlistRouter } from "./routes/wishlist.route.js";
 import { StatusCodes } from "http-status-codes";
 import { env } from "./config/env.js";
 import { parseTrustProxy } from "./config/trustProxy.js";
@@ -110,6 +111,7 @@ app.use("/api/ml", mlRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
+app.use("/api/product", productRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/subcategories", subcategoryRouter);
 app.use("/api/orders", orderRouter);
@@ -117,6 +119,8 @@ app.use("/api/reviews", reviewRouter);
 app.use("/api/voice", voiceRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/cart", cartRouter);
+app.use("/api/wishlist", wishlistRouter);
+app.use("/api/wishlists", wishlistRouter);
 
 /*
 404 Handler
