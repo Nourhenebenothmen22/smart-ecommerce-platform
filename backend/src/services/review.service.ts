@@ -3,6 +3,23 @@ import { AppError } from "../utils/AppError.js";
 import { StatusCodes } from "http-status-codes";
 
 export class ReviewService {
+  async getAll(page = 1, limit = 20) {
+    const safeLimit = Math.min(limit, 100);
+    const offset = (page - 1) * safeLimit;
+    const countR = await pool.query("SELECT COUNT(*) FROM reviews");
+    const total = parseInt(countR.rows[0].count, 10);
+    const r = await pool.query(
+      `SELECT r.*, p.title AS product_title, u.first_name, u.last_name, u.email
+       FROM reviews r
+       LEFT JOIN products p ON p.id = r.product_id
+       LEFT JOIN users u ON u.id = r.user_id
+       ORDER BY r.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [safeLimit, offset]
+    );
+    return { reviews: r.rows, pagination: { page, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) } };
+  }
+
   async getByProductId(productId: number, page = 1, limit = 20) {
     const offset = (page - 1) * limit;
     const countR = await pool.query("SELECT COUNT(*) FROM reviews WHERE product_id=$1", [productId]);
