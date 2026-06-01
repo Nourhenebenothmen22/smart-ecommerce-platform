@@ -15,6 +15,11 @@ export const reviewIdSchema = z.object({
   id: z.coerce.number().int().positive('Review ID must be a positive integer'),
 });
 
+export const reviewQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+});
+
 export const productIdSchema = z.object({
   productId: z.coerce.number().int().positive('Product ID must be a positive integer'),
 });

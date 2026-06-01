@@ -44,6 +44,12 @@ const pricePredictionSchema = z.object({
   stock: z.coerce.number().int().nonnegative().optional(),
   tags: z.array(z.string().trim().min(1).max(80)).max(50).optional(),
   is_active: z.boolean().optional(),
+  brand_tier: z.coerce.number().int().min(1).max(5).optional(),
+  product_tier: z.coerce.number().int().min(1).max(5).optional(),
+  condition: z.enum(["new", "refurbished", "used", "open_box"]).optional(),
+  release_year: z.coerce.number().int().min(2000).max(2030).optional(),
+  warranty_months: z.coerce.number().int().min(0).max(120).optional(),
+  spec_score: z.coerce.number().min(0).max(100).optional(),
 }).refine((data) => Object.keys(data).length > 0, {
   message: "Provide product_id or product feature fields",
 });

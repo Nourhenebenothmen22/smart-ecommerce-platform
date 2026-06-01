@@ -3,11 +3,18 @@ import { StatusCodes } from "http-status-codes";
 import { sendResponse } from "../utils/apiResponse.js";
 import { reviewService } from "../services/review.service.js";
 
+function getPagination(req: Request) {
+  const query = (req as Request & { validatedQuery?: { page?: number; limit?: number } }).validatedQuery;
+  return {
+    page: query?.page ?? 1,
+    limit: query?.limit ?? 20,
+  };
+}
+
 export class ReviewController {
   async getAllReviews(req: Request, res: Response, next: NextFunction) {
     try {
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 20;
+      const { page, limit } = getPagination(req);
       const result = await reviewService.getAll(page, limit);
       sendResponse(res, StatusCodes.OK, "Reviews retrieved", result);
     } catch (error) { next(error); }
@@ -16,8 +23,7 @@ export class ReviewController {
   async getProductReviews(req: Request, res: Response, next: NextFunction) {
     try {
       const productId = Number(req.params.productId || req.params.id);
-      const page = Number(req.query.page) || 1;
-      const limit = Number(req.query.limit) || 20;
+      const { page, limit } = getPagination(req);
       const result = await reviewService.getByProductId(productId, page, limit);
       sendResponse(res, StatusCodes.OK, "Reviews retrieved", result);
     } catch (error) { next(error); }

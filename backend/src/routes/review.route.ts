@@ -3,13 +3,13 @@ import { reviewController } from '../controllers/review.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/role.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
-import { reviewSchema, updateReviewSchema, reviewIdSchema, productIdSchemaLegacy } from '../validators/review.schema.js';
+import { reviewSchema, updateReviewSchema, reviewIdSchema, productIdSchemaLegacy, reviewQuerySchema } from '../validators/review.schema.js';
 
 const router = Router();
 
 // Public: get reviews for a product (legacy route kept for backward compat)
-router.get('/', authenticate, authorize('admin'), reviewController.getAllReviews);
-router.get('/product/:id', validate({ params: productIdSchemaLegacy }), reviewController.getProductReviews);
+router.get('/', authenticate, authorize('admin'), validate({ query: reviewQuerySchema }), reviewController.getAllReviews);
+router.get('/product/:id', validate({ params: productIdSchemaLegacy, query: reviewQuerySchema }), reviewController.getProductReviews);
 
 // Authenticated routes
 router.post('/', authenticate, validate({ body: reviewSchema }), reviewController.addReview);

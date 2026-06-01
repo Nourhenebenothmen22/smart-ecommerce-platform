@@ -32,6 +32,12 @@ export interface PricePredictionInput {
   stock?: number;
   tags?: string[];
   is_active?: boolean;
+  brand_tier?: number;
+  product_tier?: number;
+  condition?: "new" | "refurbished" | "used" | "open_box";
+  release_year?: number;
+  warranty_months?: number;
+  spec_score?: number;
 }
 
 export interface PricePredictionResult {
