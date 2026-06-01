@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -9,8 +9,8 @@ import { HeroCarousel } from './components/home/HeroCarousel';
 import { PageLoader } from './components/shared/PageLoader';
 import { ForbiddenState } from './components/shared/ForbiddenState';
 import { AuthRequiredState } from './components/shared/AuthRequiredState';
+import { SplashScreen } from './components/shared/SplashScreen';
 import { Home } from './pages/public/Home';
-import { ProductListing } from './pages/public/ProductListing';
 import { ProductDetails } from './pages/public/ProductDetails';
 import { Cart } from './pages/public/Cart';
 import { Login } from './pages/public/Login';
@@ -90,7 +90,7 @@ function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<Home />} />
-        <Route path="products" element={<ProductListing />} />
+        <Route path="products" element={<Navigate to="/" replace />} />
         <Route path="product/:id" element={<ProductDetails />} />
         <Route path="cart" element={<Cart />} />
         <Route path="login" element={<Login />} />
@@ -111,6 +111,17 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowSplash(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
