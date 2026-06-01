@@ -9,6 +9,7 @@ Provides:
 Includes input validation, session tracking, and full interaction logging.
 """
 import logging
+import re
 import uuid
 import json
 import sys
@@ -40,6 +41,11 @@ from core.config import settings
 # Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+_FOLLOW_UP_RE = re.compile(
+    r"\b(celui|celle|ceux|this|that|it|them|same|meme|même|similar|similaire|"
+    r"moins\s+cher|plus\s+cher|cheapest|most\s+expensive|available|disponible)\b",
+    re.IGNORECASE,
+)
 
 # App
 app = FastAPI(
@@ -67,6 +73,7 @@ app.add_middleware(
 retriever = HybridRetriever()
 agent = RAGChatbotAgent()
 _RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
+_SESSION_CONTEXT_CACHE: dict[str, list[int]] = {}
 
 
 # Request/Response Models
@@ -102,6 +109,51 @@ class ChatRequest(BaseModel):
 @app.get("/health")
 def health_check():
     return {"status": "online", "message": "ML Intelligence Service is running.", "version": "2.0.0"}
+
+
+@app.get("/ready")
+def readiness_check():
+    try:
+        with get_db_cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM products WHERE is_active = TRUE;")
+            active_products = int(cur.fetchone()[0])
+            cur.execute("SELECT extname FROM pg_extension WHERE extname = 'vector';")
+            pgvector_installed = bool(cur.fetchone())
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM products p
+                LEFT JOIN product_embeddings pe
+                  ON p.id = pe.product_id
+                 AND pe.model_name = %s
+                 AND pe.model_version = %s
+                WHERE p.is_active = TRUE
+                  AND pe.product_id IS NULL;
+                """,
+                (settings.EMBEDDING_MODEL_NAME, settings.EMBEDDING_MODEL_VERSION),
+            )
+            missing_embeddings = int(cur.fetchone()[0])
+
+        ready = active_products > 0 and pgvector_installed and missing_embeddings == 0
+        payload = {
+            "ready": ready,
+            "active_products": active_products,
+            "pgvector_installed": pgvector_installed,
+            "embedding_model": settings.EMBEDDING_MODEL_NAME,
+            "embedding_version": settings.EMBEDDING_MODEL_VERSION,
+            "active_products_missing_current_embedding": missing_embeddings,
+        }
+        if not ready:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=payload)
+        return payload
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("ML readiness check failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"ready": False, "error": "Database or embedding readiness check failed."},
+        ) from exc
 
 
 def _client_key(request: Request) -> str:
@@ -166,6 +218,98 @@ def log_interaction(
         logger.error(f"Error logging interaction to DB: {e}", exc_info=True)
 
 
+def _load_recent_context_product_ids(session_id: str, limit: int = 10) -> list[int]:
+    product_ids: list[int] = list(_SESSION_CONTEXT_CACHE.get(session_id, []))
+    try:
+        with get_db_cursor() as cur:
+            cur.execute(
+                """
+                SELECT retrieved_context
+                FROM chatbot_interactions
+                WHERE session_id = %s
+                  AND retrieved_context IS NOT NULL
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (session_id, limit),
+            )
+            for (context_value,) in cur.fetchall():
+                items = context_value
+                if isinstance(items, str):
+                    items = json.loads(items)
+                if not isinstance(items, list):
+                    continue
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    product_id = item.get("product_id")
+                    if isinstance(product_id, int) and product_id not in product_ids:
+                        product_ids.append(product_id)
+    except Exception as exc:
+        logger.warning("Could not load previous chat context for session %s: %s", session_id, exc)
+    return product_ids
+
+
+def _remember_context(session_id: str, context: list[dict], limit: int = 20) -> None:
+    cached = list(_SESSION_CONTEXT_CACHE.get(session_id, []))
+    for item in context:
+        product_id = item.get("product_id") if isinstance(item, dict) else None
+        if isinstance(product_id, int):
+            if product_id in cached:
+                cached.remove(product_id)
+            cached.insert(0, product_id)
+    _SESSION_CONTEXT_CACHE[session_id] = cached[:limit]
+
+
+def _load_products_by_ids(product_ids: list[int], top_k: int = 5) -> list[dict]:
+    if not product_ids:
+        return []
+    order = {pid: idx for idx, pid in enumerate(product_ids)}
+    try:
+        with get_db_cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.id, p.title, p.brand, p.price, p.final_price,
+                       LEFT(p.description, 1000) AS description_preview,
+                       p.rating_avg, p.stock
+                FROM products p
+                WHERE p.id = ANY(%s)
+                  AND p.is_active = TRUE
+                  AND p.stock > 0
+                """,
+                (product_ids,),
+            )
+            rows = sorted(cur.fetchall(), key=lambda row: order.get(row[0], 10_000))
+            results = []
+            for rank, row in enumerate(rows[:top_k], 1):
+                results.append({
+                    "product_id": row[0],
+                    "name": row[1],
+                    "brand": row[2],
+                    "price": float(row[3]) if row[3] else 0.0,
+                    "final_price": float(row[4]) if row[4] else 0.0,
+                    "description": row[5] or "",
+                    "rating_avg": float(row[6]) if row[6] else 0.0,
+                    "stock": row[7] or 0,
+                    "score": round(1 / rank, 4),
+                    "source": "session_context",
+                })
+            return results
+    except Exception as exc:
+        logger.warning("Could not refresh session context products: %s", exc)
+        return []
+
+
+def _apply_follow_up_sort(query: str, context: list[dict]) -> list[dict]:
+    if not context:
+        return []
+    if re.search(r"\b(moins\s+cher|cheapest|lowest)\b", query, re.IGNORECASE):
+        return sorted(context, key=lambda item: float(item.get("final_price") or item.get("price") or 0))
+    if re.search(r"\b(plus\s+cher|most\s+expensive|highest)\b", query, re.IGNORECASE):
+        return sorted(context, key=lambda item: float(item.get("final_price") or item.get("price") or 0), reverse=True)
+    return context
+
+
 @app.post("/chat")
 def chat(
     request: ChatRequest,
@@ -206,8 +350,18 @@ def chat(
     logger.info(f"[{session_id}] Chat request: '{request.query[:80]}...' (user_id={effective_user_id})")
 
     # 1. Retrieve Context via Hybrid Search (BM25 + Vector + RRF)
-    context = retriever.search(request.query, top_k=5)
+    if agent._detect_prompt_injection(request.query):
+        context = []
+    else:
+        previous_context: list[dict] = []
+        if request.session_id and _FOLLOW_UP_RE.search(request.query):
+            previous_context = _load_products_by_ids(_load_recent_context_product_ids(session_id), top_k=5)
+
+        context = retriever.search(request.query, top_k=5)
+        if previous_context and (not context or _FOLLOW_UP_RE.search(request.query)):
+            context = _apply_follow_up_sort(request.query, previous_context)[:5]
     algorithm = "Hybrid_RRF"
+    _remember_context(session_id, context)
 
     logger.info(f"[{session_id}] Retrieved {len(context)} products via {algorithm}")
 
