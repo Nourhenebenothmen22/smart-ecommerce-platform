@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Globe2, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { Globe2, Menu, Moon, Search, ShoppingCart, Sun, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../hooks/api/useCart';
 
 export const Navbar: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -11,6 +12,9 @@ export const Navbar: React.FC = () => {
   const { i18n, t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { loading, isAuthenticated, logout } = useAuth();
+  const { data: cart } = useCart({ enabled: isAuthenticated });
+  const cartItems = Array.isArray(cart) ? cart : cart?.items ?? [];
+  const cartCount = cartItems.reduce((total: number, item: any) => total + Number(item.quantity ?? 0), 0);
 
   const languages = [
     { code: 'en', labelKey: 'language.en' },
@@ -70,6 +74,10 @@ export const Navbar: React.FC = () => {
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        <Link to="/cart" className="navbar-cart-link" onClick={() => setOpen(false)} aria-label={t('nav.cart')}>
+          <ShoppingCart size={18} />
+          <span>{cartCount}</span>
+        </Link>
         {!loading && !isAuthenticated && (
           <>
             <Link to="/login" onClick={() => setOpen(false)}>{t('nav.login')}</Link>
