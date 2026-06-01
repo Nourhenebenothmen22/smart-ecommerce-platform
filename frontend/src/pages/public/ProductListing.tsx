@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProducts } from '../../hooks/api/useProducts';
@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { SectionLoader } from '../../components/shared/SectionLoader';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { formatPrice } from '../../lib/utils';
+import { API_BASE_URL } from '../../config/api';
 
 export const ProductListing: React.FC = () => {
   const { t } = useTranslation();
@@ -21,17 +22,35 @@ export const ProductListing: React.FC = () => {
   const sortBy = searchParams.get('sort') || '';
   const priceMin = searchParams.get('priceMin') || '';
   const priceMax = searchParams.get('priceMax') || '';
+  const page = searchParams.get('page') || '1';
+  const limit = '24';
 
   const { data: categories } = useCategories();
-  const { data: products, isLoading, refetch } = useProducts({
+  const { data, isLoading, refetch } = useProducts({
     category: categoryFilter,
     search: searchQuery,
     sort: sortBy,
     priceMin,
     priceMax,
+    page,
+    limit,
   });
 
+  const products = data?.products ?? [];
+  const pagination = data?.pagination;
+
   const { mutate: addToCart } = useAddToCart();
+
+  const goToPage = (p: number) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('page', String(p));
+    setSearchParams(nextParams);
+  };
+
+  const resetPage = (nextParams: URLSearchParams) => {
+    nextParams.set('page', '1');
+    setSearchParams(nextParams);
+  };
 
   const handleCategorySelect = (catId: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -40,7 +59,7 @@ export const ProductListing: React.FC = () => {
     } else {
       nextParams.delete('category');
     }
-    setSearchParams(nextParams);
+    resetPage(nextParams);
   };
 
   const handleSortChange = (sortVal: string) => {
@@ -50,7 +69,7 @@ export const ProductListing: React.FC = () => {
     } else {
       nextParams.delete('sort');
     }
-    setSearchParams(nextParams);
+    resetPage(nextParams);
   };
 
   const handleClearFilters = () => {
@@ -153,7 +172,7 @@ export const ProductListing: React.FC = () => {
                   const nextParams = new URLSearchParams(searchParams);
                   if (e.target.value) nextParams.set('priceMin', e.target.value);
                   else nextParams.delete('priceMin');
-                  setSearchParams(nextParams);
+                  resetPage(nextParams);
                 }}
                 className="input"
                 style={{ padding: '0.35rem', fontSize: '0.75rem' }}
@@ -167,7 +186,7 @@ export const ProductListing: React.FC = () => {
                   const nextParams = new URLSearchParams(searchParams);
                   if (e.target.value) nextParams.set('priceMax', e.target.value);
                   else nextParams.delete('priceMax');
-                  setSearchParams(nextParams);
+                  resetPage(nextParams);
                 }}
                 className="input"
                 style={{ padding: '0.35rem', fontSize: '0.75rem' }}
@@ -195,7 +214,7 @@ export const ProductListing: React.FC = () => {
                 ? `Category: ${categories?.find((c: any) => c.id === categoryFilter)?.name || 'Loading...'}`
                 : t('products.allProducts', 'All Products')}
               <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'rgb(var(--muted-foreground))', marginLeft: '0.5rem' }}>
-                ({products?.length || 0} items)
+                ({pagination?.total ?? products?.length ?? 0} products)
               </span>
             </h2>
 
@@ -229,95 +248,168 @@ export const ProductListing: React.FC = () => {
               onAction={handleClearFilters}
             />
           ) : (
-            <div className="grid grid-cols-3">
-              {products.map((prod: any) => (
-                <div
-                  key={prod.id}
-                  className="card"
-                  style={{
-                    height: '100%',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                  }}
-                >
-                  <Link
-                    to={`/product/${prod.id}`}
+            <>
+              <div className="grid grid-cols-3">
+                {products.map((prod: any) => (
+                  <div
+                    key={prod.id}
+                    className="card"
                     style={{
-                      height: '200px',
-                      backgroundColor: 'rgb(var(--muted) / 0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
+                      height: '100%',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.06)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
                     }}
                   >
-                    {prod.images && prod.images.length > 0 ? (
-                      <img
-                        src={prod.images[0].startsWith('http') ? prod.images[0] : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${prod.images[0]}`}
-                        alt={prod.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div style={{ fontSize: '2.5rem', color: 'rgb(var(--muted-foreground))' }}>📦</div>
-                    )}
-                  </Link>
-
-                  <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'rgb(var(--muted-foreground))', textTransform: 'uppercase', fontWeight: 600 }}>
-                      {prod.category?.name}
-                    </span>
-                    <Link to={`/product/${prod.id}`}>
-                      <h3
-                        style={{
-                          fontSize: '0.95rem',
-                          fontWeight: 600,
-                          color: 'rgb(var(--foreground))',
-                          height: '2.4rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineHeight: '1.2',
-                        }}
-                      >
-                        {prod.name}
-                      </h3>
+                    <Link
+                      to={`/product/${prod.id}`}
+                      style={{
+                        height: '200px',
+                        backgroundColor: 'rgb(var(--muted) / 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {prod.images && prod.images.length > 0 ? (
+                        <img
+                          src={prod.images[0].startsWith('http') ? prod.images[0] : `${API_BASE_URL}${prod.images[0]}`}
+                          alt={prod.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: '2.5rem', color: 'rgb(var(--muted-foreground))' }}>📦</div>
+                      )}
                     </Link>
 
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'rgb(var(--primary))' }}>
-                        {formatPrice(prod.price)}
+                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'rgb(var(--muted-foreground))', textTransform: 'uppercase', fontWeight: 600 }}>
+                        {prod.categoryName ?? prod.category_name ?? prod.category?.name}
                       </span>
-                      {prod.stock === 0 && (
-                        <span style={{ fontSize: '0.75rem', color: 'rgb(var(--danger))', fontWeight: 600 }}>
-                          {t('products.outOfStock', 'Out of Stock')}
+                      <Link to={`/product/${prod.id}`}>
+                        <h3
+                          style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 600,
+                            color: 'rgb(var(--foreground))',
+                            height: '2.4rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            lineHeight: '1.2',
+                          }}
+                        >
+                          {prod.name}
+                        </h3>
+                      </Link>
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'rgb(var(--primary))' }}>
+                          {formatPrice(prod.price)}
                         </span>
-                      )}
+                        {prod.stock === 0 && (
+                          <span style={{ fontSize: '0.75rem', color: 'rgb(var(--danger))', fontWeight: 600 }}>
+                            {t('products.outOfStock', 'Out of Stock')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="card-footer" style={{ padding: '1rem', borderTop: '1px solid rgb(var(--border) / 0.3)' }}>
+                      <Button
+                        onClick={() => handleAddToCart(prod.id)}
+                        variant={prod.stock === 0 ? 'secondary' : 'primary'}
+                        disabled={prod.stock === 0}
+                        style={{ width: '100%' }}
+                      >
+                        🛒 {t('products.addToCart', 'Add to Cart')}
+                      </Button>
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  <div className="card-footer" style={{ padding: '1rem', borderTop: '1px solid rgb(var(--border) / 0.3)' }}>
-                    <Button
-                      onClick={() => handleAddToCart(prod.id)}
-                      variant={prod.stock === 0 ? 'secondary' : 'primary'}
-                      disabled={prod.stock === 0}
-                      style={{ width: '100%' }}
-                    >
-                      🛒 {t('products.addToCart', 'Add to Cart')}
-                    </Button>
-                  </div>
+              {pagination && pagination.totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '2rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => goToPage(Number(page) - 1)}
+                    disabled={Number(page) <= 1}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid rgb(var(--border))',
+                      background: Number(page) <= 1 ? 'rgb(var(--muted))' : 'rgb(var(--card))',
+                      color: Number(page) <= 1 ? 'rgb(var(--muted-foreground))' : 'rgb(var(--foreground))',
+                      cursor: Number(page) <= 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    ‹ Prev
+                  </button>
+
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter((p) => {
+                      const cur = Number(page);
+                      return p === 1 || p === pagination.totalPages || Math.abs(p - cur) <= 2;
+                    })
+                    .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - arr[idx - 1] > 1) acc.push('ellipsis');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p) =>
+                      p === 'ellipsis' ? (
+                        <span key="ellipsis" style={{ padding: '0.4rem 0.3rem', color: 'rgb(var(--muted-foreground))' }}>…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => goToPage(p)}
+                          style={{
+                            padding: '0.4rem 0.75rem',
+                            borderRadius: 'var(--radius)',
+                            border: p === Number(page) ? '2px solid rgb(var(--primary))' : '1px solid rgb(var(--border))',
+                            background: p === Number(page) ? 'rgb(var(--primary) / 0.1)' : 'rgb(var(--card))',
+                            color: p === Number(page) ? 'rgb(var(--primary))' : 'rgb(var(--foreground))',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: p === Number(page) ? 700 : 500,
+                          }}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                  <button
+                    onClick={() => goToPage(Number(page) + 1)}
+                    disabled={Number(page) >= pagination.totalPages}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: 'var(--radius)',
+                      border: '1px solid rgb(var(--border))',
+                      background: Number(page) >= pagination.totalPages ? 'rgb(var(--muted))' : 'rgb(var(--card))',
+                      color: Number(page) >= pagination.totalPages ? 'rgb(var(--muted-foreground))' : 'rgb(var(--foreground))',
+                      cursor: Number(page) >= pagination.totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Next ›
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

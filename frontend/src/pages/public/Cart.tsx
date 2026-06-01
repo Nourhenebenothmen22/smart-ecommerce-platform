@@ -8,26 +8,58 @@ import { Button } from '../../components/ui/Button';
 import { PageLoader } from '../../components/shared/PageLoader';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { formatPrice } from '../../lib/utils';
+import { API_BASE_URL } from '../../config/api';
+
+function getCartItems(cart: any) {
+  return Array.isArray(cart) ? cart : cart?.items ?? [];
+}
+
+function getItemProductId(item: any) {
+  return String(item.product?.id ?? item.product_id ?? '');
+}
+
+function getItemName(item: any) {
+  return item.product?.name ?? item.product?.title ?? item.name ?? item.title ?? '';
+}
+
+function getItemPrice(item: any) {
+  return Number(item.product?.price ?? item.product?.final_price ?? item.price ?? item.final_price ?? 0);
+}
+
+function getItemStock(item: any) {
+  return Number(item.product?.stock ?? item.stock ?? 0);
+}
+
+function getItemImage(item: any) {
+  const image = item.product?.image ?? item.product?.thumbnail ?? item.thumbnail ?? item.product?.images?.[0];
+  if (!image) return '';
+  const value = String(image);
+  if (value.startsWith('http') || value.startsWith('/hero') || value.startsWith('/images')) return value;
+  return `${API_BASE_URL}${value}`;
+}
 
 export const Cart: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [paymentMethod, setPaymentMethod] = useState<'cash_on_delivery' | 'credit_card'>('cash_on_delivery');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   const { data: cart, isLoading, refetch } = useCart({ enabled: isAuthenticated });
   const { mutate: updateQuantity } = useUpdateCartItem();
   const { mutate: removeItem } = useRemoveFromCart();
   const { mutate: createOrder } = useCreateOrder();
 
+  const isCustomer = user?.role === 'customer';
+
   if (!isAuthenticated) {
     return (
       <div className="container" style={{ padding: '6rem 2rem', textAlign: 'center' }}>
         <EmptyState
-          title="Login Required"
-          message="You must be logged in to view your shopping cart."
-          actionLabel="Log In Now"
+          title={t('states.loginRequired')}
+          message={t('order.loginCustomer')}
+          actionLabel={t('nav.login')}
           onAction={() => navigate('/login')}
         />
       </div>
@@ -36,7 +68,7 @@ export const Cart: React.FC = () => {
 
   if (isLoading) return <PageLoader />;
 
-  const items = cart?.items || [];
+  const items = getCartItems(cart);
 
   if (items.length === 0) {
     return (
@@ -53,7 +85,7 @@ export const Cart: React.FC = () => {
 
   // Calculate Subtotal (price * quantity)
   const subtotal = items.reduce((acc: number, item: any) => {
-    return acc + (item.product?.price || 0) * item.quantity;
+    return acc + getItemPrice(item) * item.quantity;
   }, 0);
 
   const shipping = subtotal > 150 ? 0 : 15; // Free shipping over $150
@@ -82,10 +114,13 @@ export const Cart: React.FC = () => {
 
   const handleCheckout = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCustomer || checkoutLoading) return;
+
+    setCheckoutError('');
     setCheckoutLoading(true);
 
     const orderItems = items.map((item: any) => ({
-      product_id: parseInt(item.product.id),
+      product_id: Number(getItemProductId(item)),
       quantity: item.quantity,
     }));
 
@@ -95,12 +130,12 @@ export const Cart: React.FC = () => {
         payment_method: paymentMethod,
       },
       {
-        onSuccess: (res: any) => {
-          alert('Order placed successfully!');
+        onSuccess: () => {
+          setCheckoutError('');
           navigate('/customer'); // Redirect to customer profile/orders dashboard
         },
         onError: (err: any) => {
-          alert(err.message || 'Could not place order. Please review stock limits.');
+          setCheckoutError(err.message || t('order.error'));
         },
         onSettled: () => {
           setCheckoutLoading(false);
@@ -115,12 +150,12 @@ export const Cart: React.FC = () => {
         {t('cart.title', 'Shopping Cart')}
       </h1>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '3rem' }}>
+      <div className="cart-checkout-layout">
         {/* Left Side: Cart Items List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {items.map((item: any) => (
             <div
-              key={item.id}
+              key={item.id ?? getItemProductId(item)}
               style={{
                 display: 'flex',
                 gap: '1.5rem',
@@ -145,10 +180,10 @@ export const Cart: React.FC = () => {
                   flexShrink: 0,
                 }}
               >
-                {item.product?.images && item.product.images.length > 0 ? (
+                {getItemImage(item) ? (
                   <img
-                    src={item.product.images[0].startsWith('http') ? item.product.images[0] : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}${item.product.images[0]}`}
-                    alt={item.product.name}
+                    src={getItemImage(item)}
+                    alt={getItemName(item)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
@@ -160,30 +195,30 @@ export const Cart: React.FC = () => {
               {/* Title & Price */}
               <div style={{ flexGrow: 1 }}>
                 <Link
-                  to={`/product/${item.product.id}`}
+                  to={`/product/${getItemProductId(item)}`}
                   style={{ fontWeight: 600, color: 'rgb(var(--foreground))', fontSize: '0.95rem' }}
                 >
-                  {item.product?.name}
+                  {getItemName(item)}
                 </Link>
                 <p style={{ fontSize: '0.85rem', color: 'rgb(var(--muted-foreground))', marginTop: '0.25rem' }}>
-                  {t('product.sku', 'SKU')}: D-{item.product?.id}
+                  {t('product.sku', 'SKU')}: D-{getItemProductId(item)}
                 </p>
                 <p style={{ fontWeight: 700, color: 'rgb(var(--primary))', fontSize: '0.95rem', marginTop: '0.5rem' }}>
-                  {formatPrice(item.product?.price || 0)}
+                  {formatPrice(getItemPrice(item))}
                 </p>
               </div>
 
               {/* Quantity Controls */}
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid rgb(var(--border))', borderRadius: 'var(--radius)', overflow: 'hidden', height: '34px' }}>
                 <button
-                  onClick={() => handleQtyChange(item.product.id, item.quantity - 1, item.product.stock)}
+                  onClick={() => item.quantity <= 1 ? handleRemove(getItemProductId(item)) : handleQtyChange(getItemProductId(item), item.quantity - 1, getItemStock(item))}
                   style={{ width: '28px', height: '100%', background: 'rgb(var(--muted))', cursor: 'pointer', fontWeight: 700 }}
                 >
                   -
                 </button>
                 <span style={{ width: '32px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600 }}>{item.quantity}</span>
                 <button
-                  onClick={() => handleQtyChange(item.product.id, item.quantity + 1, item.product.stock)}
+                  onClick={() => handleQtyChange(getItemProductId(item), item.quantity + 1, getItemStock(item))}
                   style={{ width: '28px', height: '100%', background: 'rgb(var(--muted))', cursor: 'pointer', fontWeight: 700 }}
                 >
                   +
@@ -192,7 +227,7 @@ export const Cart: React.FC = () => {
 
               {/* Delete Icon */}
               <button
-                onClick={() => handleRemove(item.product.id)}
+                onClick={() => handleRemove(getItemProductId(item))}
                 style={{
                   color: 'rgb(var(--danger))',
                   cursor: 'pointer',
@@ -278,12 +313,20 @@ export const Cart: React.FC = () => {
               gap: '1.25rem',
             }}
           >
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Checkout Details</h3>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{t('order.checkoutDetails')}</h3>
+
+            {!isCustomer && (
+              <div className="order-access-card">
+                {isAuthenticated ? t('order.customersOnly') : t('order.loginCustomer')}
+              </div>
+            )}
+
+            {checkoutError && <div className="order-error-card">{checkoutError}</div>}
 
             {/* Payment Method Selector */}
             <div>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
-                Payment Method
+                {t('order.paymentMethod')}
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
@@ -292,8 +335,9 @@ export const Cart: React.FC = () => {
                     name="payment"
                     checked={paymentMethod === 'cash_on_delivery'}
                     onChange={() => setPaymentMethod('cash_on_delivery')}
+                    disabled={!isCustomer || checkoutLoading}
                   />
-                  Cash on Delivery (COD)
+                  {t('order.cashOnDelivery')}
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
                   <input
@@ -301,15 +345,18 @@ export const Cart: React.FC = () => {
                     name="payment"
                     checked={paymentMethod === 'credit_card'}
                     onChange={() => setPaymentMethod('credit_card')}
+                    disabled={!isCustomer || checkoutLoading}
                   />
-                  Credit / Debit Card
+                  {t('order.creditCard')}
                 </label>
               </div>
             </div>
 
-            <Button type="submit" variant="primary" style={{ width: '100%', height: '42px' }} disabled={checkoutLoading}>
-              {checkoutLoading ? 'Processing Checkout...' : t('cart.checkout', 'Place Order')}
-            </Button>
+            {isCustomer && (
+              <Button type="submit" variant="primary" style={{ width: '100%', height: '42px' }} disabled={checkoutLoading}>
+                {checkoutLoading ? t('order.placing') : t('order.placeOrder')}
+              </Button>
+            )}
           </form>
         </div>
       </div>

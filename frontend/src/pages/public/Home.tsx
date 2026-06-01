@@ -6,6 +6,7 @@ import type { CategoryGroup, Product } from '../../data/products';
 import { useCategories } from '../../hooks/api/useCategories';
 import { useProducts } from '../../hooks/api/useProducts';
 import { useSubcategories } from '../../hooks/api/useSubcategories';
+import { translateCategoryName, translateSubcategoryName } from '../../lib/catalogTranslations';
 
 type ApiCategory = {
   id: string | number;
@@ -21,7 +22,8 @@ export const Home: React.FC = () => {
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
-  const { data: apiProducts = [], isLoading: productsLoading, error: productsError } = useProducts();
+  const { data: productsData = { products: [] }, isLoading: productsLoading, error: productsError } = useProducts();
+  const apiProducts = productsData.products;
   const { data: apiCategories = [] } = useCategories();
   const { data: apiSubcategories = [] } = useSubcategories();
 
@@ -62,7 +64,13 @@ export const Home: React.FC = () => {
       <div className="home-products">
         <div className="section-heading">
           <span>{t('home.collection')}</span>
-          <h2>{selectedSubcategory ? String(t(`subcategories.${selectedSubcategory}`, selectedSubcategory)) : selectedCategory ? String(t(`categories.${selectedCategory}`, selectedCategory)) : t('home.featuredProducts')}</h2>
+          <h2>
+            {selectedSubcategory
+              ? translateSubcategoryName(t, selectedSubcategory)
+              : selectedCategory
+                ? translateCategoryName(t, selectedCategory)
+                : t('home.featuredProducts')}
+          </h2>
           <p>{t('home.collectionSubtitle')}</p>
         </div>
 
