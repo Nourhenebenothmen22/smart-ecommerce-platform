@@ -8,6 +8,7 @@ Combines the strengths of both retrievers:
 Uses RRF formula: score(d) = Σ 1 / (k + rank(d))
 """
 import logging
+import re
 from typing import List, Dict, Any
 import sys
 import os
@@ -18,11 +19,54 @@ if _ML_ROOT not in sys.path:
 
 from nlp.retrieval.bm25_search import BM25Retriever
 from nlp.retrieval.vector_search import DenseVectorRetriever
+from core.db import get_db_cursor
 
 logger = logging.getLogger(__name__)
 
 # RRF constant — standard value from the original paper (Cormack et al., 2009)
 RRF_K = 60
+
+_EXPENSIVE_RE = re.compile(
+    r"\b(plus\s+cher|plus\s+chers|cher\s+produit|chers\s+produits|expensive|highest\s+price|most\s+expensive)\b",
+    re.IGNORECASE,
+)
+_CHEAP_RE = re.compile(
+    r"\b(moins\s+cher|moins\s+chers|pas\s+cher|pas\s+chers|cheap|cheapest|lowest\s+price)\b",
+    re.IGNORECASE,
+)
+
+
+def _search_products_by_price(order: str, top_k: int) -> List[Dict[str, Any]]:
+    direction = "DESC" if order == "desc" else "ASC"
+    with get_db_cursor() as cur:
+        cur.execute(f"""
+            SELECT p.id, p.title, p.brand, p.price, p.final_price,
+                   LEFT(p.description, 1000) AS description_preview,
+                   p.rating_avg, p.stock
+            FROM products p
+            WHERE p.is_active = TRUE
+              AND p.stock > 0
+              AND p.price IS NOT NULL
+              AND p.price > 0
+            ORDER BY COALESCE(NULLIF(p.final_price, 0), p.price) {direction}, p.id ASC
+            LIMIT %s
+        """, (top_k,))
+
+        results = []
+        for rank, row in enumerate(cur.fetchall(), 1):
+            results.append({
+                "product_id": row[0],
+                "name": row[1],
+                "brand": row[2],
+                "price": float(row[3]) if row[3] else 0.0,
+                "final_price": float(row[4]) if row[4] else 0.0,
+                "description": row[5] or "",
+                "rating_avg": float(row[6]) if row[6] else 0.0,
+                "stock": row[7] or 0,
+                "score": round(1 / rank, 4),
+                "source": "catalog_price_desc" if order == "desc" else "catalog_price_asc",
+            })
+        return results
 
 
 class HybridRetriever:
@@ -46,6 +90,18 @@ class HybridRetriever:
         if not clean_query:
             return []
 
+        try:
+            if _EXPENSIVE_RE.search(clean_query):
+                results = _search_products_by_price("desc", top_k)
+                logger.info("Catalog price intent returned %s expensive products for '%s'", len(results), clean_query)
+                return results
+            if _CHEAP_RE.search(clean_query):
+                results = _search_products_by_price("asc", top_k)
+                logger.info("Catalog price intent returned %s cheap products for '%s'", len(results), clean_query)
+                return results
+        except Exception as e:
+            logger.warning("Catalog price intent failed, continuing with hybrid retrieval: %s", e)
+
         # Fetch from both retrievers (extra results for better fusion)
         fetch_k = top_k * 2
 
@@ -58,6 +114,9 @@ class HybridRetriever:
             logger.info(f"BM25 returned {len(bm25_results)} results for '{clean_query}'")
         except Exception as e:
             logger.warning(f"BM25 search failed, continuing with vector only: {e}")
+
+        if bm25_results:
+            return bm25_results[:top_k]
 
         # Vector search — primary retriever
         try:

@@ -1,3 +1,4 @@
+import logging
 from typing import List, Dict, Any
 import sys
 import os
@@ -7,6 +8,8 @@ if _ML_ROOT not in sys.path:
     sys.path.insert(0, _ML_ROOT)
 
 from core.db import get_db_cursor
+
+logger = logging.getLogger(__name__)
 
 class BM25Retriever:
     """
@@ -29,12 +32,21 @@ class BM25Retriever:
                            LEFT(p.description, 1000) AS description_preview,
                            p.rating_avg, p.stock,
                            ts_rank(
-                               p.search_vector,
+                               to_tsvector(
+                                   'french',
+                                   COALESCE(p.title, '') || ' ' ||
+                                   COALESCE(p.brand, '') || ' ' ||
+                                   COALESCE(p.description, '')
+                               ),
                                websearch_to_tsquery('french', %s)
                            ) AS score
                     FROM products p
-                    WHERE p.search_vector
-                          @@ websearch_to_tsquery('french', %s)
+                    WHERE to_tsvector(
+                              'french',
+                              COALESCE(p.title, '') || ' ' ||
+                              COALESCE(p.brand, '') || ' ' ||
+                              COALESCE(p.description, '')
+                          ) @@ websearch_to_tsquery('french', %s)
                       AND p.is_active = TRUE
                       AND p.stock > 0
                     ORDER BY score DESC
@@ -55,6 +67,6 @@ class BM25Retriever:
                         "source": "bm25"
                     })
         except Exception as e:
-            print(f"BM25 search error: {e}")
+            logger.error("BM25 search error: %s", e, exc_info=True)
             
         return results

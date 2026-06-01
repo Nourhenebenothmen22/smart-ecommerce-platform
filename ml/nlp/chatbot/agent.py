@@ -10,11 +10,6 @@ import re
 from typing import Dict, Any, List
 
 try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None  # type: ignore
-
-try:
     from ml.core.config import settings
 except ImportError:  # pragma: no cover - supports running from inside ml/
     from core.config import settings
@@ -45,14 +40,21 @@ class RAGChatbotAgent:
 
     def __init__(self, api_key: str = None):
         self.api_key = api_key or settings.OPENAI_API_KEY
-        self.client = OpenAI(
-            base_url=settings.LLM_BASE_URL,
-            api_key=self.api_key,
-            timeout=settings.LLM_TIMEOUT_SECONDS,
-        ) if OpenAI and self.api_key and settings.ML_ENABLE_LLM_CALLS else None
+        self.client = None
+        if self.api_key and settings.ML_ENABLE_LLM_CALLS:
+            try:
+                from openai import OpenAI
+
+                self.client = OpenAI(
+                    base_url=settings.LLM_BASE_URL,
+                    api_key=self.api_key,
+                    timeout=settings.LLM_TIMEOUT_SECONDS,
+                )
+            except ImportError:
+                logger.warning("OpenAI package is not installed; chatbot will operate in DB-only mode.")
 
         if not self.client:
-            logger.warning("OpenAI client not initialized — chatbot will operate in DEMO mode.")
+            logger.warning("OpenAI client not initialized; chatbot will operate in DB-only mode.")
 
         # System Prompt — strict e-commerce domain boundaries
         self.system_prompt = (

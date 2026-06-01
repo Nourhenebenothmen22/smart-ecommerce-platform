@@ -6,7 +6,6 @@ and returns enriched product data with business filters.
 """
 import logging
 from typing import List, Dict, Any
-from sentence_transformers import SentenceTransformer
 import sys
 import os
 
@@ -46,6 +45,8 @@ class DenseVectorRetriever:
 
         allow_downloads = os.getenv("ML_ALLOW_MODEL_DOWNLOADS", "false").lower() == "true"
         try:
+            from sentence_transformers import SentenceTransformer
+
             logger.info("Loading SentenceTransformer: %s", self.model_name)
             self.model = SentenceTransformer(self.model_name, local_files_only=not allow_downloads)
             logger.info("SentenceTransformer loaded: %s", self.model_name)
