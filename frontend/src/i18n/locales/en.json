@@ -37,6 +37,12 @@
     "slide3Subtitle": "Enjoy exclusive offers and a smooth shopping experience with DarStore.",
     "slide3Cta": "View Offers"
   },
+  "splash": {
+    "loading": "Loading DarStore",
+    "eyebrow": "Intelligent marketplace",
+    "title": "DarStore",
+    "subtitle": "A premium shopping experience is opening."
+  },
   "home": {
     "featuredProducts": "Featured Products",
     "collection": "DarStore Collection",
@@ -49,7 +55,17 @@
     "newsletter": "Subscribe to Our Newsletter",
     "newsletterSubtitle": "Get the latest updates on new products and special promotions.",
     "emailPlaceholder": "Enter your email address",
-    "subscribe": "Subscribe"
+    "subscribe": "Subscribe",
+    "quickLinksLabel": "Quick navigation",
+    "quickProductsTitle": "Browse all products",
+    "quickProductsText": "Open the full catalog and discover every available item.",
+    "quickProductsCta": "Go to /products",
+    "quickCartTitle": "Selected cart",
+    "quickCartText": "Review selected products before confirming your order.",
+    "quickCartCta": "Open cart",
+    "quickCustomerTitle": "My orders dashboard",
+    "quickCustomerText": "Track your orders, profile, and customer activity.",
+    "quickCustomerCta": "Go to /customer"
   },
   "categories": {
     "Electronics": "Electronics",
@@ -68,6 +84,44 @@
     "Kitchen": "Kitchen"
   },
   "catalog": {
+    "categories": {
+      "electronics": "Electronics",
+      "fashion": "Fashion",
+      "home": "Home"
+    },
+    "subcategories": {
+      "phones": "Phones",
+      "laptops": "Laptops",
+      "headphones": "Headphones",
+      "men": "Men",
+      "women": "Women",
+      "shoes": "Shoes",
+      "decor": "Decor",
+      "furniture": "Furniture",
+      "kitchen": "Kitchen"
+    },
+    "productNames": {
+      "atlas-pro-smartphone": "Atlas Pro Smartphone",
+      "nomad-ultra-laptop": "Nomad Ultra Laptop",
+      "sahara-wireless-headphones": "Sahara Wireless Headphones",
+      "medina-linen-jacket": "Medina Linen Jacket",
+      "amani-flow-dress": "Amani Flow Dress",
+      "oasis-leather-sneakers": "Oasis Leather Sneakers",
+      "zellige-wall-decor-set": "Zellige Wall Decor Set",
+      "casbah-lounge-chair": "Casbah Lounge Chair",
+      "amber-kitchen-essentials": "Amber Kitchen Essentials"
+    },
+    "productDescriptions": {
+      "atlas-pro-smartphone": "A polished smartphone with a vivid display, fast performance, and reliable all-day battery life.",
+      "nomad-ultra-laptop": "A lightweight laptop designed for productivity, creative work, and smooth multitasking.",
+      "sahara-wireless-headphones": "Comfortable wireless headphones with rich sound, deep bass, and long battery life.",
+      "medina-linen-jacket": "A breathable linen jacket with a refined cut for smart casual everyday styling.",
+      "amani-flow-dress": "An elegant dress with soft movement, premium fabric, and a graceful modern silhouette.",
+      "oasis-leather-sneakers": "Premium everyday sneakers with a clean profile, cushioned sole, and durable leather finish.",
+      "zellige-wall-decor-set": "A decorative set inspired by geometric craftwork, made to bring warmth to living spaces.",
+      "casbah-lounge-chair": "A comfortable accent chair with premium upholstery and a sculptural, lounge-ready profile.",
+      "amber-kitchen-essentials": "A refined kitchen set for daily cooking, serving, and organized countertop storage."
+    },
     "products": {
       "1": {
         "name": "Atlas Pro Smartphone",
@@ -146,6 +200,38 @@
     "freeShipping": "Free Shipping",
     "returnPolicy": "30-Day Return Policy"
   },
+  "reviews": {
+    "eyebrow": "Customer feedback",
+    "title": "Reviews",
+    "subtitle": "Share a focused review after shopping and help other customers choose with confidence.",
+    "summary": "{{count}} review",
+    "summary_plural": "{{count}} reviews",
+    "access": {
+      "title": "Customer access",
+      "loginCustomerOrder": "Login as a customer to add a review or place an order.",
+      "customersOnlyOrder": "Only customers can add reviews and place orders.",
+      "customerReady": "Connected customers can add reviews and place orders."
+    },
+    "yourReview": "Your review",
+    "myReviewHint": "You can edit or remove your review at any time.",
+    "writeReview": "Write a review",
+    "writeHint": "Rate the product and add a short note about your experience.",
+    "editReview": "Edit review",
+    "editHint": "Update your rating or comment before saving.",
+    "rating": "Rating",
+    "comment": "Comment",
+    "commentPlaceholder": "Share your experience...",
+    "submit": "Submit review",
+    "created": "Review submitted!",
+    "updated": "Review updated!",
+    "deleted": "Review deleted.",
+    "createError": "Failed to submit review.",
+    "updateError": "Failed to update review.",
+    "deleteError": "Failed to delete review.",
+    "deleteConfirm": "Delete your review?",
+    "starLabel": "{{count}} star",
+    "starLabel_plural": "{{count}} stars"
+  },
   "cart": {
     "title": "Shopping Cart",
     "empty": "Your cart is empty",
@@ -160,7 +246,23 @@
     "quantity": "Quantity",
     "orderSummary": "Order Summary",
     "freeShipping": "Free Shipping",
-    "updateQuantity": "Update Quantity"
+    "updateQuantity": "Update Quantity",
+    "addItem": "Add to cart",
+    "loginToAdd": "Login as a customer to add products to your cart.",
+    "customersOnlyCart": "Only customers can add products to the cart.",
+    "addError": "Could not add product to cart."
+  },
+  "order": {
+    "placeOrder": "Place Order",
+    "placing": "Placing order...",
+    "success": "Order placed successfully!",
+    "error": "Could not place order. Please review stock limits.",
+    "loginCustomer": "Login as a customer to place an order.",
+    "customersOnly": "Only customers can place orders.",
+    "checkoutDetails": "Checkout Details",
+    "paymentMethod": "Payment Method",
+    "cashOnDelivery": "Cash on Delivery (COD)",
+    "creditCard": "Credit / Debit Card"
   },
   "auth": {
     "login": "Login",
@@ -370,6 +472,8 @@
     "no": "No",
     "ok": "OK",
     "success": "Success!",
+    "saving": "Saving...",
+    "submitting": "Submitting...",
     "viewAll": "View All",
     "seeMore": "See More",
     "showMore": "Show More",

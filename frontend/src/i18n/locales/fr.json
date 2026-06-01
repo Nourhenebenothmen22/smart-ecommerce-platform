@@ -37,6 +37,12 @@
     "slide3Subtitle": "Profitez d'offres exclusives et d'une experience shopping fluide avec DarStore.",
     "slide3Cta": "Voir les offres"
   },
+  "splash": {
+    "loading": "Chargement de DarStore",
+    "eyebrow": "Marketplace intelligente",
+    "title": "DarStore",
+    "subtitle": "Une experience shopping premium s'ouvre."
+  },
   "home": {
     "featuredProducts": "Produits en vedette",
     "collection": "Collection DarStore",
@@ -49,7 +55,17 @@
     "newsletter": "Abonnez-vous a notre newsletter",
     "newsletterSubtitle": "Recevez les dernieres nouveautes produits et promotions.",
     "emailPlaceholder": "Entrez votre adresse e-mail",
-    "subscribe": "S'abonner"
+    "subscribe": "S'abonner",
+    "quickLinksLabel": "Navigation rapide",
+    "quickProductsTitle": "Voir tous les produits",
+    "quickProductsText": "Ouvrez le catalogue complet et decouvrez tous les articles disponibles.",
+    "quickProductsCta": "Aller a /products",
+    "quickCartTitle": "Panier selectionne",
+    "quickCartText": "Verifiez les produits selectionnes avant de confirmer la commande.",
+    "quickCartCta": "Ouvrir le panier",
+    "quickCustomerTitle": "Mes commandes",
+    "quickCustomerText": "Suivez vos commandes, votre profil et votre activite client.",
+    "quickCustomerCta": "Aller a /customer"
   },
   "categories": {
     "Electronics": "Electronique",
@@ -68,6 +84,44 @@
     "Kitchen": "Cuisine"
   },
   "catalog": {
+    "categories": {
+      "electronics": "Electronique",
+      "fashion": "Mode",
+      "home": "Maison"
+    },
+    "subcategories": {
+      "phones": "Telephones",
+      "laptops": "Ordinateurs portables",
+      "headphones": "Casques",
+      "men": "Hommes",
+      "women": "Femmes",
+      "shoes": "Chaussures",
+      "decor": "Decoration",
+      "furniture": "Meubles",
+      "kitchen": "Cuisine"
+    },
+    "productNames": {
+      "atlas-pro-smartphone": "Smartphone Atlas Pro",
+      "nomad-ultra-laptop": "Ordinateur Nomad Ultra",
+      "sahara-wireless-headphones": "Casque sans fil Sahara",
+      "medina-linen-jacket": "Veste en lin Medina",
+      "amani-flow-dress": "Robe fluide Amani",
+      "oasis-leather-sneakers": "Sneakers en cuir Oasis",
+      "zellige-wall-decor-set": "Set mural Zellige",
+      "casbah-lounge-chair": "Fauteuil lounge Casbah",
+      "amber-kitchen-essentials": "Essentiels cuisine Amber"
+    },
+    "productDescriptions": {
+      "atlas-pro-smartphone": "Un smartphone soigne avec un ecran vif, des performances rapides et une batterie fiable toute la journee.",
+      "nomad-ultra-laptop": "Un ordinateur leger concu pour la productivite, la creation et le multitache fluide.",
+      "sahara-wireless-headphones": "Un casque confortable avec un son riche, des basses profondes et une longue autonomie.",
+      "medina-linen-jacket": "Une veste respirante avec une coupe elegante pour un style quotidien chic et decontracte.",
+      "amani-flow-dress": "Une robe elegante au mouvement doux, avec un tissu premium et une silhouette moderne.",
+      "oasis-leather-sneakers": "Des sneakers premium du quotidien avec profil net, semelle confortable et cuir durable.",
+      "zellige-wall-decor-set": "Un set decoratif inspire des motifs geometriques pour apporter de la chaleur a votre interieur.",
+      "casbah-lounge-chair": "Un fauteuil confortable avec revetement premium et silhouette sculpturale.",
+      "amber-kitchen-essentials": "Un set raffine pour cuisiner, servir et organiser le plan de travail au quotidien."
+    },
     "products": {
       "1": { "name": "Smartphone Atlas Pro", "description": "Un smartphone soigne avec un ecran vif, des performances rapides et une batterie fiable toute la journee." },
       "2": { "name": "Ordinateur Nomad Ultra", "description": "Un ordinateur leger concu pour la productivite, la creation et le multitache fluide." },
@@ -119,6 +173,38 @@
     "freeShipping": "Livraison gratuite",
     "returnPolicy": "Retour sous 30 jours"
   },
+  "reviews": {
+    "eyebrow": "Avis clients",
+    "title": "Avis",
+    "subtitle": "Partagez un avis clair apres votre achat pour aider les autres clients a choisir en confiance.",
+    "summary": "{{count}} avis",
+    "summary_plural": "{{count}} avis",
+    "access": {
+      "title": "Acces client",
+      "loginCustomerOrder": "Connectez-vous comme client pour ajouter un avis ou passer une commande.",
+      "customersOnlyOrder": "Seuls les clients peuvent ajouter des avis et passer des commandes.",
+      "customerReady": "Les clients connectes peuvent ajouter des avis et passer des commandes."
+    },
+    "yourReview": "Votre avis",
+    "myReviewHint": "Vous pouvez modifier ou supprimer votre avis a tout moment.",
+    "writeReview": "Rediger un avis",
+    "writeHint": "Notez le produit et ajoutez une courte remarque sur votre experience.",
+    "editReview": "Modifier l'avis",
+    "editHint": "Mettez a jour votre note ou commentaire avant d'enregistrer.",
+    "rating": "Note",
+    "comment": "Commentaire",
+    "commentPlaceholder": "Partagez votre experience...",
+    "submit": "Envoyer l'avis",
+    "created": "Avis envoye !",
+    "updated": "Avis mis a jour !",
+    "deleted": "Avis supprime.",
+    "createError": "Impossible d'envoyer l'avis.",
+    "updateError": "Impossible de mettre a jour l'avis.",
+    "deleteError": "Impossible de supprimer l'avis.",
+    "deleteConfirm": "Supprimer votre avis ?",
+    "starLabel": "{{count}} etoile",
+    "starLabel_plural": "{{count}} etoiles"
+  },
   "cart": {
     "title": "Panier",
     "empty": "Votre panier est vide",
@@ -133,7 +219,23 @@
     "quantity": "Quantite",
     "orderSummary": "Resume de commande",
     "freeShipping": "Livraison gratuite",
-    "updateQuantity": "Mettre a jour la quantite"
+    "updateQuantity": "Mettre a jour la quantite",
+    "addItem": "Ajouter au panier",
+    "loginToAdd": "Connectez-vous comme client pour ajouter des produits au panier.",
+    "customersOnlyCart": "Seuls les clients peuvent ajouter des produits au panier.",
+    "addError": "Impossible d'ajouter le produit au panier."
+  },
+  "order": {
+    "placeOrder": "Passer la commande",
+    "placing": "Commande en cours...",
+    "success": "Commande passee avec succes !",
+    "error": "Impossible de passer la commande. Verifiez les limites de stock.",
+    "loginCustomer": "Connectez-vous comme client pour passer une commande.",
+    "customersOnly": "Seuls les clients peuvent passer des commandes.",
+    "checkoutDetails": "Details de paiement",
+    "paymentMethod": "Mode de paiement",
+    "cashOnDelivery": "Paiement a la livraison (COD)",
+    "creditCard": "Carte de credit / debit"
   },
   "auth": {
     "login": "Connexion",
@@ -343,6 +445,8 @@
     "no": "Non",
     "ok": "OK",
     "success": "Succes !",
+    "saving": "Enregistrement...",
+    "submitting": "Envoi...",
     "viewAll": "Voir tout",
     "seeMore": "Voir plus",
     "showMore": "Afficher plus",

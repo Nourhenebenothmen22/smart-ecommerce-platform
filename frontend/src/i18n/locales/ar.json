@@ -37,6 +37,12 @@
     "slide3Subtitle": "استمتع بعروض حصرية وتجربة تسوق سلسة مع DarStore.",
     "slide3Cta": "شاهد العروض"
   },
+  "splash": {
+    "loading": "جار تحميل DarStore",
+    "eyebrow": "سوق ذكي",
+    "title": "DarStore",
+    "subtitle": "تجربة تسوق فاخرة على وشك الظهور."
+  },
   "home": {
     "featuredProducts": "منتجات مميزة",
     "collection": "مجموعة DarStore",
@@ -49,7 +55,17 @@
     "newsletter": "اشترك في النشرة",
     "newsletterSubtitle": "احصل على آخر تحديثات المنتجات والعروض الخاصة.",
     "emailPlaceholder": "أدخل بريدك الإلكتروني",
-    "subscribe": "اشتراك"
+    "subscribe": "اشتراك",
+    "quickLinksLabel": "تنقل سريع",
+    "quickProductsTitle": "تصفح كل المنتجات",
+    "quickProductsText": "افتح الكتالوج الكامل واكتشف كل العناصر المتاحة.",
+    "quickProductsCta": "اذهب إلى /products",
+    "quickCartTitle": "السلة المحددة",
+    "quickCartText": "راجع المنتجات المحددة قبل تأكيد الطلب.",
+    "quickCartCta": "فتح السلة",
+    "quickCustomerTitle": "لوحة طلباتي",
+    "quickCustomerText": "تابع طلباتك وملفك ونشاطك كعميل.",
+    "quickCustomerCta": "اذهب إلى /customer"
   },
   "categories": {
     "Electronics": "الإلكترونيات",
@@ -68,6 +84,44 @@
     "Kitchen": "مطبخ"
   },
   "catalog": {
+    "categories": {
+      "electronics": "الإلكترونيات",
+      "fashion": "الموضة",
+      "home": "المنزل"
+    },
+    "subcategories": {
+      "phones": "الهواتف",
+      "laptops": "الحواسيب المحمولة",
+      "headphones": "سماعات الرأس",
+      "men": "رجال",
+      "women": "نساء",
+      "shoes": "أحذية",
+      "decor": "ديكور",
+      "furniture": "أثاث",
+      "kitchen": "مطبخ"
+    },
+    "productNames": {
+      "atlas-pro-smartphone": "هاتف أطلس برو",
+      "nomad-ultra-laptop": "حاسوب نوماد ألترا",
+      "sahara-wireless-headphones": "سماعات Sahara اللاسلكية",
+      "medina-linen-jacket": "سترة كتان Medina",
+      "amani-flow-dress": "فستان Amani المنسدل",
+      "oasis-leather-sneakers": "حذاء Oasis الجلدي",
+      "zellige-wall-decor-set": "مجموعة ديكور Zellige",
+      "casbah-lounge-chair": "كرسي استرخاء Casbah",
+      "amber-kitchen-essentials": "أساسيات مطبخ Amber"
+    },
+    "productDescriptions": {
+      "atlas-pro-smartphone": "هاتف أنيق بشاشة واضحة وأداء سريع وبطارية موثوقة طوال اليوم.",
+      "nomad-ultra-laptop": "حاسوب خفيف مصمم للإنتاجية والعمل الإبداعي وتعدد المهام بسلاسة.",
+      "sahara-wireless-headphones": "سماعات مريحة بصوت غني وجهير عميق وبطارية طويلة.",
+      "medina-linen-jacket": "سترة خفيفة بقصة أنيقة لإطلالة يومية راقية ومريحة.",
+      "amani-flow-dress": "فستان أنيق بحركة ناعمة وقماش فاخر وقصة عصرية.",
+      "oasis-leather-sneakers": "حذاء يومي فاخر بتصميم نظيف ونعل مريح ولمسة جلدية متينة.",
+      "zellige-wall-decor-set": "مجموعة زخرفية مستوحاة من الأنماط الهندسية لإضافة الدفء إلى المنزل.",
+      "casbah-lounge-chair": "كرسي مريح بتنجيد فاخر وشكل أنيق مناسب للجلوس والاسترخاء.",
+      "amber-kitchen-essentials": "مجموعة راقية للطهي والتقديم وتنظيم مساحة المطبخ اليومية."
+    },
     "products": {
       "1": {
         "name": "هاتف أطلس برو",
@@ -146,6 +200,38 @@
     "freeShipping": "شحن مجاني",
     "returnPolicy": "إرجاع خلال 30 يوما"
   },
+  "reviews": {
+    "eyebrow": "آراء العملاء",
+    "title": "المراجعات",
+    "subtitle": "شارك مراجعة واضحة بعد التسوق لمساعدة العملاء الآخرين على الاختيار بثقة.",
+    "summary": "{{count}} مراجعة",
+    "summary_plural": "{{count}} مراجعات",
+    "access": {
+      "title": "وصول العملاء",
+      "loginCustomerOrder": "سجل الدخول كعميل لإضافة مراجعة أو تقديم طلب.",
+      "customersOnlyOrder": "يمكن للعملاء فقط إضافة المراجعات وتقديم الطلبات.",
+      "customerReady": "يمكن للعملاء المتصلين إضافة المراجعات وتقديم الطلبات."
+    },
+    "yourReview": "مراجعتك",
+    "myReviewHint": "يمكنك تعديل مراجعتك أو حذفها في أي وقت.",
+    "writeReview": "اكتب مراجعة",
+    "writeHint": "قيّم المنتج وأضف ملاحظة قصيرة عن تجربتك.",
+    "editReview": "تعديل المراجعة",
+    "editHint": "حدّث تقييمك أو تعليقك قبل الحفظ.",
+    "rating": "التقييم",
+    "comment": "التعليق",
+    "commentPlaceholder": "شارك تجربتك...",
+    "submit": "إرسال المراجعة",
+    "created": "تم إرسال المراجعة!",
+    "updated": "تم تحديث المراجعة!",
+    "deleted": "تم حذف المراجعة.",
+    "createError": "فشل إرسال المراجعة.",
+    "updateError": "فشل تحديث المراجعة.",
+    "deleteError": "فشل حذف المراجعة.",
+    "deleteConfirm": "هل تريد حذف مراجعتك؟",
+    "starLabel": "{{count}} نجمة",
+    "starLabel_plural": "{{count}} نجوم"
+  },
   "cart": {
     "title": "سلة التسوق",
     "empty": "سلتك فارغة",
@@ -160,7 +246,23 @@
     "quantity": "الكمية",
     "orderSummary": "ملخص الطلب",
     "freeShipping": "شحن مجاني",
-    "updateQuantity": "تحديث الكمية"
+    "updateQuantity": "تحديث الكمية",
+    "addItem": "أضف إلى السلة",
+    "loginToAdd": "سجل الدخول كعميل لإضافة المنتجات إلى السلة.",
+    "customersOnlyCart": "يمكن للعملاء فقط إضافة المنتجات إلى السلة.",
+    "addError": "تعذر إضافة المنتج إلى السلة."
+  },
+  "order": {
+    "placeOrder": "تقديم الطلب",
+    "placing": "جار تقديم الطلب...",
+    "success": "تم تقديم الطلب بنجاح!",
+    "error": "تعذر تقديم الطلب. يرجى التحقق من حدود المخزون.",
+    "loginCustomer": "سجل الدخول كعميل لتقديم طلب.",
+    "customersOnly": "يمكن للعملاء فقط تقديم الطلبات.",
+    "checkoutDetails": "تفاصيل الدفع",
+    "paymentMethod": "طريقة الدفع",
+    "cashOnDelivery": "الدفع عند الاستلام",
+    "creditCard": "بطاقة ائتمان / خصم"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -370,6 +472,8 @@
     "no": "لا",
     "ok": "حسنا",
     "success": "تم بنجاح!",
+    "saving": "جار الحفظ...",
+    "submitting": "جار الإرسال...",
     "viewAll": "عرض الكل",
     "seeMore": "شاهد المزيد",
     "showMore": "عرض المزيد",
