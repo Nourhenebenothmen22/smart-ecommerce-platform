@@ -16,7 +16,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
+      start_period: 60s
     networks:
       - ecommerce_network
 
@@ -26,14 +27,15 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200"]
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 30
+      start_period: 120s
     networks:
       - ecommerce_network
 
@@ -175,14 +177,15 @@ services:
       DB_NAME: ${DB_NAME:-ecommerce_ml_db}
       DB_USER: ${DB_USER:-postgres}
       DB_PASS: ${DB_PASS:-postgres}
-      APP_ENV: production
+      APP_ENV: development
       ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:?ML_SERVICE_TOKEN is required}
       ML_REQUIRE_SERVICE_TOKEN: "true"
       ML_CORS_ORIGINS: http://backend:5000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
-      ML_ENABLE_LLM_CALLS: ${ML_ENABLE_LLM_CALLS:-false}
+      ML_ENABLE_LLM_CALLS: ${ML_ENABLE_LLM_CALLS:-true}
+      ML_ALLOW_MODEL_DOWNLOADS: ${ML_ALLOW_MODEL_DOWNLOADS:-true}
     depends_on:
       postgres:
         condition: service_healthy
