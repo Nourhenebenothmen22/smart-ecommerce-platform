@@ -21,9 +21,10 @@ export function useCreateReview() {
   return useMutation({
     mutationFn: (data: any) => reviewService.create(data),
     onSuccess: (_, variables) => {
-      if (variables.productId) {
-        queryClient.invalidateQueries({ queryKey: ['reviews', variables.productId] });
-        queryClient.invalidateQueries({ queryKey: ['product', variables.productId] });
+      const pid = String(variables.product_id ?? variables.productId ?? '');
+      if (pid) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', pid] });
+        queryClient.invalidateQueries({ queryKey: ['product', pid] });
       }
     },
   });
@@ -35,9 +36,10 @@ export function useUpdateReview() {
     mutationFn: ({ id, data }: { id: string; data: any }) =>
       reviewService.update(id, data),
     onSuccess: (_, { data }) => {
-      if (data.productId) {
-        queryClient.invalidateQueries({ queryKey: ['reviews', data.productId] });
-        queryClient.invalidateQueries({ queryKey: ['product', data.productId] });
+      const pid = String(data.product_id ?? data.productId ?? '');
+      if (pid) {
+        queryClient.invalidateQueries({ queryKey: ['reviews', pid] });
+        queryClient.invalidateQueries({ queryKey: ['product', pid] });
       }
     },
   });

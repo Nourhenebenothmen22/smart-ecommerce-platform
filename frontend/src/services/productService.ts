@@ -1,4 +1,4 @@
-import apiClient, { ApiError } from '../lib/apiClient';
+import apiClient from '../lib/apiClient';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
 
 function parseImages(value: any): string[] {
@@ -60,6 +60,7 @@ function toBackendParams(params?: Record<string, string>): Record<string, string
   if (params.priceMin) mapped.min_price = params.priceMin;
   if (params.priceMax) mapped.max_price = params.priceMax;
   if (params.limit) mapped.limit = params.limit;
+  if (params.page) mapped.page = params.page;
   if (params.sort === 'price_asc') {
     mapped.sort_by = 'price';
     mapped.sort_order = 'asc';
@@ -73,69 +74,12 @@ function toBackendParams(params?: Record<string, string>): Record<string, string
   return mapped;
 }
 
-function applyClientFilters(products: any[], params?: Record<string, string>) {
-  let result = products;
-
-  if (params?.search) {
-    const search = params.search.toLowerCase();
-    result = result.filter((product) =>
-      `${product.name} ${product.title} ${product.brand}`.toLowerCase().includes(search)
-    );
-  }
-
-  if (params?.category) {
-    result = result.filter((product) => String(product.categoryId) === String(params.category));
-  }
-
-  if (params?.subcategory) {
-    result = result.filter((product) => String(product.subcategoryId) === String(params.subcategory));
-  }
-
-  if (params?.priceMin) {
-    result = result.filter((product) => product.price >= Number(params.priceMin));
-  }
-
-  if (params?.priceMax) {
-    result = result.filter((product) => product.price <= Number(params.priceMax));
-  }
-
-  if (params?.sort === 'price_asc') {
-    result = [...result].sort((a, b) => a.price - b.price);
-  } else if (params?.sort === 'price_desc') {
-    result = [...result].sort((a, b) => b.price - a.price);
-  } else if (params?.sort === 'newest') {
-    result = [...result].sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''));
-  }
-
-  return result;
-}
-
-async function getProductsFromDetailFallback(params?: Record<string, string>) {
-  const limit = Number(params?.limit ?? 24);
-  const ids = Array.from({ length: limit }, (_, index) => String(index + 1));
-  const settled = await Promise.allSettled(
-    ids.map((id) => apiClient.get(API_ENDPOINTS.PRODUCTS.BY_ID(id)))
-  );
-  const products = settled
-    .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-    .map((result) => normalizeProduct(result.value))
-    .filter((product) => product?.is_active !== false);
-
-  return applyClientFilters(products, params);
-}
-
 export const productService = {
-  async getAll(params?: Record<string, string>): Promise<any> {
-    try {
-      const payload = await apiClient.get<any>(API_ENDPOINTS.PRODUCTS.LIST, toBackendParams(params));
-      const products = Array.isArray(payload) ? payload : payload?.products ?? [];
-      return products.map(normalizeProduct);
-    } catch (error) {
-      if (error instanceof ApiError && error.status >= 500) {
-        return getProductsFromDetailFallback(params);
-      }
-      throw error;
-    }
+  async getAll(params?: Record<string, string>): Promise<{ products: any[]; pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
+    const payload = await apiClient.get<any>(API_ENDPOINTS.PRODUCTS.LIST, toBackendParams(params));
+    const products = Array.isArray(payload) ? payload : payload?.products ?? [];
+    const pagination = payload?.pagination ?? undefined;
+    return { products: products.map(normalizeProduct), pagination };
   },
 
   async getById(id: string): Promise<any> {

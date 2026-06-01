@@ -7,7 +7,8 @@ export const reviewService = {
   },
 
   async getByProduct(productId: string): Promise<any> {
-    return apiClient.get(API_ENDPOINTS.REVIEWS.BY_PRODUCT(productId));
+    const payload = await apiClient.get<any>(API_ENDPOINTS.REVIEWS.BY_PRODUCT(productId));
+    return Array.isArray(payload) ? payload : payload?.reviews ?? [];
   },
 
   async create(data: unknown): Promise<any> {

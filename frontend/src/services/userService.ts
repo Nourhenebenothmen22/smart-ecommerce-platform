@@ -11,13 +11,21 @@ export function normalizeUser(user: any): any {
   };
 }
 
+function toBackendProfilePayload(data: any) {
+  return {
+    ...data,
+    first_name: data.first_name ?? data.firstName,
+    last_name: data.last_name ?? data.lastName,
+  };
+}
+
 export const userService = {
   async getMe(): Promise<any> {
     return normalizeUser(await apiClient.get(API_ENDPOINTS.USERS.ME));
   },
 
   async updateMe(data: unknown): Promise<any> {
-    return apiClient.patch(API_ENDPOINTS.USERS.ME, data);
+    return normalizeUser(await apiClient.patch(API_ENDPOINTS.USERS.ME, toBackendProfilePayload(data)));
   },
 
   async getAllUsers(): Promise<any> {
@@ -34,7 +42,7 @@ export const userService = {
   },
 
   async updateStatus(id: string, isActive: boolean): Promise<any> {
-    return apiClient.patch(API_ENDPOINTS.USERS.STATUS(id), { isActive });
+    return normalizeUser(await apiClient.patch(API_ENDPOINTS.USERS.STATUS(id), { is_active: isActive }));
   },
 
   async deleteUser(id: string): Promise<any> {
