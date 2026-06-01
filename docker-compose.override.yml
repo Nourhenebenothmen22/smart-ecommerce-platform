@@ -2,4 +2,6 @@ services:
   backend:
     environment:
       NODE_ENV: development
+      ML_SERVICE_URL: http://ml:8000
+      ML_REQUEST_TIMEOUT_MS: 30000
     command: npx tsx watch src/server.ts
