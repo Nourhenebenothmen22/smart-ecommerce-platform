@@ -45,7 +45,17 @@ import { ErrorState } from '../../components/shared/ErrorState';
 import { formatDate, formatPrice } from '../../lib/utils';
 
 const COLORS = ['#0f766e', '#14b8a6', '#f59e0b', '#6366f1', '#ef4444', '#64748b'];
+const CATEGORY_COLORS = ['#0f766e', '#14b8a6', '#d8b24b', '#6366f1', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b'];
 const LOW_STOCK_THRESHOLD = 10;
+const CHART_AXIS_STYLE = { fontSize: 12, fill: 'rgb(var(--muted-foreground))', fontWeight: 600 };
+const CHART_TOOLTIP_STYLE = {
+  backgroundColor: 'rgb(var(--card))',
+  border: '1px solid rgb(var(--border))',
+  borderRadius: 14,
+  boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+  color: 'rgb(var(--foreground))',
+};
+const CHART_LEGEND_STYLE = { paddingTop: 12, fontSize: 12, fontWeight: 700 };
 
 type AdminTab = 'overview' | 'orders' | 'products' | 'users' | 'insights';
 
@@ -75,15 +85,35 @@ function statusVariant(status: string) {
   return 'primary';
 }
 
-const ChartCard: React.FC<{ title: string; children: React.ReactNode; note?: string }> = ({ title, children, note }) => (
-  <Card style={{ minHeight: 320 }}>
-    <CardHeader>
+function shortLabel(value: unknown, max = 14) {
+  const label = String(value ?? '');
+  return label.length > max ? `${label.slice(0, max - 1)}…` : label;
+}
+
+const ChartCard: React.FC<{ title: string; children: React.ReactNode; note?: string; className?: string }> = ({ title, children, note, className }) => (
+  <Card className={`admin-chart-card${className ? ` ${className}` : ''}`}>
+    <CardHeader className="admin-chart-header">
       <CardTitle>{title}</CardTitle>
       {note && <p style={{ color: 'rgb(var(--muted-foreground))', fontSize: '0.8rem' }}>{note}</p>}
     </CardHeader>
-    <CardBody style={{ height: 245 }}>{children}</CardBody>
+    <CardBody className="admin-chart-body">{children}</CardBody>
   </Card>
 );
+
+function CategoryTooltip({ active, payload, total, t }: { active?: boolean; payload?: any[]; total: number; t: any }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload;
+  const count = Number(item.value ?? 0);
+  const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+
+  return (
+    <div className="admin-category-tooltip">
+      <strong>{item.name}</strong>
+      <span>{t('adminDashboard.chartKeys.products')}: {count}</span>
+      <span>{percent}%</span>
+    </div>
+  );
+}
 
 const UnavailableCard: React.FC<{ title: string; message: string; icon?: React.ReactNode }> = ({ title, message, icon }) => (
   <Card>
@@ -119,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
   const usersQuery = useUsers();
   const reviewsQuery = useReviews();
 
-  const products = asArray<any>(productsQuery.data);
+  const products = asArray<any>(productsQuery.data?.products);
   const categories = asArray<any>(categoriesQuery.data);
   const orders = asArray<any>(ordersQuery.data);
   const users = asArray<any>(usersQuery.data);
@@ -193,6 +223,8 @@ export const AdminDashboard: React.FC = () => {
     { label: t('adminDashboard.stats.lowStock'), value: analytics.lowStockProducts.length, icon: <Boxes size={20} />, tone: '#ef4444' },
     { label: t('adminDashboard.stats.totalReviews'), value: reviews.length, icon: <Star size={20} />, tone: '#8b5cf6' },
   ];
+
+  const productsByCategoryTotal = analytics.productsByCategory.reduce((sum, item) => sum + Number(item.value ?? 0), 0);
 
   const navItems = [
     { id: 'overview' as const, label: t('adminDashboard.nav.overview'), icon: <LayoutDashboard size={18} /> },
@@ -305,9 +337,9 @@ export const AdminDashboard: React.FC = () => {
               </div>
             ) : (
               <>
-                <section className="grid grid-cols-4">
+                <section className="admin-stats-grid">
                   {statCards.map((card) => (
-                    <Card key={card.label} style={{ overflow: 'hidden' }}>
+                    <Card key={card.label} className="admin-stat-card">
                       <CardBody>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
                           <div>
@@ -325,26 +357,27 @@ export const AdminDashboard: React.FC = () => {
 
                 {activeTab === 'overview' && (
                   <>
-                    <section style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(280px, 1fr)', gap: '1rem' }}>
+                    <section className="admin-chart-grid admin-chart-grid-overview">
                       <ChartCard title={t('adminDashboard.charts.salesByMonth')}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.monthlyData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="sales" name={t('adminDashboard.chartKeys.sales')} fill="#0f766e" radius={[6, 6, 0, 0]} />
+                          <BarChart data={analytics.monthlyData} margin={{ top: 16, right: 18, left: 0, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--border))" />
+                            <XAxis dataKey="month" tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} minTickGap={14} />
+                            <YAxis tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} width={42} />
+                            <Tooltip cursor={{ fill: 'rgb(var(--muted) / 0.38)' }} contentStyle={CHART_TOOLTIP_STYLE} />
+                            <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                            <Bar dataKey="sales" name={t('adminDashboard.chartKeys.sales')} fill="#0f766e" radius={[8, 8, 0, 0]} barSize={34} />
                           </BarChart>
                         </ResponsiveContainer>
                       </ChartCard>
                       <ChartCard title={t('adminDashboard.charts.ordersByStatus')}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={analytics.ordersByStatus} dataKey="value" nameKey="name" outerRadius={85} label>
+                          <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 12 }}>
+                            <Pie data={analytics.ordersByStatus} dataKey="value" nameKey="name" innerRadius={46} outerRadius={82} paddingAngle={3} labelLine={false} label={({ percent }: any) => `${Math.round((percent ?? 0) * 100)}%`}>
                               {analytics.ordersByStatus.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
                             </Pie>
-                            <Tooltip />
-                            <Legend />
+                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                            <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={CHART_LEGEND_STYLE} />
                           </PieChart>
                         </ResponsiveContainer>
                       </ChartCard>
@@ -368,53 +401,94 @@ export const AdminDashboard: React.FC = () => {
 
                 {activeTab === 'insights' && (
                   <>
-                    <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
+                    <section className="admin-chart-grid">
                       <ChartCard title={t('adminDashboard.charts.revenueEvolution')}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={analytics.monthlyData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="month" />
-                            <YAxis />
-                            <Tooltip formatter={(value) => formatPrice(Number(value))} />
+                          <AreaChart data={analytics.monthlyData} margin={{ top: 16, right: 20, left: 0, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgb(var(--border))" />
+                            <XAxis dataKey="month" tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} minTickGap={14} />
+                            <YAxis tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} width={54} tickFormatter={(value) => formatPrice(Number(value)).replace('.00', '')} />
+                            <Tooltip formatter={(value) => formatPrice(Number(value))} contentStyle={CHART_TOOLTIP_STYLE} />
+                            <Legend wrapperStyle={CHART_LEGEND_STYLE} />
                             <Area type="monotone" dataKey="revenue" name={t('adminDashboard.chartKeys.revenue')} stroke="#0f766e" fill="#14b8a650" />
                           </AreaChart>
                         </ResponsiveContainer>
                       </ChartCard>
                       <ChartCard title={t('adminDashboard.charts.topSellingProducts')}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.topSellingProducts} layout="vertical">
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                            <XAxis type="number" />
-                            <YAxis type="category" dataKey="name" width={110} />
-                            <Tooltip />
-                            <Bar dataKey="quantity" name={t('adminDashboard.chartKeys.quantity')} fill="#6366f1" radius={[0, 6, 6, 0]} />
+                          <BarChart data={analytics.topSellingProducts} layout="vertical" margin={{ top: 12, right: 22, left: 16, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgb(var(--border))" />
+                            <XAxis type="number" tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} />
+                            <YAxis type="category" dataKey="name" width={128} tick={CHART_AXIS_STYLE} axisLine={false} tickLine={false} tickFormatter={(value) => shortLabel(value, 18)} />
+                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                            <Legend wrapperStyle={CHART_LEGEND_STYLE} />
+                            <Bar dataKey="quantity" name={t('adminDashboard.chartKeys.quantity')} fill="#6366f1" radius={[0, 8, 8, 0]} barSize={20} />
                           </BarChart>
                         </ResponsiveContainer>
                       </ChartCard>
                       <ChartCard title={t('adminDashboard.charts.customersBySegment')}>
                         <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={analytics.customerSegments} dataKey="value" nameKey="name" outerRadius={86} label>
+                          <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 12 }}>
+                            <Pie data={analytics.customerSegments} dataKey="value" nameKey="name" innerRadius={48} outerRadius={84} paddingAngle={4} labelLine={false} label={({ percent }: any) => `${Math.round((percent ?? 0) * 100)}%`}>
                               {analytics.customerSegments.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
                             </Pie>
-                            <Tooltip />
-                            <Legend />
+                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                            <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={CHART_LEGEND_STYLE} />
                           </PieChart>
                         </ResponsiveContainer>
                       </ChartCard>
-                      <ChartCard title={t('adminDashboard.charts.productsByCategory')}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.productsByCategory}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={60} />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" name={t('adminDashboard.chartKeys.products')} fill="#f59e0b" radius={[6, 6, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                      <ChartCard title={t('adminDashboard.charts.productsByCategory')} className="admin-category-chart-card">
+                        <div className="admin-category-chart-layout">
+                          <div className="admin-category-chart-visual">
+                            {productsByCategoryTotal > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart margin={{ top: 12, right: 12, bottom: 12, left: 12 }}>
+                                  <Pie
+                                    data={analytics.productsByCategory}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    innerRadius="56%"
+                                    outerRadius="82%"
+                                    paddingAngle={4}
+                                    cornerRadius={8}
+                                    stroke="rgb(var(--card))"
+                                    strokeWidth={3}
+                                  >
+                                    {analytics.productsByCategory.map((_, index) => (
+                                      <Cell key={index} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip content={<CategoryTooltip total={productsByCategoryTotal} t={t} />} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <div className="admin-category-empty">{t('common.noData')}</div>
+                            )}
+                            <div className="admin-category-center">
+                              <strong>{productsByCategoryTotal}</strong>
+                              <span>{t('adminDashboard.chartKeys.products')}</span>
+                            </div>
+                          </div>
+
+                          <div className="admin-category-legend">
+                            {analytics.productsByCategory.map((item, index) => {
+                              const count = Number(item.value ?? 0);
+                              const percent = productsByCategoryTotal > 0 ? Math.round((count / productsByCategoryTotal) * 100) : 0;
+
+                              return (
+                                <div className="admin-category-legend-item" key={item.name}>
+                                  <span className="admin-category-dot" style={{ background: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }} />
+                                  <span className="admin-category-name" title={item.name}>{item.name}</span>
+                                  <strong>{count}</strong>
+                                  <em>{percent}%</em>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </ChartCard>
                     </section>
-                    <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
+                    <section className="admin-chart-grid admin-unavailable-grid">
                       <UnavailableCard title={t('adminDashboard.charts.aiPriceActivity')} message={t('adminDashboard.unavailable.aiPriceActivity')} icon={<BrainCircuit size={20} />} />
                       <UnavailableCard title={t('adminDashboard.charts.chatbotUsage')} message={t('adminDashboard.unavailable.chatbotUsage')} icon={<Bot size={20} />} />
                     </section>

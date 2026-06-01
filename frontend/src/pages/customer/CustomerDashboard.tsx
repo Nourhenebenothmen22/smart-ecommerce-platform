@@ -16,7 +16,7 @@ import { formatPrice, formatDate } from '../../lib/utils';
 export const CustomerDashboard: React.FC = () => {
   const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
-  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = useMyOrders();
+  const { data: orders, isLoading: ordersLoading } = useMyOrders();
 
   const [activeTab, setActiveTab] = useState('orders');
   const [profileForm, setProfileForm] = useState({
@@ -141,7 +141,7 @@ export const CustomerDashboard: React.FC = () => {
                       {orders.map((ord: any) => (
                         <TableRow key={ord.id}>
                           <TableCell style={{ fontWeight: 600 }}>#{ord.id}</TableCell>
-                          <TableCell>{formatDate(ord.createdAt)}</TableCell>
+                          <TableCell>{formatDate(ord.createdAt ?? ord.created_at)}</TableCell>
                           <TableCell>
                             <Badge variant={getStatusVariant(ord.status)}>{ord.status.replace(/_/g, ' ')}</Badge>
                           </TableCell>
@@ -150,7 +150,13 @@ export const CustomerDashboard: React.FC = () => {
                           </TableCell>
                           <TableCell style={{ fontWeight: 700, color: 'rgb(var(--primary))' }}>
                             {formatPrice(
-                              ord.items?.reduce((sum: number, it: any) => sum + (it.price_at_order || it.product?.price || 0) * it.quantity, 0) || 0
+                              Number(ord.total_amount ?? ord.totalAmount ?? 0) ||
+                                ord.items?.reduce(
+                                  (sum: number, it: any) =>
+                                    sum + (Number(it.subtotal ?? 0) || Number(it.unit_price ?? it.price_at_order ?? it.product?.price ?? 0) * Number(it.quantity ?? 0)),
+                                  0
+                                ) ||
+                                0
                             )}
                           </TableCell>
                         </TableRow>
