@@ -1,9 +1,8 @@
 """
-DB-grounded chatbot response formatter.
+DarStore DB-grounded chatbot response formatter.
 
-The chatbot may use retrieval models to find context, but the final answer is
-constructed only from retrieved database rows. No product facts are generated
-from model memory.
+Retrieval can use BM25, embeddings, and RRF, but final responses are built only
+from retrieved database rows. No product facts are generated from model memory.
 """
 import logging
 import re
@@ -31,9 +30,59 @@ _INJECTION_PATTERNS = [
 _INJECTION_RE = re.compile("|".join(_INJECTION_PATTERNS), re.IGNORECASE)
 
 
+def _price_text(item: Dict[str, Any]) -> str:
+    price = item.get("price")
+    final_price = item.get("final_price", price)
+    if final_price is None:
+        return "Non indique"
+    if price not in (None, final_price):
+        return f"{final_price} EUR au lieu de {price} EUR"
+    return f"{final_price} EUR"
+
+
+def _availability_text(item: Dict[str, Any]) -> str:
+    stock = item.get("stock")
+    if stock is None:
+        return "Disponibilite non indiquee"
+    try:
+        stock_value = int(stock)
+    except (TypeError, ValueError):
+        return "Disponibilite non indiquee"
+    if stock_value > 0:
+        return f"Disponible en stock ({stock_value})"
+    return "Hors stock"
+
+
+def _category_text(item: Dict[str, Any]) -> str:
+    category = item.get("category") or ""
+    subcategory = item.get("subcategory") or ""
+    if category and subcategory and category != subcategory:
+        return f"{category} / {subcategory}"
+    return category or subcategory or "Non indiquee"
+
+
+def _why_text(item: Dict[str, Any]) -> str:
+    parts = []
+    matched_entity = item.get("matched_entity")
+    source = item.get("source")
+    description = str(item.get("description") or "").strip()
+
+    if matched_entity:
+        parts.append(f"il correspond a la recherche autour de {matched_entity}")
+    if source in {"catalog_price_desc", "catalog_price_asc"}:
+        parts.append("il correspond a une demande basee sur le prix")
+    if source == "session_context":
+        parts.append("il provient du contexte de votre conversation precedente")
+    if description:
+        parts.append(f"sa description indique: {description[:180]}")
+    if not parts:
+        parts.append("il fait partie des produits les plus pertinents recuperes depuis le catalogue")
+    return "; ".join(parts) + "."
+
+
 class RAGChatbotAgent:
     """
-    Formats answers from retrieved product context only.
+    Formats DarStore answers from retrieved product context only.
     """
 
     def __init__(self, api_key: str = None):
@@ -41,8 +90,8 @@ class RAGChatbotAgent:
         self.client = None
         logger.warning("OpenAI client disabled; chatbot operates in DB-only mode.")
         self.system_prompt = (
-            "Assistant e-commerce DB-only. Answer only from retrieved product context. "
-            "If no context is present, return no result found."
+            "Assistant e-commerce DarStore DB-only. Answer only from retrieved product context. "
+            "If no relevant context is present, return the DarStore no-result message."
         )
 
     def _detect_prompt_injection(self, text: str) -> bool:
@@ -50,23 +99,17 @@ class RAGChatbotAgent:
 
     def _build_context_string(self, retrieved_context: List[Dict[str, Any]]) -> str:
         if not retrieved_context:
-            return "(Aucun produit trouve dans le catalogue pour cette recherche.)"
+            return "(Aucun produit trouve dans le catalogue actuel.)"
 
         context_lines = []
         for i, item in enumerate(retrieved_context[:5], 1):
             name = item.get("name", "Produit")
             brand = item.get("brand", "N/A")
-            price = item.get("price", "N/A")
-            final_price = item.get("final_price", price)
-            rating = item.get("rating_avg", "N/A")
-            stock = item.get("stock", 0)
-            description = item.get("description", "")
-            price_display = f"{final_price} EUR"
-            if price not in (None, "N/A", final_price):
-                price_display = f"{final_price} EUR (au lieu de {price} EUR)"
+            description = str(item.get("description") or "")
             context_lines.append(
                 f"{i}. {name}\n"
-                f"   Marque: {brand} | Prix: {price_display} | Note: {rating}/5 | Stock: {stock}\n"
+                f"   Marque: {brand} | Categorie: {_category_text(item)} | "
+                f"Prix: {_price_text(item)} | Disponibilite: {_availability_text(item)}\n"
                 f"   Description: {description[:500]}"
             )
         return "\n".join(context_lines)
@@ -74,52 +117,36 @@ class RAGChatbotAgent:
     def build_user_message(self, user_query: str, retrieved_context: List[Dict[str, Any]]) -> str:
         return (
             f"Question du client:\n{user_query}\n\n"
-            f"Produits recuperes depuis la base:\n{self._build_context_string(retrieved_context)}"
+            f"Produits recuperes depuis la base DarStore:\n{self._build_context_string(retrieved_context)}"
         )
 
     def generate_response(self, user_query: str, retrieved_context: List[Dict[str, Any]]) -> str:
-        logger.info("Generating DB-only response for query '%s' with %s context items", user_query, len(retrieved_context))
+        logger.info("Generating DarStore DB-only response for query '%s' with %s context items", user_query, len(retrieved_context))
 
-        if self._detect_prompt_injection(user_query):
-            logger.warning("Prompt injection attempt detected: '%s...'", user_query[:100])
+        if self._detect_prompt_injection(user_query) or not retrieved_context:
             return (
-                "Je suis votre assistant e-commerce. Je peux uniquement aider avec les "
-                "produits disponibles dans la base."
+                "Je n'ai pas trouve de produit correspondant a votre demande dans le catalogue actuel.\n"
+                "Vous pouvez reformuler votre recherche ou consulter une autre categorie disponible sur DarStore."
             )
 
-        if not retrieved_context:
-            return (
-                "Je n'ai pas trouve de produits correspondant a votre recherche dans la base. "
-                "Pourriez-vous reformuler votre demande ou preciser la categorie souhaitee ?"
-            )
-
-        lines = ["D'apres les produits disponibles dans la base, voici ce que j'ai trouve :"]
+        lines = [
+            "D'apres les produits disponibles dans le catalogue DarStore, voici les produits les plus adaptes a votre demande :"
+        ]
         for index, item in enumerate(retrieved_context[:5], 1):
             name = item.get("name", "Produit")
-            brand = item.get("brand") or "Marque non precisee"
-            price = item.get("price")
-            final_price = item.get("final_price", price)
-            rating = item.get("rating_avg")
-            stock = item.get("stock", 0)
-            source = item.get("source")
-            matched_entity = item.get("matched_entity")
+            brand = item.get("brand")
+            display_name = f"{name} ({brand})" if brand else name
+            lines.extend([
+                "",
+                f"{index}. {display_name}",
+                f"   - Categorie : {_category_text(item)}",
+                f"   - Prix : {_price_text(item)}",
+                f"   - Disponibilite : {_availability_text(item)}",
+                f"   - Pourquoi ce produit est adapte : {_why_text(item)}",
+            ])
 
-            price_text = f"{final_price} EUR"
-            if price not in (None, final_price):
-                price_text = f"{final_price} EUR au lieu de {price} EUR"
-
-            details = [
-                f"{index}. {name}",
-                f"marque: {brand}",
-                f"prix: {price_text}",
-                f"stock: {stock}",
-            ]
-            if rating is not None:
-                details.append(f"note: {rating}/5")
-            if matched_entity:
-                details.append(f"correspondance: {matched_entity}")
-            if source:
-                details.append(f"source: {source}")
-            lines.append(" - ".join(details))
-
+        lines.extend([
+            "",
+            "Vous pouvez choisir le produit selon votre budget et sa disponibilite.",
+        ])
         return "\n".join(lines)

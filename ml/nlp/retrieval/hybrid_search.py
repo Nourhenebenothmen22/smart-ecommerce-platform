@@ -76,7 +76,7 @@ def _query_terms(query: str) -> list[str]:
 
 
 def _product_row(row, score: float, source: str) -> Dict[str, Any]:
-    return {
+    item = {
         "product_id": row[0],
         "name": row[1],
         "brand": row[2],
@@ -88,6 +88,11 @@ def _product_row(row, score: float, source: str) -> Dict[str, Any]:
         "score": round(float(score), 4),
         "source": source,
     }
+    if len(row) > 8:
+        item["category"] = row[8] or ""
+    if len(row) > 9:
+        item["subcategory"] = row[9] or ""
+    return item
 
 
 def _extract_price_constraint(query: str) -> tuple[str | None, float | None]:
@@ -111,8 +116,12 @@ def _search_products_by_price(order: str, top_k: int) -> List[Dict[str, Any]]:
         cur.execute(f"""
             SELECT p.id, p.title, p.brand, p.price, p.final_price,
                    LEFT(p.description, 1000) AS description_preview,
-                   p.rating_avg, p.stock
+                   p.rating_avg, p.stock,
+                   c.name AS category_name,
+                   s.name AS subcategory_name
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN subcategories s ON s.id = p.subcategory_id
             WHERE p.is_active = TRUE
               AND p.stock > 0
               AND p.price IS NOT NULL
@@ -257,7 +266,9 @@ class HybridRetriever:
             cur.execute(f"""
                 SELECT p.id, p.title, p.brand, p.price, p.final_price,
                        LEFT(p.description, 1000) AS description_preview,
-                       p.rating_avg, p.stock
+                       p.rating_avg, p.stock,
+                       c.name AS category_name,
+                       s.name AS subcategory_name
                 FROM products p
                 JOIN categories c ON c.id = p.category_id
                 JOIN subcategories s ON s.id = p.subcategory_id
@@ -309,7 +320,9 @@ class HybridRetriever:
                 cur.execute(f"""
                     SELECT p.id, p.title, p.brand, p.price, p.final_price,
                            LEFT(p.description, 1000) AS description_preview,
-                           p.rating_avg, p.stock
+                           p.rating_avg, p.stock,
+                           c.name AS category_name,
+                           s.name AS subcategory_name
                     FROM products p
                     JOIN categories c ON c.id = p.category_id
                     JOIN subcategories s ON s.id = p.subcategory_id

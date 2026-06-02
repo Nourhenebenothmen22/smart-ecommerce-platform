@@ -271,8 +271,12 @@ def _load_products_by_ids(product_ids: list[int], top_k: int = 5) -> list[dict]:
                 """
                 SELECT p.id, p.title, p.brand, p.price, p.final_price,
                        LEFT(p.description, 1000) AS description_preview,
-                       p.rating_avg, p.stock
+                       p.rating_avg, p.stock,
+                       c.name AS category_name,
+                       s.name AS subcategory_name
                 FROM products p
+                LEFT JOIN categories c ON c.id = p.category_id
+                LEFT JOIN subcategories s ON s.id = p.subcategory_id
                 WHERE p.id = ANY(%s)
                   AND p.is_active = TRUE
                   AND p.stock > 0
@@ -291,6 +295,8 @@ def _load_products_by_ids(product_ids: list[int], top_k: int = 5) -> list[dict]:
                     "description": row[5] or "",
                     "rating_avg": float(row[6]) if row[6] else 0.0,
                     "stock": row[7] or 0,
+                    "category": row[8] or "",
+                    "subcategory": row[9] or "",
                     "score": round(1 / rank, 4),
                     "source": "session_context",
                 })

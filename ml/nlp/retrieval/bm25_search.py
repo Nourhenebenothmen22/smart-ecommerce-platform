@@ -94,8 +94,12 @@ class BM25Retriever:
             SELECT p.id, p.title, p.brand, p.price, p.final_price,
                    LEFT(p.description, 1000) AS description_preview,
                    p.rating_avg, p.stock,
+                   c.name AS category_name,
+                   s.name AS subcategory_name,
                    ({rank_sum}) AS score
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN subcategories s ON s.id = p.subcategory_id
             WHERE ({where_combined})
               AND p.is_active = TRUE
               AND p.stock > 0
@@ -118,7 +122,9 @@ class BM25Retriever:
                     "description": row[5] or "",
                     "rating_avg": float(row[6]) if row[6] else 0.0,
                     "stock": row[7] or 0,
-                    "score": round(float(row[8]), 4) if row[8] else 0.0,
+                    "category": row[8] or "",
+                    "subcategory": row[9] or "",
+                    "score": round(float(row[10]), 4) if row[10] else 0.0,
                     "source": "bm25"
                 })
             logger.info("FTS OR search returned %s results for terms=%s", len(results), terms)
@@ -153,8 +159,12 @@ class BM25Retriever:
             SELECT p.id, p.title, p.brand, p.price, p.final_price,
                    LEFT(p.description, 1000) AS description_preview,
                    p.rating_avg, p.stock,
+                   c.name AS category_name,
+                   s.name AS subcategory_name,
                    ({score_expr}) AS score
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN subcategories s ON s.id = p.subcategory_id
             WHERE ({where_combined})
               AND p.is_active = TRUE
               AND p.stock > 0
@@ -176,7 +186,9 @@ class BM25Retriever:
                     "description": row[5] or "",
                     "rating_avg": float(row[6]) if row[6] else 0.0,
                     "stock": row[7] or 0,
-                    "score": round(float(row[8]), 4) if row[8] else 0.0,
+                    "category": row[8] or "",
+                    "subcategory": row[9] or "",
+                    "score": round(float(row[10]), 4) if row[10] else 0.0,
                     "source": "bm25_fallback"
                 })
             logger.info("ILIKE OR search returned %s results for terms=%s", len(results), terms)
