@@ -26,9 +26,12 @@ import time
 import json
 import pytest
 
-_ML_ROOT = os.path.dirname(os.path.abspath(__file__))
-if _ML_ROOT not in sys.path:
-    sys.path.insert(0, _ML_ROOT)
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_ML_ROOT = os.path.dirname(os.path.dirname(_CURRENT_DIR))
+_PROJECT_ROOT = os.path.dirname(_ML_ROOT)
+for _p in (_PROJECT_ROOT, _ML_ROOT):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 os.environ.setdefault("ML_ALLOW_MODEL_DOWNLOADS", "false")
 os.environ.setdefault("ML_ENABLE_LLM_CALLS", "false")
@@ -497,3 +500,116 @@ class TestDatabaseLogging:
                     assert row[3] is not None  # session_id populated
         except Exception as e:
             pytest.skip(f"Database not available for logging test: {e}")
+
+
+# ======================================================================
+# T-23: CONVERSATIONAL INTENTS (CHIT-CHAT / GREETINGS / REFUSALS)
+# ======================================================================
+
+class TestConversationalIntent:
+    """Test non-catalog conversational intents bypass retrieval with polite responses."""
+
+    def test_greeting_hello(self):
+        """'hello' should receive a welcoming greeting without catalog noise."""
+        result = post_chat("hello")
+        assert result["status"] == 200
+        data = result["data"]
+        assert "Bonjour" in data["response"]
+        assert len(data["context_used"]) == 0
+
+    def test_greeting_hi(self):
+        """'hi' should receive a welcoming greeting."""
+        result = post_chat("hi")
+        assert result["status"] == 200
+        assert "Bonjour" in result["data"]["response"]
+        assert len(result["data"]["context_used"]) == 0
+
+    def test_refusal_je_ne_demande_rien(self):
+        """'je ne demande rien' should not match Nothing brand, but give polite refusal."""
+        result = post_chat("je ne demande rien")
+        assert result["status"] == 200
+        data = result["data"]
+        assert "disposition" in data["response"] or "noté" in data["response"]
+        assert len(data["context_used"]) == 0
+
+    def test_gratitude_merci(self):
+        """'merci' should return polite gratitude response."""
+        result = post_chat("merci")
+        assert result["status"] == 200
+        assert "plaisir" in result["data"]["response"]
+        assert len(result["data"]["context_used"]) == 0
+
+    def test_farewell_au_revoir(self):
+        """'au revoir' should return polite farewell response."""
+        result = post_chat("au revoir")
+        assert result["status"] == 200
+        assert "Au revoir" in result["data"]["response"]
+        assert len(data := result["data"]["context_used"]) == 0
+
+
+# ======================================================================
+# QUALITY & PERSONALIZATION TESTS
+# ======================================================================
+
+class TestPersonalizationAndQuality:
+    """Validate query normalization, price-ascending sort, and French translation."""
+
+    def test_prix_minimum_sorts_ascending(self):
+        """'donne moi le prix minimum de smartphone' must return lowest price first."""
+        result = post_chat("donne moi le prix minimum de smartphone")
+        assert result["status"] == 200
+        context = result["data"]["context_used"]
+        assert len(context) >= 2
+        prices = [float(item.get("final_price") or item.get("price") or 0) for item in context]
+        assert prices == sorted(prices), f"Prices should be ascending, got {prices}"
+
+    def test_query_normalization_typos_handled(self):
+        """Queries with typos should successfully retrieve items via normalizer."""
+        result = post_chat("smarthphone pas cher")
+        assert result["status"] == 200
+        assert len(result["data"]["context_used"]) > 0
+
+    def test_french_feature_translation(self):
+        """Response should use French translated feature terms instead of raw English."""
+        result = post_chat("smartphone")
+        assert result["status"] == 200
+        resp_text = result["data"]["response"].lower()
+        # English terms like 'battery life' or 'camera quality' should not appear in why text
+        assert "battery life" not in resp_text
+        assert "camera quality" not in resp_text
+
+    def test_vip_personalization_greetings(self):
+        """VIP user should receive tailored VIP greetings."""
+        from rag.agent import RAGChatbotAgent
+        agent = RAGChatbotAgent()
+        context = [{"name": "iPhone Pro", "brand": "Apple", "price": 999.0, "final_price": 899.0, "rating_avg": 4.8}]
+        user_vip = {"user_id": 1, "first_name": "Nourhene", "segment": "VIP Customers"}
+        vip_resp = agent.generate_response("top smartphone", context, user_profile=user_vip)
+        assert "Nourhene" in vip_resp
+        assert "VIP" in vip_resp
+
+    def test_out_of_domain_polite_boundary(self):
+        """Unrelated requests must reject gracefully with zero retrieved products."""
+        for q in ["comment faire une omelette ?", "je cherche un Tesla Model 3"]:
+            res = post_chat(q)
+            assert res["status"] == 200
+            assert "catalogue DarStore" in res["data"]["response"]
+            assert len(res["data"]["context_used"]) == 0
+
+    def test_multi_turn_direct_follow_up(self):
+        """Follow-ups like 'the cheapest one' should answer directly without repeating the full list."""
+        sess = "test-session-followup-direct"
+        # Turn 1: discovery
+        t1 = post_chat("smartphone", session_id=sess)
+        assert t1["status"] == 200
+        assert len(t1["data"]["context_used"]) >= 2
+
+        # Turn 2: follow-up cheapest
+        t2 = post_chat("the cheapest one", session_id=sess)
+        assert t2["status"] == 200
+        resp = t2["data"]["response"]
+        assert "most affordable" in resp.lower() or "plus abordable" in resp.lower()
+        # Should NOT dump a full numbered 1., 2., 3., 4., 5. list
+        assert "5. " not in resp
+
+

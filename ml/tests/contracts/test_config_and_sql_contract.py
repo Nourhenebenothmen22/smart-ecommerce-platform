@@ -43,7 +43,7 @@ class ConfigAndSqlContractTests(unittest.TestCase):
         self.assertNotIn("recency_days", cfg.features.feature_cols)
 
     def test_embedding_generation_is_versioned_and_non_destructive(self):
-        script_path = os.path.join(os.getcwd(), "ml", "scripts", "generate_embeddings.py")
+        script_path = os.path.join(os.getcwd(), "ml", "rag", "embeddings.py")
         with open(script_path, encoding="utf-8") as f:
             content = f.read()
 
@@ -58,7 +58,7 @@ class ConfigAndSqlContractTests(unittest.TestCase):
         sql_path = os.path.join(os.getcwd(), "backend", "src", "sql", "006_ml_schema.sql")
         persistence_path = os.path.join(os.getcwd(), "ml", "customer_segmentation", "persistence.py")
         price_persistence_path = os.path.join(os.getcwd(), "ml", "price_prediction", "persistence.py")
-        embeddings_path = os.path.join(os.getcwd(), "ml", "scripts", "generate_embeddings.py")
+        embeddings_path = os.path.join(os.getcwd(), "ml", "rag", "embeddings.py")
 
         with open(sql_path, encoding="utf-8") as f:
             sql = f.read()
@@ -97,7 +97,7 @@ class ConfigAndSqlContractTests(unittest.TestCase):
         self.assertIn("verify_ml_service_token", api)
 
     def test_vector_search_filters_embedding_model_version(self):
-        script_path = os.path.join(os.getcwd(), "ml", "nlp", "retrieval", "vector_search.py")
+        script_path = os.path.join(os.getcwd(), "ml", "rag", "retrieval.py")
         with open(script_path, encoding="utf-8") as f:
             content = f.read()
 

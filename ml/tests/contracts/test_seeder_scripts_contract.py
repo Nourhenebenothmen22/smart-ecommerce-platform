@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
-_BASE_DIR = Path(__file__).resolve().parents[2]
+_BASE_DIR = Path(__file__).resolve().parents[3]
 
 
 def _read(path: str) -> str:
@@ -30,12 +30,12 @@ class SeederScriptsContractTests(unittest.TestCase):
         self.assertIn("--dry-run", content)
         self.assertNotIn("SUBCATEGORY_KEYWORDS = {", content)
 
-    def test_scratch_scripts_resolve_project_paths(self):
+    def test_scripts_resolve_project_paths(self):
         for path in [
-            "ml/scratch/audit_chatbot.py",
-            "ml/scratch/check_db.py",
-            "ml/scratch/check_toy.py",
-            "ml/scratch/verify_remediation.py",
+            "ml/scripts/seed.py",
+            "ml/scripts/generate_embeddings.py",
+            "ml/scripts/update_images.py",
+            "ml/scripts/health_check_db.py",
         ]:
             content = _read(path)
             self.assertIn("_ML_ROOT", content)

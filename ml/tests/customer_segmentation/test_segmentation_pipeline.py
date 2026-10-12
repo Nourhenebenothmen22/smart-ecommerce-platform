@@ -18,7 +18,7 @@ from ml.customer_segmentation.train_kmeans import run_kmeans_tuning
 
 @contextmanager
 def _workspace_tempdir():
-    root = Path(__file__).resolve().parents[2] / ".tmp" / "ml-tests"
+    root = Path(__file__).resolve().parents[3] / ".tmp" / "ml-tests"
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"case-{uuid.uuid4().hex}"
     path.mkdir(parents=True, exist_ok=False)

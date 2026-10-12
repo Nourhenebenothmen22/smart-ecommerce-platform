@@ -15,7 +15,7 @@ class SecurityContractTests(unittest.TestCase):
         self.assertIn("Ignoring unverified body user_id", content)
 
     def test_bm25_uses_safe_websearch_query_parser(self):
-        path = os.path.join(os.getcwd(), "ml", "nlp", "retrieval", "bm25_search.py")
+        path = os.path.join(os.getcwd(), "ml", "rag", "retrieval.py")
         with open(path, encoding="utf-8") as f:
             content = f.read()
 
