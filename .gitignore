@@ -3,7 +3,10 @@ node_modules/
 dist/
 .venv/
 venv/
+venv311/
+venv310/
 env/
+venv311-stable/
 __pycache__/
 .pytest_cache/
 *.pyc

@@ -4,6 +4,7 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
+    "dev:all": "docker compose -f ../docker-compose.yml up -d postgres && (trap 'kill 0' INT TERM; (cd ../ml && (./venv311-stable/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload || uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload)) & (cd ../frontend && npm run dev) & npm run dev & wait)",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "lint": "tsc --noEmit",
