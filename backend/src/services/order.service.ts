@@ -4,6 +4,8 @@ import { StatusCodes } from "http-status-codes";
 import { env } from "../config/env.js";
 import type { PoolClient } from "pg";
 import { logger } from "../utils/logger.js";
+import { PhoneConfirmationService } from "./phoneConfirmation.service.js";
+import { RetellProvider } from "./voice/retell.provider.js";
 
 const ALLOWED_STATUS_TRANSITIONS: Record<string, Set<string>> = {
   pending: new Set(["pending_phone_confirmation", "processing", "cancelled", "on_hold"]),
@@ -24,17 +26,20 @@ export class OrderService {
     try {
       await client.query("BEGIN");
 
-      // 1. Validate products & stock
+      // 1. Batch validate products & stock (single query instead of N sequential round-trips)
+      const productIds = items.map((i) => i.product_id);
+      const pr = await client.query(
+        "SELECT id, title, final_price, stock, is_active FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
+        [productIds]
+      );
+      const productMap = new Map(pr.rows.map((p: any) => [p.id, p]));
+
       let totalAmount = 0;
       const orderItems: any[] = [];
 
       for (const item of items) {
-        const pr = await client.query(
-          "SELECT id, title, final_price, stock, is_active FROM products WHERE id=$1 FOR UPDATE",
-          [item.product_id]
-        );
-        if (pr.rows.length === 0) throw new AppError(`Product ${item.product_id} not found`, StatusCodes.NOT_FOUND);
-        const product = pr.rows[0];
+        const product = productMap.get(item.product_id);
+        if (!product) throw new AppError(`Product ${item.product_id} not found`, StatusCodes.NOT_FOUND);
         if (!product.is_active) throw new AppError(`Product "${product.title}" is unavailable`, StatusCodes.BAD_REQUEST);
         if (product.stock < item.quantity) {
           throw new AppError(`Insufficient stock for "${product.title}". Available: ${product.stock}`, StatusCodes.BAD_REQUEST);
@@ -77,8 +82,6 @@ export class OrderService {
       // Auto-trigger the phone confirmation service in the background
       try {
         const webhookBaseUrl = env.WEBHOOK_BASE_URL || "http://localhost:5000";
-        const { PhoneConfirmationService } = await import("./phoneConfirmation.service.js");
-        const { RetellProvider } = await import("./voice/retell.provider.js");
         const phoneService = new PhoneConfirmationService(new RetellProvider());
         
         // Fire-and-forget background trigger
@@ -86,7 +89,7 @@ export class OrderService {
           logger.error({ orderId: order.id, err }, "Failed to auto-trigger voice call");
         });
       } catch (err: any) {
-        logger.error({ err }, "Failed to import/initialize voice service for auto-trigger");
+        logger.error({ err }, "Failed to initialize voice service for auto-trigger");
       }
 
       // Return full order with items
