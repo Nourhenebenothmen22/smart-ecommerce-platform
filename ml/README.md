@@ -145,17 +145,18 @@ python -m ml.scripts.health_check_db
 
 ```powershell
 python -m unittest discover -s ml/tests -v
-pytest ml/test_chat.py -q
+pytest ml/tests/rag/test_chat.py -q
 python -m ml.validation.real_db_validation
 ```
 
 ## Folder Map
 
+* `ml/rag/` (Hybrid Search, Agent, Embeddings, Evaluation)
 * `ml/customer_segmentation/`
 * `ml/price_prediction/`
 * `ml/validation/`
-* `ml/nlp/chatbot/`
-* `ml/nlp/retrieval/`
 * `ml/scripts/`
 * `ml/seeder/`
+* `ml/tests/` (rag, price_prediction, customer_segmentation, contracts)
 * `ml/artifacts/`
+
