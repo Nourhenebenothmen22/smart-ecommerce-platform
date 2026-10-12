@@ -16,6 +16,7 @@ import sys
 import os
 from collections import defaultdict, deque
 from time import monotonic
+from typing import Any
 
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,8 +29,19 @@ for _path in (_PROJECT_ROOT, _ML_ROOT):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-from nlp.chatbot.agent import RAGChatbotAgent
-from nlp.retrieval.hybrid_search import HybridRetriever
+try:
+    from ml.rag.retrieval import HybridRetriever
+    from ml.rag.agent import RAGChatbotAgent, _detect_language
+    from ml.rag.query_normalizer import normalize_query
+except ImportError:
+    try:
+        from rag.retrieval import HybridRetriever
+        from rag.agent import RAGChatbotAgent, _detect_language
+        from rag.query_normalizer import normalize_query
+    except ImportError:
+        from ml.rag import HybridRetriever, RAGChatbotAgent
+        from ml.rag.agent import _detect_language
+        from ml.rag.query_normalizer import normalize_query
 from price_prediction.prediction import predict_price
 try:
     from ml.api.schemas import PricePredictionRequest
@@ -43,7 +55,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelna
 logger = logging.getLogger(__name__)
 _FOLLOW_UP_RE = re.compile(
     r"\b(celui|celle|ceux|this|that|it|them|same|meme|même|similar|similaire|"
-    r"moins\s+cher|plus\s+cher|cheapest|most\s+expensive|available|disponible)\b",
+    r"moins\s+cher|plus\s+cher|cheapest|most\s+expensive|available|disponible|"
+    r"prix\s+min(?:imum|imal)?|budget|premier|deuxi[eè]me|troisi[eè]me|dernier)\b",
     re.IGNORECASE,
 )
 
@@ -74,6 +87,8 @@ retriever = HybridRetriever()
 agent = RAGChatbotAgent()
 _RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
 _SESSION_CONTEXT_CACHE: dict[str, list[int]] = {}
+# Maps session_id → last seen leaf category (e.g. "Smartphones") for multi-turn context injection
+_SESSION_CATEGORY_CACHE: dict[str, str] = {}
 
 
 # Request/Response Models
@@ -309,11 +324,47 @@ def _load_products_by_ids(product_ids: list[int], top_k: int = 5) -> list[dict]:
 def _apply_follow_up_sort(query: str, context: list[dict]) -> list[dict]:
     if not context:
         return []
-    if re.search(r"\b(moins\s+cher|cheapest|lowest)\b", query, re.IGNORECASE):
+    # Ordinal selection: prioritize the requested item at position 0
+    if re.search(r"\b(premier|première|first|1er)\b", query, re.IGNORECASE) and len(context) >= 1:
+        return [context[0]] + [item for item in context[1:]]
+    if re.search(r"\b(deuxi[eè]me|second|second[e]|2[eè]me)\b", query, re.IGNORECASE) and len(context) >= 2:
+        return [context[1]] + [item for item in context if item != context[1]]
+    if re.search(r"\b(troisi[eè]me|third|3[eè]me)\b", query, re.IGNORECASE) and len(context) >= 3:
+        return [context[2]] + [item for item in context if item != context[2]]
+    if re.search(r"\b(dernier|dernière|last)\b", query, re.IGNORECASE) and len(context) >= 1:
+        return [context[-1]] + [item for item in context[:-1]]
+
+    # Price sorts
+    if re.search(r"\b(moins\s+cher|cheapest|lowest|prix\s+min(?:imum|imal)?|économique|economique|abordable)\b", query, re.IGNORECASE):
         return sorted(context, key=lambda item: float(item.get("final_price") or item.get("price") or 0))
     if re.search(r"\b(plus\s+cher|most\s+expensive|highest)\b", query, re.IGNORECASE):
         return sorted(context, key=lambda item: float(item.get("final_price") or item.get("price") or 0), reverse=True)
     return context
+
+
+def _load_user_profile(user_id: int | None) -> dict[str, Any] | None:
+    if not user_id:
+        return None
+    try:
+        with get_db_cursor() as cur:
+            cur.execute("""
+                SELECT u.id, u.first_name, u.last_name, us.segment_label
+                FROM users u
+                LEFT JOIN user_segments us ON u.id = us.user_id
+                WHERE u.id = %s
+                LIMIT 1;
+            """, (user_id,))
+            row = cur.fetchone()
+            if row:
+                return {
+                    "user_id": row[0],
+                    "first_name": row[1] or "",
+                    "last_name": row[2] or "",
+                    "segment": row[3] or "",
+                }
+    except Exception as exc:
+        logger.warning("Could not load user profile for user_id=%s: %s", user_id, exc)
+    return None
 
 
 @app.post("/chat")
@@ -353,26 +404,77 @@ def chat(
     if request.user_id and effective_user_id != request.user_id:
         logger.warning("[%s] Ignoring unverified body user_id for /chat.", session_id)
 
-    logger.info(f"[{session_id}] Chat request: '{request.query[:80]}...' (user_id={effective_user_id})")
+    user_profile = _load_user_profile(effective_user_id)
+    user_name_str = f" ({user_profile['first_name']})" if user_profile and user_profile.get("first_name") else ""
+    logger.info(f"[{session_id}] Chat request: '{request.query[:80]}...' (user_id={effective_user_id}{user_name_str})")
 
-    # 1. Retrieve Context via Hybrid Search (BM25 + Vector + RRF)
+    # 1. Normalize query (typo correction, abbreviation expansion, multi-turn context injection)
+    session_category_hint = _SESSION_CATEGORY_CACHE.get(session_id)
+    normalized_query = normalize_query(
+        request.query,
+        session_category_hint=session_category_hint,
+    )
+    if normalized_query != request.query:
+        logger.info(f"[{session_id}] Query normalized: '{request.query}' → '{normalized_query}'")
+
+    lang = _detect_language(request.query)
+
+    # 2. Check Injection, Chit-Chat & Unrelated Intents
+    chit_chat_reply = agent.detect_conversational_intent(request.query, user_profile=user_profile, lang=lang)
+    unrelated_reply = agent.detect_unrelated_intent(request.query, lang=lang)
+    algorithm = "Hybrid_RRF"
+
     if agent._detect_prompt_injection(request.query):
         context = []
+        response = agent.generate_no_result_response(request.query, lang=lang)
+    elif chit_chat_reply:
+        context = []
+        response = chit_chat_reply
+    elif unrelated_reply:
+        context = []
+        response = unrelated_reply
     else:
+        # 3. Check for multi-turn follow-up queries on existing session context
         previous_context: list[dict] = []
-        if request.session_id and _FOLLOW_UP_RE.search(request.query):
+        is_follow_up = bool(_FOLLOW_UP_RE.search(request.query) or agent.detect_follow_up_intent(request.query))
+        if request.session_id and is_follow_up:
             previous_context = _load_products_by_ids(_load_recent_context_product_ids(session_id), top_k=5)
 
-        context = retriever.search(request.query, top_k=5)
-        if previous_context and (not context or _FOLLOW_UP_RE.search(request.query)):
-            context = _apply_follow_up_sort(request.query, previous_context)[:5]
-    algorithm = "Hybrid_RRF"
+        direct_follow_up = None
+        if previous_context and is_follow_up:
+            direct_follow_up = agent.generate_follow_up_response(
+                request.query,
+                previous_context,
+                user_profile=user_profile,
+                lang=lang,
+            )
+
+        if direct_follow_up:
+            # Answer directly from previous context without repeating the full list
+            context = previous_context
+            response = direct_follow_up
+            algorithm = "Session_FollowUp"
+        else:
+            # 4. Standard Retrieval (Discovery or Comparison)
+            context = retriever.search(normalized_query, top_k=5)
+            if previous_context and (not context or is_follow_up):
+                context = _apply_follow_up_sort(request.query, previous_context)[:5]
+
+            if not context:
+                response = agent.generate_no_result_response(request.query, lang=lang)
+            elif agent.detect_comparison_intent(request.query):
+                response = agent.generate_comparison_response(request.query, context, user_profile=user_profile, lang=lang)
+            else:
+                response = agent.generate_response(request.query, context, user_profile=user_profile, lang=lang)
+
+            if context:
+                first_cat = context[0].get("subcategory") or context[0].get("category") or ""
+                if first_cat:
+                    _SESSION_CATEGORY_CACHE[session_id] = first_cat
+
     _remember_context(session_id, context)
 
-    logger.info(f"[{session_id}] Retrieved {len(context)} products via {algorithm}")
-
-    # 2. RAG Generation
-    response = agent.generate_response(request.query, context)
+    logger.info(f"[{session_id}] Handled query via {algorithm} (context={len(context)})")
 
     # 3. Build full prompt for logging (system prompt + user message with context)
     full_prompt = (
