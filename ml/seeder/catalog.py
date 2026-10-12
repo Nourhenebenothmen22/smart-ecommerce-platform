@@ -20,6 +20,7 @@ CATALOG = {
                 "BlackBerry", "Fairphone",
             ],
             "name_parts": [
+                "iPhone", "iPhone Pro", "Galaxy", "Galaxy Ultra", "Pixel",
                 "Pro", "Max", "Lite", "Ultra", "Edge", "Plus", "Neo", "Prime",
                 "Fold", "Flip", "Slim", "Note", "Air", "Spark", "Vision",
                 "Flash", "Pulse", "Apex", "Zenith", "Nova", "Series", "X",
@@ -42,6 +43,7 @@ CATALOG = {
                 "Chuwi", "Mechrevo",
             ],
             "name_parts": [
+                "MacBook", "MacBook Pro", "MacBook Air", "ThinkPad",
                 "Book", "Air", "Pro", "Flex", "Think", "Studio", "Slim",
                 "Core", "Zen", "Spectre", "Pavilion", "IdeaPad", "VivoBook",
                 "ZenBook", "Swift", "Predator", "Nitro", "Inspiron", "Envy",
