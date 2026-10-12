@@ -13,21 +13,36 @@ from .data_loader import load_product_features
 from .preprocessing import build_feature_frame_for_profile, feature_columns
 
 
+_MODEL_CACHE: dict[str, tuple[float, Any]] = {}
+_METADATA_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
 def _load_metadata(config: Config) -> dict[str, Any]:
     path = config.metadata_dir / "metadata.json"
     if not path.exists():
         return {}
+    mtime = path.stat().st_mtime
+    cached = _METADATA_CACHE.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    _METADATA_CACHE[str(path)] = (mtime, data)
+    return data
 
 
 def _load_best_model(config: Config):
     path = config.models_dir / "best_model.pkl"
     if not path.exists():
         raise FileNotFoundError(f"Price prediction model artifact not found: {path}")
+    mtime = path.stat().st_mtime
+    cached = _MODEL_CACHE.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
     model = joblib.load(path)
     if not hasattr(model, "predict"):
         raise TypeError("Loaded price prediction artifact does not support prediction.")
+    _MODEL_CACHE[str(path)] = (mtime, model)
     return model
 
 

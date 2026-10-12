@@ -13,29 +13,51 @@ from .config import Config, cfg
 from .preprocessing import preprocess
 
 
+_SEGMENT_MAP_CACHE: dict[str, tuple[float, dict[int, dict[str, str]]]] = {}
+_TRAINING_METADATA_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_KMEANS_CACHE: dict[str, tuple[float, KMeans]] = {}
+
+
 def _load_segment_map(config: Config) -> dict[int, dict[str, str]]:
     path = config.models_dir / "segment_map.json"
     if not path.exists():
         return {}
+    mtime = path.stat().st_mtime
+    cached = _SEGMENT_MAP_CACHE.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
     with open(path) as f:
-        return {int(k): v for k, v in json.load(f).items()}
+        data = {int(k): v for k, v in json.load(f).items()}
+    _SEGMENT_MAP_CACHE[str(path)] = (mtime, data)
+    return data
 
 
 def _load_training_metadata(config: Config) -> dict[str, Any]:
     path = config.metadata_dir / "training_metadata.json"
     if not path.exists():
         return {}
+    mtime = path.stat().st_mtime
+    cached = _TRAINING_METADATA_CACHE.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    _TRAINING_METADATA_CACHE[str(path)] = (mtime, data)
+    return data
 
 
 def _load_kmeans(config: Config) -> KMeans:
     path = config.models_dir / "kmeans_model.pkl"
     if not path.exists():
         raise FileNotFoundError(f"K-Means model artifact not found: {path}")
+    mtime = path.stat().st_mtime
+    cached = _KMEANS_CACHE.get(str(path))
+    if cached and cached[0] == mtime:
+        return cached[1]
     model = joblib.load(path)
     if not hasattr(model, "predict"):
         raise TypeError("Loaded segmentation artifact does not support production prediction.")
+    _KMEANS_CACHE[str(path)] = (mtime, model)
     return model
 
 

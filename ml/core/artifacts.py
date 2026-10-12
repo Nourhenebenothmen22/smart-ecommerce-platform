@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import sys
 import time
 import uuid
 
@@ -35,7 +36,7 @@ def ensure_artifact_layout(root: Path) -> None:
 
 
 def _remove_tree(path: Path, ignore_errors: bool = False) -> None:
-    def _make_writable_and_retry(func, target, exc):
+    def _make_writable_and_retry(func, target, *args):
         try:
             os.chmod(target, stat.S_IWRITE)
             func(target)
@@ -45,7 +46,10 @@ def _remove_tree(path: Path, ignore_errors: bool = False) -> None:
 
     for attempt in range(20):
         try:
-            shutil.rmtree(path, ignore_errors=False, onexc=_make_writable_and_retry)
+            if sys.version_info >= (3, 12):
+                shutil.rmtree(path, ignore_errors=False, onexc=_make_writable_and_retry)
+            else:
+                shutil.rmtree(path, ignore_errors=False, onerror=_make_writable_and_retry)
             return
         except FileNotFoundError:
             return
